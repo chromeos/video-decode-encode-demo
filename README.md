@@ -20,12 +20,13 @@ insert custom filters in the pipeline.
 * Click decode to simultaneously decode all selected video streams
 * Toggle the sepia filter flag to test using a GL filter
 * Turning on the "Encode 1st Stream" switch before beginning a decode will take the decoded frames
-from the first surface re-encode them
+from the first surface and re-encode them
 
 ## Notes
 
 * Only tested on a handful of devices
 * Do not use this code in production as is
+* 4 - 1080p mp4 files from a Pixel 4 phone are included for testing in the raw directory
 * Encoded files are found in the sdcard/Android/data/dev.hadrosaur.videodecodeencodedemo directory
 * Encoded media settings are not ideal and currently do produce the proper frame delay
 
