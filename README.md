@@ -16,7 +16,7 @@ ExoPlayer is used to simplify the decoding. MediaCodec/MediaMuxer is used for en
 An option is included to pass streams through a simple OpenGL sepia filter to demonstrate where to
 insert custom filters in the pipeline.
 
-![Screenshot of VideoDecodeEncodeDemo](https://github.com/chromeos/video-decode-encode-demo/blob/master/VideoDecodeEncodeDemo-Screenshot.png)
+<img alt="Screenshot of VideoDecodeEncodeDemo" src="https://github.com/chromeos/video-decode-encode-demo/blob/master/VideoDecodeEncodeDemo-Screenshot.png" width="200" />
 
 ## Usage
 * Click decode to simultaneously decode all selected video streams
