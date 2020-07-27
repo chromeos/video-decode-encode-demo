@@ -182,29 +182,29 @@ class MainActivity : AppCompatActivity() {
 
         // Set up decode checkboxes. Stream 1 will always decode but set up properly anyway
         checkbox_decode_stream1.setOnCheckedChangeListener{
-                buttonView, isChecked -> viewModel.setDecodeStream1(isChecked) }
+                _, isChecked -> viewModel.setDecodeStream1(isChecked) }
         viewModel.getDecodeStream1().observe(this, Observer<Boolean> {
                 isChecked -> checkbox_decode_stream1.isSelected = isChecked })
         checkbox_decode_stream2.setOnCheckedChangeListener{
-                buttonView, isChecked -> viewModel.setDecodeStream2(isChecked) }
+                _, isChecked -> viewModel.setDecodeStream2(isChecked) }
         viewModel.getDecodeStream2().observe(this, Observer<Boolean> {
                 isChecked -> checkbox_decode_stream2.isSelected = isChecked })
         checkbox_decode_stream3.setOnCheckedChangeListener{
-                buttonView, isChecked -> viewModel.setDecodeStream3(isChecked) }
+                _, isChecked -> viewModel.setDecodeStream3(isChecked) }
         viewModel.getDecodeStream3().observe(this, Observer<Boolean> {
                 isChecked -> checkbox_decode_stream3.isSelected = isChecked })
         checkbox_decode_stream4.setOnCheckedChangeListener{
-                buttonView, isChecked -> viewModel.setDecodeStream4(isChecked) }
+                _, isChecked -> viewModel.setDecodeStream4(isChecked) }
         viewModel.getDecodeStream4().observe(this, Observer<Boolean> {
                 isChecked -> checkbox_decode_stream4.isSelected = isChecked })
 
         // Set up toggle switches to auto track with the ViewModel
         switch_filter.setOnCheckedChangeListener {
-                buttonView, isChecked -> viewModel.setApplyGlFilter(isChecked) }
+                _, isChecked -> viewModel.setApplyGlFilter(isChecked) }
         viewModel.getApplyGlFilter().observe(this, Observer<Boolean> {
                 applyFilter -> switch_filter.isSelected = applyFilter })
         switch_encode.setOnCheckedChangeListener {
-                buttonView, isChecked -> viewModel.setEncodeStream1(isChecked) }
+                _, isChecked -> viewModel.setEncodeStream1(isChecked) }
         viewModel.getEncodeStream1().observe(this, Observer<Boolean> {
                 encodeStream -> switch_encode.isSelected = encodeStream })
 

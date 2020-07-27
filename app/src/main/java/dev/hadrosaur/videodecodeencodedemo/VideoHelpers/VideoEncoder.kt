@@ -61,11 +61,13 @@ class VideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int){
     var endTime = 0L
     var lastPresentationTime = 0L
 
-    // Encoder variables
+    // Encoder variables, set to reasonable defaults that will be over-written when configured
     var muxerInitialized = false
     var videoTrackIndex: Int = 0
     var width = 1920
     var height = 1080
+    var encodingFramerate = 33
+    var encodingFrameDelayUs = 30303L
 
     init{
         // Use the original decoded file to help set up the encode values
@@ -97,6 +99,10 @@ class VideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int){
         encoder = MediaCodec.createByCodecName(encoderCodecInfo?.getName()!!)
 
         encoderFormat = getBestEncodingFormat(mimeType, format, encoderCodecInfo)
+
+        // Get the real frame rate values set for the encoder
+        encodingFramerate = encoderFormat.getInteger(KEY_FRAME_RATE)
+        encodingFrameDelayUs = 1000000L / encodingFramerate.toLong()
 
         encoder.configure(encoderFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
 
@@ -151,23 +157,19 @@ class VideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int){
                 }
 
                 // TODO: The first frame should have a MediaCodec.BUFFER_FLAG_CODEC_CONFIG set but
-                // this may not come from this sdurface decode. Perhaps check for this and if the
+                // this may not come from this surface decode. Perhaps check for this and if the
                 // first buffer is not a config buffer, construct it here
-
                 if (encoderBufferInfo.size !== 0) {
                     encodedData.position(encoderBufferInfo.offset)
                     encodedData.limit(encoderBufferInfo.offset + encoderBufferInfo.size)
                     numEncodedFrames.incrementAndGet()
 
-                    // This is a logging check that frames are not being encoded in the wrong order
-                    if (lastPresentationTime > encoderBufferInfo.presentationTimeUs) {
-                        mainActivity.updateLog("Out of order presentation time at frame: ${numEncodedFrames.get() - 1}, ${encoderBufferInfo.presentationTimeUs}")
-                    }
-                    lastPresentationTime = encoderBufferInfo.presentationTimeUs
+                    // This gives an approximation of the correct playback speed, based on the framerate
+                    // This is not totally accurate for variable frame rates, etc. but ok as a proof of concept.
+                    // Production code should be more precise with encoding timing
+                    lastPresentationTime += encodingFrameDelayUs
+                    encoderBufferInfo.presentationTimeUs = lastPresentationTime
 
-
-                    // TODO: This is creating a video speed with playback speed tied to encoding
-                    // speed. Fix this is to be a proper playback speed
                     // Send the frame to the muxer
                     if (muxerInitialized) {
                         muxer?.writeSampleData(videoTrackIndex, encodedData, encoderBufferInfo)
@@ -331,7 +333,7 @@ class VideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int){
             encoderFormat.setFloat(KEY_FRAME_RATE, 33F);
         }
         if (!encoderFormat.containsKey(KEY_I_FRAME_INTERVAL)) {
-            encoderFormat.setInteger(KEY_I_FRAME_INTERVAL, 0)
+            encoderFormat.setInteger(KEY_I_FRAME_INTERVAL, 1)
         }
 
         // Choose the best settings best on device capabilities
@@ -390,6 +392,7 @@ class VideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int){
                 encoderFormat.setInteger(MediaFormat.KEY_PROFILE, AVCLevel4)
             }
         }
+
         return encoderFormat
     }
 
