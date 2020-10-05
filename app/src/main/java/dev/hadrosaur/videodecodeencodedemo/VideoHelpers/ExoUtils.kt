@@ -55,8 +55,7 @@ class CustomExoRenderersFactory(val mainActivity: MainActivity, val internalSurf
         videoRendererEventListener: VideoRendererEventListener,
         audioRendererEventListener: AudioRendererEventListener,
         textRendererOutput: TextOutput,
-        metadataRendererOutput: MetadataOutput,
-        drmSessionManager: DrmSessionManager<FrameworkMediaCrypto>?
+        metadataRendererOutput: MetadataOutput
     ): Array<Renderer> {
         return arrayOf(
             VideoMediaCodecVideoRenderer(mainActivity, internalSurfaceTextureComponent, true, streamNumber)

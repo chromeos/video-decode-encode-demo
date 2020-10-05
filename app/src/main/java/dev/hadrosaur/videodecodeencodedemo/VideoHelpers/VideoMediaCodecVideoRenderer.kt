@@ -81,10 +81,11 @@ class VideoMediaCodecVideoRenderer(val mainActivity: MainActivity, val internalS
      override fun processOutputBuffer(
         positionUs: Long,
         elapsedRealtimeUs: Long,
-        codec: MediaCodec,
-        buffer: ByteBuffer,
+        codec: MediaCodec?,
+        buffer: ByteBuffer?,
         bufferIndex: Int,
         bufferFlags: Int,
+        sampleCount: Int,
         bufferPresentationTimeUs: Long,
         isDecodeOnlyBuffer: Boolean,
         isLastBuffer: Boolean,
@@ -101,7 +102,7 @@ class VideoMediaCodecVideoRenderer(val mainActivity: MainActivity, val internalS
         }
 
         return super.processOutputBuffer(positionUs, elapsedRealtimeUs, codec, buffer, bufferIndex,
-            bufferFlags, bufferPresentationTimeUs, isDecodeOnlyBuffer, isLastBuffer, format)
+            bufferFlags, sampleCount, bufferPresentationTimeUs, isDecodeOnlyBuffer, isLastBuffer, format)
     }
 
     /**
