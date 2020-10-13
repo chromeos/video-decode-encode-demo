@@ -17,6 +17,7 @@
 package dev.hadrosaur.videodecodeencodedemo
 
 import android.media.MediaFormat
+import android.util.Log
 import com.google.android.exoplayer2.Format
 import com.google.android.exoplayer2.video.VideoFrameMetadataListener
 import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.logd
@@ -66,6 +67,14 @@ class FrameLedger : VideoFrameMetadataListener {
      */
     override fun onVideoFrameAboutToBeRendered(
         presentationTimeUs: Long, releaseTimeNs: Long, format: Format, mediaFormat: MediaFormat?) {
+
+        if (presentationTimeUs == 0L) {
+            Log.d("VD", "Presentation time in 0")
+            Log.d("VD","in OnVideoFrameAboutToBeRendered: ptime: " + presentationTimeUs + ", rtime: " + releaseTimeNs + ", format: " + format.toString())
+            Log.d("VD", "Media Format: " + mediaFormat.toString())
+            return
+        }
+
         // Block pipeline until updateTexSurface has been called
         engageRenderBlock()
         ledger.put(releaseTimeNs, presentationTimeUs)

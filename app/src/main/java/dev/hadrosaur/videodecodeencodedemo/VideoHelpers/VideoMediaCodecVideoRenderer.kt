@@ -93,13 +93,18 @@ class VideoMediaCodecVideoRenderer(val mainActivity: MainActivity, val internalS
     ): Boolean {
 
         if (buffer == null) {
-            return false
+//            mainActivity.updateLog("I am in processOutputBuffer. Buffer is NULL!")
+//            return false
         }
 
         // Check the atomic lock to see if a frame can be rendered. If not, return false and wait
         if (internalSurfaceTextureComponent.renderer.frameLedger.shouldBlockRender()) {
+//            mainActivity.updateLog("I am in processOutputBuffer: The renderer is blocked.")
+
             return false
         }
+
+//        mainActivity.updateLog("I am in processOutputBuffer. Renderer not blocked.")
 
         return super.processOutputBuffer(positionUs, elapsedRealtimeUs, codec, buffer, bufferIndex,
             bufferFlags, sampleCount, bufferPresentationTimeUs, isDecodeOnlyBuffer, isLastBuffer, format)
