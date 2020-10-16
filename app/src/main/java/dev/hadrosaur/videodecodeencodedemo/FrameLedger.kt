@@ -44,6 +44,8 @@ class FrameLedger : VideoFrameMetadataListener {
     // Atomic lock to block the pipeline to prevent frame drops
     var eglBlockRenderer = AtomicBoolean(false)
 
+    var haveSkippedFirst = false
+
     // Check if the block render flag is engaged.
     fun shouldBlockRender() : Boolean {
         return eglBlockRenderer.get()
@@ -68,12 +70,13 @@ class FrameLedger : VideoFrameMetadataListener {
     override fun onVideoFrameAboutToBeRendered(
         presentationTimeUs: Long, releaseTimeNs: Long, format: Format, mediaFormat: MediaFormat?) {
 
-        if (presentationTimeUs == 0L) {
-            Log.d("VD", "Presentation time in 0")
-            Log.d("VD","in OnVideoFrameAboutToBeRendered: ptime: " + presentationTimeUs + ", rtime: " + releaseTimeNs + ", format: " + format.toString())
-            Log.d("VD", "Media Format: " + mediaFormat.toString())
-            return
-        }
+//        if (presentationTimeUs == 0L && !haveSkippedFirst) {
+//            Log.d("VD", "Presentation time in 0")
+//            Log.d("VD","in OnVideoFrameAboutToBeRendered: ptime: " + presentationTimeUs + ", rtime: " + releaseTimeNs + ", format: " + format.toString())
+//            Log.d("VD", "Media Format: " + mediaFormat.toString())
+//            haveSkippedFirst = true
+//            return
+//        }
 
         // Block pipeline until updateTexSurface has been called
         engageRenderBlock()

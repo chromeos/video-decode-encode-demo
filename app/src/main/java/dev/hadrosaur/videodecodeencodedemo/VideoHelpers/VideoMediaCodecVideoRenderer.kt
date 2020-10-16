@@ -38,6 +38,9 @@ class VideoMediaCodecVideoRenderer(val mainActivity: MainActivity, val internalS
 
     var internalPlaybackParameters = PlaybackParameters(1f)
 
+    var haveSeenFirst = false
+    var haveSeenSecond = false
+
     /**
      * Keep track of dropped frames
      */
@@ -92,15 +95,40 @@ class VideoMediaCodecVideoRenderer(val mainActivity: MainActivity, val internalS
         format: Format
     ): Boolean {
 
+        // In ExoPlayer < 12.2.0, skip null buffers
         if (buffer == null) {
-//            mainActivity.updateLog("I am in processOutputBuffer. Buffer is NULL!")
 //            return false
+        }
+
+        // In ExpoPlayer >= 12.2.0, all buffers are null, skip the first one on Chrome OS.
+        // Output buffer info for debug
+        if (!haveSeenFirst) {
+            haveSeenFirst = true
+            mainActivity.updateLog("FIRST BUFFER:" +
+                    "\n\tpos: ${positionUs}, elap: ${elapsedRealtimeUs}, buffer: ${buffer}, bufIdx: ${bufferIndex}, bufFlags: ${bufferFlags}," +
+                    "\n\tcodec: ${codec?.name}, samCount: ${sampleCount}, bufPresTime: ${bufferPresentationTimeUs}, isDecodeOnly: ${isDecodeOnlyBuffer}, " +
+                    "\n\tisLast: ${isLastBuffer}" +
+                    "\n\tformat: ${format}")
+
+            // ExoPlayer on Chrome OS does not render the first frame for some reason
+            if (mainActivity.isArc()) {
+                return false
+            }
+        }
+
+        // Output buffer info for debug
+        if (!haveSeenSecond) {
+            haveSeenSecond = true
+            mainActivity.updateLog("SECOND BUFFER:" +
+                    "\n\tpos: ${positionUs}, elap: ${elapsedRealtimeUs}, buffer: ${buffer}, bufIdx: ${bufferIndex}, bufFlags: ${bufferFlags}," +
+                    "\n\tcodec: ${codec?.name}, samCount: ${sampleCount}, bufPresTime: ${bufferPresentationTimeUs}, isDecodeOnly: ${isDecodeOnlyBuffer}, " +
+                    "\n\tisLast: ${isLastBuffer}" +
+                    "\n\tformat: ${format}")
         }
 
         // Check the atomic lock to see if a frame can be rendered. If not, return false and wait
         if (internalSurfaceTextureComponent.renderer.frameLedger.shouldBlockRender()) {
 //            mainActivity.updateLog("I am in processOutputBuffer: The renderer is blocked.")
-
             return false
         }
 

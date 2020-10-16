@@ -266,7 +266,7 @@ class MainActivity : AppCompatActivity() {
                         stream1DecodeFinished = true
                     }
 //                    player.clearVideoSurface()
-//                    player.release()
+                    player.release()
                     this@MainActivity.decodeFinished()
                 }
             }
