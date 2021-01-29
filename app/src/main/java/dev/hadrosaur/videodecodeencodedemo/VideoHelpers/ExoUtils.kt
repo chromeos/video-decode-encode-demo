@@ -33,19 +33,15 @@ import com.google.android.exoplayer2.video.VideoRendererEventListener
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 
 // Create an ExoPlayer media source from a raw resource ID
-fun buildExoMediaSource(mainActivity: MainActivity, raw: Int): MediaSource? {
+fun buildExoMediaSource(mainActivity: MainActivity, raw: Int): MediaSource {
     val uri = RawResourceDataSource.buildRawResourceUri(raw)
 
-    if (null != uri) {
-        val dataSourceFactory: DataSource.Factory =
-            DefaultDataSourceFactory(mainActivity,
-                MainActivity.LOG_TAG
-            )
-        return ProgressiveMediaSource.Factory(dataSourceFactory)
-            .createMediaSource(uri)
-    }
-
-    return null
+    val dataSourceFactory: DataSource.Factory =
+        DefaultDataSourceFactory(mainActivity,
+            MainActivity.LOG_TAG
+        )
+    return ProgressiveMediaSource.Factory(dataSourceFactory)
+        .createMediaSource(uri)
 }
 
 class CustomExoRenderersFactory(val mainActivity: MainActivity, val internalSurfaceTextureComponent: InternalSurfaceTextureComponent, val streamNumber: Int) :

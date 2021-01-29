@@ -31,8 +31,8 @@ import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.LOG_EVERY_N_FR
  * Logs to the main log as the render progresses.
  */
 class InternalSurfaceTextureRenderer(val mainActivity: MainActivity, glManager: GlManager, displaySurface: SurfaceView, handler: Handler) : InternalSurfaceTexture.TextureImageListener {
-    val internalSurfaceTexture: InternalSurfaceTexture = InternalSurfaceTexture(mainActivity, glManager, displaySurface, handler, this)
     val frameLedger = FrameLedger()
+    val internalSurfaceTexture: InternalSurfaceTexture = InternalSurfaceTexture(mainActivity, glManager, displaySurface, frameLedger, handler, this)
     var onFrameAvailableCounter = 0
     var isEncoderStarted = false
     var doEncode = false
@@ -49,22 +49,30 @@ class InternalSurfaceTextureRenderer(val mainActivity: MainActivity, glManager: 
         doEncode = shouldEncode
     }
 
-    // Called when a new frame is available on the SurfaceTexture from it's image producer
+    /** Called when a new frame is available on the SurfaceTexture from it's image producer.
+     *
+     * Note: this implementation draws or encodes frames as fast as they are available, by design.
+     *  This will not result in smooth preview playback for variable rate media because the decoder
+     *  will run more or less at a constant speed (determined by system resources) but variable
+     *  media will have frames that are intended to be shown at different durations. For proper
+     *  playback, be sure to respect each frames' presentation time.
+     */
     override fun onFrameAvailable() {
         onFrameAvailableCounter++
         val surfaceTimestamp = internalSurfaceTexture.surfaceTexture.timestamp
 
-        // updateTexImage has just been called by the renderer, now release the render pipeline lock
+        // updateTexImage has just been called by the renderer, release the render pipeline lock
         // that was set in the FrameLedger's onVideoFrameAboutToBeRendered callback
         frameLedger.releaseRenderBlock()
 
         if (surfaceTimestamp != 0L) {
-            if (frameLedger.ledger.containsKey(surfaceTimestamp)) {
-                // Frame matched, add to the ledger
+            // Check if this frame was decoded and sent to the rendered
+            if (frameLedger.decodeLedger.containsKey(surfaceTimestamp)) {
+                // Frame matched, increment the frames rendered counter
                 val framesRendered = frameLedger.frames_rendered.incrementAndGet()
 
                 // If this frame matches the requested draw frequency, or the frequency is set to
-                // draw every frame, draw a preview frame
+                // draw every frame, draw the frame to the preview surface
                 if (framesRendered % mainActivity.viewModel.getPreviewFrameFrequencyVal() == 1 ||
                     mainActivity.viewModel.getPreviewFrameFrequencyVal() == 1) {
                     internalSurfaceTexture.drawFrameToScreen()
@@ -72,6 +80,7 @@ class InternalSurfaceTextureRenderer(val mainActivity: MainActivity, glManager: 
 
                 // If encoding is engaged, encode this frame
                 if (doEncode) {
+                    // Don't start the encoder until we actually need it
                     if(!isEncoderStarted) {
                         internalSurfaceTexture.videoEncoder.startEncode()
                         isEncoderStarted = true
@@ -83,6 +92,7 @@ class InternalSurfaceTextureRenderer(val mainActivity: MainActivity, glManager: 
                     internalSurfaceTexture.videoEncoder.numDecodedFrames.incrementAndGet()
 
                     // Indicate to encoder that all frames have been sent to decoder
+                    // Beware: signalDecodingComplete contains a potential endless loop
                     if (mainActivity.stream1DecodeFinished) {
                         internalSurfaceTexture.videoEncoder.signalDecodingComplete()
                     }
@@ -91,14 +101,15 @@ class InternalSurfaceTextureRenderer(val mainActivity: MainActivity, glManager: 
                 }
 
             } else {
-                // Frame not found in the ledger
-                mainActivity.updateLog("Frame NOT FOUND! Key: ${surfaceTimestamp}, frame: ${frameLedger.ledger.get(surfaceTimestamp)}")
+                // Frame not found in the ledger. This should not happen.
+                mainActivity.updateLog("Frame NOT FOUND! Key: ${surfaceTimestamp}, frame: ${frameLedger.decodeLedger.get(surfaceTimestamp)}")
             }
         } else {
             // Surface timestamp 0 - This frame not really rendered, but add to keep the ledger even
             frameLedger.frames_rendered.incrementAndGet()
         }
 
+        // Log the current state to make sure no frames have been dropped
         if (frameLedger.frames_entered.get() % LOG_EVERY_N_FRAMES == 0) {
             mainActivity.updateLog("Decoded: ${frameLedger.frames_entered.get()}. Rendered: ${frameLedger.frames_rendered.get()}. Dropped: ${frameLedger.frames_entered.get() - frameLedger.frames_rendered.get()}")
         }

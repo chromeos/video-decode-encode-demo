@@ -4,36 +4,133 @@
 This is a proof-of-concept demo. This code should not be used in production.
 
 ## About
-The fastest way to decode media using MediaCodec is via an internal Surface. This can lead to
-dropped frames pre-Android 10 (when the [allow-frame-drop](https://developer.android.com/reference/android/media/MediaCodec#using-an-output-surface)
-flag was introduced).
+The aim of this project is to:
+ * Demonstrate a work around for the "frame-dropping problem" (see below)
+ * Provide proof-of-concept code showing that Android provides the building blocks for video
+ transcoding use-cases in a performant way
+ * Offers some open-source approaches to do some transcoding fundamentals
+ 
+The demo app provided decodes 4, 30-second 1080p video streams without frame-dropping via a 
+SurfaceTexture. A simple GL filter (Sepia) is provided as well as sample export/encoding code. 
 
-This project demostrates how to use internal Surfaces for fast decoding using a SurfaceTexture while
-not losing frames using an Atomic lock.
-
-ExoPlayer is used to simplify the decoding. MediaCodec/MediaMuxer is used for encoding.
-
-An option is included to pass streams through a simple OpenGL sepia filter to demonstrate where to
-insert custom filters in the pipeline.
+In future versions, audio will be included in the export as well as an mp3 audio track.
 
 <img alt="Screenshot of VideoDecodeEncodeDemo" src="https://github.com/chromeos/video-decode-encode-demo/blob/master/VideoDecodeEncodeDemo-Screenshot.png" width="200" />
 
+## Details
+### The "Frame Dropping Problem"
+The fastest way to decode media using MediaCodec is via an internal Surface. MediaCodec was
+optimized for real-time media playback and in order to prevent wasting system resources by decoding
+frames that would be thrown away or replaced before being displayed, logic was put in place to 
+discard frames entering the Surface decode queue that were arriving faster than they could be shown.
+This logic is not controllable or visible before Android 10 (Q) when the 
+[allow-frame-drop](https://developer.android.com/reference/android/media/MediaCodec#using-an-output-surface)
+flag was introduced.
+
+This works for the vast majority of media decoding cases and offers performance boosts and battery
+savings, however, for video transcoding/editing use-cases, this either limits the decoding speed to
+the device's refresh rate, or means frames will be lost, which results in incorrect encodes,
+synchronization, and glitches in effects and transitions.
+
+This project demonstrates how to use internal Surface callbacks and an
+[atomic lock](https://developer.android.com/reference/java/util/concurrent/atomic/AtomicBoolean)
+to provide the fastest decoding using a SurfaceTexture without frame dropping, on devices running
+pre-Android 10.
+
+### ExoPlayer
+[ExoPlayer](https://exoplayer.dev/) simplifies media decoding on Android and is used in many
+productions apps like YouTube. For playing back media in realtime especially, it hides most of the
+challenging complexities required for Android media decoding.
+
+For this demo, because it is necessary to capture and control the decoding/encoding surfaces, the
+ExoPlayer methods and classes are overridden extensively. However, it still offers some advantages
+over using MediaCodec directly:
+ * Some of the MediaCodec API complexity is still hidden by ExoPlayer
+ * ExoPlayer contains a number of device specific workarounds for buggy OEM implementations. It is
+ convenient to rely on this maintained library for these rather than trying to re-implement them.
+ They are mostly found in [MediaCodecRenderer.java](https://github.com/google/ExoPlayer/blob/release-v2/library/core/src/main/java/com/google/android/exoplayer2/mediacodec/MediaCodecRenderer.java)
+ of the ExoPlayer library.
+ 
+This project could be replicated using MediaCodec directly.
+ 
+MediaCodec/MediaMuxer is used for encoding.
+
+### OpenGL Filter
+A simple OpenGL sepia filter is included to demonstrate where to custom filters could be inserted
+into the pipeline.
+
+## Overview/Approach
+To prevent frame dropping, an [atomic lock](https://developer.android.com/reference/java/util/concurrent/atomic/AtomicBoolean)
+is used to ensure the decoder input queue is not overfilled. To keep track of this lock, and to
+provide some accounting for frame to ensure none have been lost, a `Frame Ledger` is used (think of
+it as an accounting book). The ledger is also used to keep track of presentation time timestamps to
+ensure accurate encoding times for variable rate media.
+
+1. Engage lock before render. The demo overrides the `onVideoFrameAboutToBeRendered` callback of
+ExoPlayer's `VideoFrameMetadataListener` (find this override in `FrameLedger.kt`). This will be
+called after decoding and right before a frame is sent to the renderer. If another frame arrives
+in the meantime - in `processOutputBuffer` of `VideoMediaCodecVideoRenderer.kt` - it is not
+processed until the lock is released. The correct presentation time for this frame is recorded in
+both the decode and encode hashmaps.
+
+2. Frame is rendered to `InternalSurfaceTexture`. When the surface texture gets a new frame,
+`onFrameAvailable` is called. `updateTexImage` is called on a separate thread. The `onFrameAvailable`
+callback is triggered.
+
+3. Initiate preview/encode rendering and release lock. `InternalSurfaceTextureRenderer` handles the
+choreography between the `InternalSurfaceTexture` and the rest of the system. When `onFrameAvailable` 
+is called, the render lock is released. If this frame is required for the preview, a draw call is
+requested. If this stream should be encoding, an encode call is requested.
+
+4. Preview frames. The demo offers a variable rate of preview frames. If a particular frame is
+required to be drawn on the screen, a call to the `DrawFrameProcessor` is called. This is an OpenGL
+call that copies the image from the renderer output, applies a GL filter if necessary, and shows it
+on the output surface. 
+
+5. Encode frames. If a frame is intended for encode, a separate `DrawFrameProcessor` from the
+preview case is called, rendering the frame to the input surface of the MediaCodec encoder. The
+encoding logic is contained within `VideoEncoder.kt` and is a relatively straight-forward use
+of [MediaMuxer](https://developer.android.com/reference/android/media/MediaMuxer), excepting the
+caveats below.
+
+6. Audio. Not currently implemented. For a future release.
+
+### Notes/Caveats
+ * Because decoding is done to a `SurfaceTexture`, the preview and export renders must take into the
+ transform matrix of the `SurfaceTexture`, see [getTransformMatrix documentation](https://developer.android.com/reference/android/graphics/SurfaceTexture#getTransformMatrix(float%5B%5D)).
+ Failure to do so will result in an "almost" correct image for 1080p media. There will be an 8px
+ "smeared" line of pixels due to 16-bit alignment requirements.
+ * Many devices produce variable rate media. It is important to track the presentation time for each
+ frame from the decoding step while the frame is being copied and passed from surface to surface,
+ otherwise the media will be played/encoded at the incorrect rate, with slow downs and speed ups.
+ Presentation times are stored in the `FrameLedger`.
+ * Because the demo decodes as fast as possible, the preview will not take into account variable
+ rate media and just show the frames as they come.
+ * Currently, the demo assumes that frames received from the renderer will be fed into and exit the
+ encoder in the same order. Technically, this manifests in using a monotonic integer to count
+ frames in the `encodeLedger` which requires the frame number (1, 2, 3, 4...) and the correct
+ presentation time. Possibly a 3rd ledger should be made to record the surface time the frame
+ entered the encoder and correlate that with the frame number for which it entered the encoder.
+ Pratically, this does not appear to be necessary.
+ * This has only been tested on a handful of devices
+ * Use this code at your own risk, it is intended for proof-of-concept and reference only
+ * 4 - 1080p mp4 files from a Pixel 4 phone are included for testing in the raw directory
+ * Encoded files are found in the sdcard/Android/data/dev.hadrosaur.videodecodeencodedemo directory
+ * Much logging code is intentionally left in the code. Uncommenting "mainActivity.updateLog" lines
+ will add logging to the in-app log area as well as the logcat messages.
+
 ## Usage
+* Use the slider to set the frequency of preview frames to be shown (all the way to the left means
+preview every frame, all the way to the right means only show 1 frame in 30
+* Choose which of the 4 videos you wish to simultaneously decode
 * Click decode to simultaneously decode all selected video streams
-* Toggle the sepia filter flag to test using a GL filter
+* Toggle the sepia filter flag to test using a GL filter. These switch may be turned on and off 
+during the decode/encode
 * Turning on the "Encode 1st Stream" switch before beginning a decode will take the decoded frames
-from the first surface and re-encode them
-
-## Notes
-
-* Only tested on a handful of devices
-* Do not use this code in production as is
-* 4 - 1080p mp4 files from a Pixel 4 phone are included for testing in the raw directory
-* Encoded files are found in the sdcard/Android/data/dev.hadrosaur.videodecodeencodedemo directory
-* Encoded media settings are not ideal and currently do produce the proper frame delay
+from the first media stream and re-encode it (with filter effects if selected)
+* Preview rate has no effect on the encoding - all frames will always be encoded
 
 ## LICENSE
-
 ***
 
 Copyright 2020 Google LLC

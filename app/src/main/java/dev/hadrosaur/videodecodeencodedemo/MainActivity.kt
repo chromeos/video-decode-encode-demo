@@ -66,6 +66,7 @@ class MainActivity : AppCompatActivity() {
     var numberOfReadySurfaces = 0
     var activeDecodes = 0
     var stream1DecodeFinished = false // keep track of stream 1 decode for encoder
+    var waitForSteam1EncodeToFinish = false
 
     var encodeFileOriginalRawFileId = R.raw.paris_01_1080p // Hack to easily pass original file info down to encoder
 
@@ -214,6 +215,11 @@ class MainActivity : AppCompatActivity() {
             releaseSurfacesMarkedForDeletion()
 
             encodeFileOriginalRawFileId = R.raw.paris_01_1080p
+
+            // Keep track of if we are encoding this run (user can toggle switch during decode)
+            if (viewModel.getEncodeStream1Val()) {
+                waitForSteam1EncodeToFinish = true
+            }
             internalSurfaceTextureComponentOne.shouldEncode(viewModel.getEncodeStream1Val()) // When decode button is clicked, set if encoding should happen or not
 
             if (viewModel.getDecodeStream1Val()) {
@@ -310,7 +316,7 @@ class MainActivity : AppCompatActivity() {
 
         if (activeDecodes == 0) {
             runOnUiThread {
-                if (!viewModel.getEncodeStream1Val()) {
+                if (!waitForSteam1EncodeToFinish) {
                     markSurfacesForDeletion()
                     initializeSurfaces()
                 }
@@ -321,6 +327,7 @@ class MainActivity : AppCompatActivity() {
     fun encodeFinished() {
         markSurfacesForDeletion()
         initializeSurfaces()
+        waitForSteam1EncodeToFinish = false
     }
 
     /**

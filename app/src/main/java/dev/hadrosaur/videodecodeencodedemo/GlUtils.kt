@@ -17,6 +17,7 @@
 package dev.hadrosaur.videodecodeencodedemo
 
 import android.opengl.*
+import android.util.Log
 import java.nio.Buffer
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -28,55 +29,68 @@ import java.util.*
 object GlUtils {
     const val POSITION_ATTRIBUTE_NAME = "a_position"
     const val TEXCOORD_ATTRIBUTE_NAME = "a_texcoord"
+    const val POS_MATRIX_UNIFORM_NAME = "uMVPMatrix"
+    const val ST_MATRIX_UNIFORM_NAME = "uSTMatrix"
+
+    const val TEX_SAMPLER_NAME = "tex_sampler_0"
+    const val TEX_COORDINATE_NAME = "v_texcoord"
+
     const val NO_FBO = 0
 
     /**
      * Vertex shader that renders a quad filling the viewport.
+     *
+     * Applies provided matrix transformations (needed for SurfaceTextures)
      */
-    private val BLIT_VERTEX_SHADER = String.format(
-        Locale.US,
-        """attribute vec4 %1${"$"}s;
-attribute vec3 %2${"$"}s;
-varying vec2 v_texcoord;
-void main() {
-  gl_Position = %1${"$"}s;
-  v_texcoord = %2${"$"}s.xy;
-}
-""", POSITION_ATTRIBUTE_NAME, TEXCOORD_ATTRIBUTE_NAME
-    )
+    private val BLIT_VERTEX_SHADER = String.format(Locale.US,
+        "attribute vec4 %1${"$"}s;\n" +
+                "attribute vec4 %2${"$"}s;\n" +
+                "varying vec2 %3${"$"}s;\n" +
+                "uniform mat4 %4${"$"}s;\n" +
+                "uniform mat4 %5${"$"}s;\n" +
+                "void main() {\n" +
+                   "gl_Position = %4${"$"}s * %1${"$"}s;\n" +
+                   "%3${"$"}s = ((%5${"$"}s) * %2${"$"}s).xy;\n" +
+                "}\n"
+        , POSITION_ATTRIBUTE_NAME, TEXCOORD_ATTRIBUTE_NAME, TEX_COORDINATE_NAME, POS_MATRIX_UNIFORM_NAME, ST_MATRIX_UNIFORM_NAME)
 
     /**
      * Fragment shader that renders from an external shader to the current target.
      */
-    private const val COPY_EXTERNAL_FRAGMENT_SHADER =
+    private val COPY_EXTERNAL_FRAGMENT_SHADER = String.format(Locale.US,
         "#extension GL_OES_EGL_image_external : require\n" +
                 "precision mediump float;\n" +
-                "uniform samplerExternalOES tex_sampler_0;\n" +
-                "varying vec2 v_texcoord;\n" +
+                "uniform samplerExternalOES %1${"$"}s;\n" +
+                "varying vec2 %2${"$"}s;\n" +
                 "void main() {\n" +
-                "  gl_FragColor = texture2D(tex_sampler_0, v_texcoord);\n" +
+                "  gl_FragColor = texture2D(%1${"$"}s, %2${"$"}s);\n" +
                 "}\n"
+        , TEX_SAMPLER_NAME, TEX_COORDINATE_NAME)
 
     /**
-     * Fragment shader that simple samples the textures with no modifications.
+     * Fragment shader that simply samples the textures with no modifications.
      */
-    private const val PASSTHROUGH_FRAGMENT_SHADER = "precision mediump float;\n" +
-            "uniform sampler2D tex_sampler_0;\n" +
-            "varying vec2 v_texcoord;\n" +
+    private val PASSTHROUGH_FRAGMENT_SHADER = String.format(Locale.US,
+    "precision mediump float;\n" +
+            "uniform sampler2D %1${"$"}s;\n" +
+            "varying vec2 %2${"$"}s;\n" +
             "void main() {\n" +
-            "  gl_FragColor = texture2D(tex_sampler_0, v_texcoord);\n" +
+            "  gl_FragColor = texture2D(%1${"$"}s, %2${"$"}s);\n" +
             "}\n"
+        , TEX_SAMPLER_NAME, TEX_COORDINATE_NAME)
 
     /**
      * Fragment shader that applies a simple Sepia filter.
      */
-    private const val SEPIA_FRAGMENT_SHADER = "precision mediump float;\n" +
-            "uniform sampler2D tex_sampler_0;\n" +
-            "varying vec2 v_texcoord;\n" +
+    private val SEPIA_FRAGMENT_SHADER = String.format(Locale.US,
+        "precision mediump float;\n" +
+            "uniform sampler2D %1${"$"}s;\n" +
+            "varying vec2 %2${"$"}s;\n" +
             "void main() {\n" +
-            "  vec4 sampleColor = texture2D(tex_sampler_0, v_texcoord);\n" +
+            "  vec4 sampleColor = texture2D(%1${"$"}s, %2${"$"}s);\n" +
             "  gl_FragColor = vec4(sampleColor.r * 0.493 + sampleColor. g * 0.769 + sampleColor.b * 0.289, sampleColor.r * 0.449 + sampleColor.g * 0.686 + sampleColor.b * 0.268, sampleColor.r * 0.272 + sampleColor.g * 0.534 + sampleColor.b * 0.131, 1.0);\n" +
             "}\n"
+        , TEX_SAMPLER_NAME, TEX_COORDINATE_NAME)
 
     /**
      * Returns an initialized default display.
@@ -278,7 +292,7 @@ void main() {
      * Returns the [Uniform]s in the specified `program`.
      */
     fun getUniforms(program: Int): Array<Uniform?> {
-        val uniformCount = IntArray(1)
+        val uniformCount = IntArray(3)
         GLES20.glGetProgramiv(program, GLES20.GL_ACTIVE_UNIFORMS, uniformCount, 0)
         val uniforms =
             arrayOfNulls<Uniform>(uniformCount[0])
@@ -523,11 +537,11 @@ void main() {
      * [Uniform.setSamplerTexId].
      */
     class Uniform(program: Int, index: Int) {
-        private val mName: String
-        private val mLocation: Int
-        private val mType: Int
-        private var mTexId = 0
-        private var mUnit = 0
+        val mName: String
+        val mLocation: Int
+        val mType: Int
+        var mTexId = 0
+        var mUnit = 0
 
         /**
          * Configures [.bind] to use the specified `texId` for this sampler uniform.
@@ -543,10 +557,9 @@ void main() {
         /**
          * Sets the uniform to whatever was attached via [.setSamplerTexId].
          *
-         *
-         * Should be called before each drawing call.
+         * Should be called before each drawing call, for sampler uniforms only.
          */
-        fun bind() {
+        fun bindToTextureSampler() {
             check(mTexId != 0) { "call setSamplerTexId before bind" }
             GLES20.glActiveTexture(GLES20.GL_TEXTURE0 + mUnit)
             if (mType == GLES11Ext.GL_SAMPLER_EXTERNAL_OES) {

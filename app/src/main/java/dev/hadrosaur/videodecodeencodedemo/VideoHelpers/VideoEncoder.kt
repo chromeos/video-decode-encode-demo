@@ -23,6 +23,7 @@ import android.media.MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR
 import android.media.MediaFormat.*
 import android.os.Environment
 import android.view.Surface
+import dev.hadrosaur.videodecodeencodedemo.FrameLedger
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.LOG_EVERY_N_FRAMES
 import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.logd
@@ -42,13 +43,13 @@ import kotlin.collections.ArrayList
  * This does not check for an EOS flag. The encode ends when "decodeComplete" is indicated and the
  * number of encoded frames matches the number of decoded frames
  */
-class VideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int){
+class VideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, val frameLedger: FrameLedger){
     val encoderInputSurface: Surface
     val encoder: MediaCodec
     val encoderFormat: MediaFormat
     var muxer: MediaMuxer? = null
 
-    val timeOutUs: Long = 5000
+    val TIME_OUT_US: Long = 5000
     val encoderBufferInfo = MediaCodec.BufferInfo()
 
     var decodeComplete = false
@@ -71,6 +72,7 @@ class VideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int){
 
     init{
         // Use the original decoded file to help set up the encode values
+        // This is not necessary but just convenient
         val extractor = MediaExtractor()
         var format = MediaFormat()
         var mimeType = ""
@@ -97,7 +99,6 @@ class VideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int){
             logd("WARNING: No valid encoder codec.")
         }
         encoder = MediaCodec.createByCodecName(encoderCodecInfo?.getName()!!)
-
         encoderFormat = getBestEncodingFormat(mimeType, format, encoderCodecInfo)
 
         // Get the real frame rate values set for the encoder
@@ -117,19 +118,33 @@ class VideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int){
     fun encodeAvailableFrames() {
         while (!encodeComplete) {
 
+            // If decoding is done and all frames are encoded, encoding is done
+            if (decodeComplete && numEncodedFrames.get() == numDecodedFrames.get()) {
+                encodeComplete = true
+            }
+
+            // There can be frames to encode before the correct presentation time is recorded
+            // If so, do not encode yet
+            // mainActivity.updateLog("Checking for ledger entry: ${numEncodedFrames.get() + 1}")
+            if (!frameLedger.encodeLedger.containsKey(numEncodedFrames.get() + 1)) {
+                break
+            }
+
             // Get next available encoded frame if available
             val encoderBufferId =
-                encoder.dequeueOutputBuffer(encoderBufferInfo, timeOutUs)
+                encoder.dequeueOutputBuffer(encoderBufferInfo, TIME_OUT_US)
 
             // No encoded frames to work with, exit
             if (encoderBufferId == MediaCodec.INFO_TRY_AGAIN_LATER) {
                 break
 
+            // This should never happen
             } else if (encoderBufferId == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
                 // not expected for an encoder
                 logd("Encoder output buffers changed")
                 continue
 
+            // This should happen on the first encode frame
             } else if (encoderBufferId == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                 // This should happen once for an encode, set up the MediaMuxer
                 val newFormat = encoder.outputFormat
@@ -143,11 +158,12 @@ class VideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int){
                 muxer?.start()
                 continue
 
+            // There is an error
             } else if (encoderBufferId < 0) {
                 mainActivity.updateLog("ERROR: something occured during encoding: $encoderBufferId")
                 break
 
-            // Else if there is good encoded data, encode it
+            // Else if there is good encoded data, mux it to file
             } else {
                 val encodedData: ByteBuffer? = encoder.getOutputBuffer(encoderBufferId)
                 if (encodedData == null) {
@@ -162,13 +178,22 @@ class VideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int){
                 if (encoderBufferInfo.size !== 0) {
                     encodedData.position(encoderBufferInfo.offset)
                     encodedData.limit(encoderBufferInfo.offset + encoderBufferInfo.size)
-                    numEncodedFrames.incrementAndGet()
+                    val frameNum = numEncodedFrames.incrementAndGet()
 
-                    // This gives an approximation of the correct playback speed, based on the framerate
-                    // This is not totally accurate for variable frame rates, etc. but ok as a proof of concept.
-                    // Production code should be more precise with encoding timing
-                    lastPresentationTime += encodingFrameDelayUs
-                    encoderBufferInfo.presentationTimeUs = lastPresentationTime
+                    // The encode ledger contains the correct presentation time from the decoder,
+                    // stored based on the frame number. This should work but does assume frames
+                    // hit the decoder output surface in the same order as they exit the encoder.
+                    // If this assumption is not true, frames may be encoded out of order.
+                    // This should always have the encode ledger value by this point in the code,
+                    // if not, guess based on the encoder frame rate + last presentation time
+                    if (frameLedger.encodeLedger.containsKey(frameNum)) {
+                        encoderBufferInfo.presentationTimeUs = frameLedger.encodeLedger.get(frameNum)!!
+                        lastPresentationTime = encoderBufferInfo.presentationTimeUs
+                    } else {
+                        // This will not work for variable rate media, used as a fallback
+                        lastPresentationTime += encodingFrameDelayUs
+                        encoderBufferInfo.presentationTimeUs = lastPresentationTime
+                    }
 
                     // Send the frame to the muxer
                     if (muxerInitialized) {
@@ -241,14 +266,6 @@ class VideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int){
             val types = codecInfo.supportedTypes
             for (j in types.indices) {
                 if (types[j].equals(mimeType, ignoreCase = true)) {
-//                    mainActivity.updateLog("Found encoder for $mimeType: ${codecInfo.name}")
-
-                    // On Chrome OS there was a reported problem with the c2 encoders.
-                    // Uncomment the next 3 lines to use OMX instead
-//                    if(mainActivity.isArc() && codecInfo.name.contains("c2.")) {
-//                        continue
-//                    }
-
                     validCodecs.add(codecInfo)
                 }
             }
@@ -263,17 +280,14 @@ class VideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int){
     }
 
     /**
-     * Tries to get the best encoding settings for the device. Currently this merely provides
-     * mediocre values somewhat like the original file.
-     *
-     * TODO: improve this function to provide nice encoding that matches the original stream
+     * Tries to get the best encoding settings for the device, using the setting from the original
+     * media as a guide.
      */
     fun getBestEncodingFormat(mimeType: String, decodeFormat: MediaFormat, codecInfo: MediaCodecInfo) : MediaFormat {
         val DEFAULT_BITRATE = 20000000
 
         // Configure encoder with the same format as the source media
-        // Default to 1080p, but width and height will be over-written
-        val encoderFormat = createVideoFormat(mimeType, 1920, 1080)
+        val encoderFormat = createVideoFormat(mimeType, decodeFormat.getInteger(KEY_WIDTH), decodeFormat.getInteger(KEY_HEIGHT))
         encoderFormat.setInteger(
             KEY_COLOR_FORMAT,
             MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface
@@ -294,6 +308,14 @@ class VideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int){
         intFormatSettings.add(KEY_FRAME_RATE)
         intFormatSettings.add(KEY_I_FRAME_INTERVAL)
 
+        // Crop values are essential as some media decodes to larger width/height than the actual
+        // video. For example, 1920x1080 will decode to 1920x1088, with 8px crop offset.
+        // Encoding without correct crop values will show weird smearing/glitches.
+        intFormatSettings.add("crop-bottom")
+        intFormatSettings.add("crop-top")
+        intFormatSettings.add("crop-left")
+        intFormatSettings.add("crop-right")
+
         val stringFormatSettings = ArrayList<String>()
         stringFormatSettings.add(KEY_MIME)
 
@@ -306,11 +328,20 @@ class VideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int){
                 )
 
                 // Get the real width and height
+                // See: https://developer.android.com/reference/android/media/MediaCodec#accessing-raw-video-bytebuffers-on-older-devices
                 if (setting == KEY_WIDTH) {
-                    width = decodeFormat.getInteger(setting)
+                    if (decodeFormat.containsKey("crop-left") && decodeFormat.containsKey("crop-right")) {
+                        width = decodeFormat.getInteger("crop-right") + 1 - decodeFormat.getInteger("crop-left")
+                    } else {
+                        width = decodeFormat.getInteger(setting)
+                    }
                 }
                 if (setting == KEY_HEIGHT) {
-                    height = decodeFormat.getInteger(setting)
+                    if (decodeFormat.containsKey("crop-top") && decodeFormat.containsKey("crop-bottom")) {
+                        height = decodeFormat.getInteger("crop-bottom") + 1 - decodeFormat.getInteger("crop-top")
+                    } else {
+                        height = decodeFormat.getInteger(setting)
+                    }
                 }
             }
         }
@@ -333,7 +364,7 @@ class VideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int){
             encoderFormat.setFloat(KEY_FRAME_RATE, 33F);
         }
         if (!encoderFormat.containsKey(KEY_I_FRAME_INTERVAL)) {
-            encoderFormat.setInteger(KEY_I_FRAME_INTERVAL, 1)
+            encoderFormat.setInteger(KEY_I_FRAME_INTERVAL, 30)
         }
 
         // Choose the best settings best on device capabilities
@@ -381,7 +412,7 @@ class VideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int){
             val profileLevels = capabilities.profileLevels
             var containsProfile = false
             for (profileLevel in profileLevels) {
-                if (profileLevel.profile == encoderFormat.getInteger(MediaFormat.KEY_PROFILE) && profileLevel.level == encoderFormat.getInteger(MediaFormat.KEY_LEVEL)) {
+                if (profileLevel.profile == encoderFormat.getInteger(KEY_PROFILE) && profileLevel.level == encoderFormat.getInteger(KEY_LEVEL)) {
                     containsProfile = true
                 }
             }
@@ -413,13 +444,6 @@ class VideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int){
             val types = codecInfo.supportedTypes
             for (j in types.indices) {
                 if (types[j].equals(mimeType, ignoreCase = true)) {
-                    // c2 decoders are WAY faster for decoding on Chrome OS.
-                    // On Chrome OS there was a reported problem with the c2 encoders.
-                    // Uncomment the next 3 lines to use OMX instead
-                    // if(isArc() && codecInfo.name.contains("c2.")) {
-                    //    continue
-                    // }
-
                     validCodecs.add(codecInfo)
                 }
             }
@@ -445,7 +469,7 @@ class VideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int){
         decodeComplete = true
         while (!encodeComplete) {
             encodeAvailableFrames()
-            sleep(100)
+            sleep(1000)
             if ((numEncodedFrames.get() > 0) && (numEncodedFrames.get() == numDecodedFrames.get())) {
                 encodeComplete = true
             }

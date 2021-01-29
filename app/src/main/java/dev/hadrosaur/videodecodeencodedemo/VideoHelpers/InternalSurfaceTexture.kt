@@ -24,6 +24,7 @@ import android.view.SurfaceView
 import androidx.annotation.RequiresApi
 import com.google.android.exoplayer2.util.Assertions
 import com.google.android.exoplayer2.util.Util
+import dev.hadrosaur.videodecodeencodedemo.FrameLedger
 import dev.hadrosaur.videodecodeencodedemo.GlManager
 import dev.hadrosaur.videodecodeencodedemo.GlManager.Companion.generateTextureIds
 import dev.hadrosaur.videodecodeencodedemo.GlManager.Companion.getEglSurface
@@ -37,6 +38,7 @@ import dev.hadrosaur.videodecodeencodedemo.MainActivity
  */
 class InternalSurfaceTexture @JvmOverloads constructor(
     val mainActivity: MainActivity, val glManager: GlManager, val outputSurface: SurfaceView,
+    val frameLedger: FrameLedger,
     private val handler: Handler,
     private val callback: TextureImageListener? =  /* callback= */null) : OnFrameAvailableListener {
 
@@ -54,9 +56,9 @@ class InternalSurfaceTexture @JvmOverloads constructor(
     lateinit var encodeFrameProcessor: DrawFrameProcessor
     val updateTexRunner = UpdateTexImageRunner()
 
-    // Simpler to manage the encoder from here. Original decoded file is passed in to aid
-    // in setting up encode.
-    val videoEncoder = VideoEncoder(mainActivity, mainActivity.encodeFileOriginalRawFileId)
+    // It is simpler to manage the encoder from here. Original media file ID is passed in only
+    // as an aid in setting up the encode parameters to match.
+    val videoEncoder = VideoEncoder(mainActivity, mainActivity.encodeFileOriginalRawFileId, frameLedger)
 
     // Call back to InternalSurfaceTextureRenderer after updateTexImage has been called for a new frame
     interface TextureImageListener {
@@ -64,16 +66,22 @@ class InternalSurfaceTexture @JvmOverloads constructor(
     }
 
     // Render the current frame to the output surface
+    // Copying from a surface texture requires a matrix transformation
     inner class DrawFrameRunner() : Runnable {
         override fun run() {
-            drawFrameProcessor.drawFrame(mainActivity.viewModel.getApplyGlFilterVal())
+            val matrix = FloatArray(16)
+            texture!!.getTransformMatrix(matrix)
+            drawFrameProcessor.drawFrame(mainActivity.viewModel.getApplyGlFilterVal(), matrix)
         }
     }
 
     // Write the current frame to the encoder
+    // Copying from a surface texture requires a matrix transformation
     inner class EncodeFrameRunner() : Runnable {
         override fun run() {
-            encodeFrameProcessor.drawFrame(mainActivity.viewModel.getApplyGlFilterVal())
+            val matrix = FloatArray(16)
+            texture!!.getTransformMatrix(matrix)
+            encodeFrameProcessor.drawFrame(mainActivity.viewModel.getApplyGlFilterVal(), matrix)
             videoEncoder.encodeAvailableFrames()
         }
     }
@@ -88,7 +96,7 @@ class InternalSurfaceTexture @JvmOverloads constructor(
                     // Ignore
                 }
             }
-            // Let renderer nkow that updateTexImage has been called and render pipeline can be
+            // Let renderer know that updateTexImage has been called and render pipeline can be
             // unblocked.
             dispatchOnFrameAvailable()
         }
@@ -109,7 +117,7 @@ class InternalSurfaceTexture @JvmOverloads constructor(
         drawFrameProcessor = DrawFrameProcessor(textureId, glManager.eglContext, glManager.eglDisplay, outputSurfaceEGLSurface!!, outputSurface.width, outputSurface.height)
 
         encodeSurfaceEGLSurface = getEglSurface(glManager.eglConfig, glManager.eglDisplay, videoEncoder.encoderInputSurface)
-        encodeFrameProcessor = DrawFrameProcessor(textureId, glManager.eglContext, glManager.eglDisplay, encodeSurfaceEGLSurface!!, videoEncoder.width, videoEncoder.height ) // Hardcode
+        encodeFrameProcessor = DrawFrameProcessor(textureId, glManager.eglContext, glManager.eglDisplay, encodeSurfaceEGLSurface!!, videoEncoder.width, videoEncoder.height )
     }
 
     fun release() {
