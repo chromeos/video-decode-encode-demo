@@ -22,6 +22,6 @@
 
 # This is required to remove a run-time non-null check for ExoPlayer's processOutputBuffer
 # see: https://github.com/google/ExoPlayer/issues/7579
--assumenosideeffects class kotlin.jvm.internal.Intrinsics {
-    public static void checkParameterIsNotNull(java.lang.Object, java.lang.String);
-}
+#-assumenosideeffects class kotlin.jvm.internal.Intrinsics {
+#    public static void checkParameterIsNotNull(java.lang.Object, java.lang.String);
+#}

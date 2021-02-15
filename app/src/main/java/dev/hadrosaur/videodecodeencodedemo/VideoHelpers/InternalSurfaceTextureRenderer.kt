@@ -19,10 +19,11 @@ package dev.hadrosaur.videodecodeencodedemo.VideoHelpers
 import android.os.Handler
 import android.view.Surface
 import android.view.SurfaceView
+import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioOutputBuffer
 import dev.hadrosaur.videodecodeencodedemo.FrameLedger
 import dev.hadrosaur.videodecodeencodedemo.GlManager
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
-import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.LOG_EVERY_N_FRAMES
+import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * The custom SurfaceTexture Renderer. Manages the underlying SurfaceTexture and keeps track of
@@ -30,9 +31,9 @@ import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.LOG_EVERY_N_FR
  *
  * Logs to the main log as the render progresses.
  */
-class InternalSurfaceTextureRenderer(val mainActivity: MainActivity, glManager: GlManager, displaySurface: SurfaceView, handler: Handler) : InternalSurfaceTexture.TextureImageListener {
+class InternalSurfaceTextureRenderer(val mainActivity: MainActivity, glManager: GlManager, displaySurface: SurfaceView, handler: Handler, audioBufferQueue: ConcurrentLinkedQueue<AudioOutputBuffer>) : InternalSurfaceTexture.TextureImageListener {
     val frameLedger = FrameLedger()
-    val internalSurfaceTexture: InternalSurfaceTexture = InternalSurfaceTexture(mainActivity, glManager, displaySurface, frameLedger, handler, this)
+    val internalSurfaceTexture: InternalSurfaceTexture = InternalSurfaceTexture(mainActivity, glManager, displaySurface, frameLedger, audioBufferQueue, handler, this)
     var onFrameAvailableCounter = 0
     var isEncoderStarted = false
     var doEncode = false
@@ -47,6 +48,7 @@ class InternalSurfaceTextureRenderer(val mainActivity: MainActivity, glManager: 
 
     fun shouldEncode(shouldEncode: Boolean) {
         doEncode = shouldEncode
+        internalSurfaceTexture.initializeVideoEncoder()
     }
 
     /** Called when a new frame is available on the SurfaceTexture from it's image producer.
@@ -82,22 +84,23 @@ class InternalSurfaceTextureRenderer(val mainActivity: MainActivity, glManager: 
                 if (doEncode) {
                     // Don't start the encoder until we actually need it
                     if(!isEncoderStarted) {
-                        internalSurfaceTexture.videoEncoder.startEncode()
+                        internalSurfaceTexture.audioVideoEncoder.startEncode()
                         isEncoderStarted = true
                     }
 
                     // Because the encoder is not directly receiving frames from a media stream but
                     // but from a surface, no EOS flag will be received. Instead, just count the
                     // number of frames that should be encoded to know the encoding is done
-                    internalSurfaceTexture.videoEncoder.numDecodedFrames.incrementAndGet()
+                    internalSurfaceTexture.audioVideoEncoder.numDecodedVideoFrames.incrementAndGet()
 
                     // Indicate to encoder that all frames have been sent to decoder
-                    // Beware: signalDecodingComplete contains a potential endless loop
                     if (mainActivity.stream1DecodeFinished) {
-                        internalSurfaceTexture.videoEncoder.signalDecodingComplete()
+                        internalSurfaceTexture.audioVideoEncoder.signalDecodingComplete()
                     }
 
-                    internalSurfaceTexture.encodeFrame()
+                    if (!internalSurfaceTexture.audioVideoEncoder.videoEncodeComplete) {
+                        internalSurfaceTexture.encodeFrame()
+                    }
                 }
 
             } else {
@@ -110,9 +113,9 @@ class InternalSurfaceTextureRenderer(val mainActivity: MainActivity, glManager: 
         }
 
         // Log the current state to make sure no frames have been dropped
-        if (frameLedger.frames_entered.get() % LOG_EVERY_N_FRAMES == 0) {
-            mainActivity.updateLog("Decoded: ${frameLedger.frames_entered.get()}. Rendered: ${frameLedger.frames_rendered.get()}. Dropped: ${frameLedger.frames_entered.get() - frameLedger.frames_rendered.get()}")
-        }
+        // if (frameLedger.frames_entered.get() % LOG_VIDEO_EVERY_N_FRAMES == 0) {
+            // mainActivity.updateLog("Decoded: ${frameLedger.frames_entered.get()}. Rendered: ${frameLedger.frames_rendered.get()}. Dropped: ${frameLedger.frames_entered.get() - frameLedger.frames_rendered.get()}")
+        // }
     }
 
     fun release() {

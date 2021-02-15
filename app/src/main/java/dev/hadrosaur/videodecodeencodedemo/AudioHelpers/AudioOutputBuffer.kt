@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Google LLC
+ * Copyright (c) 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,17 @@
  * limitations under the License.
  */
 
-package dev.hadrosaur.videodecodeencodedemo.VideoHelpers
+package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 
-import com.google.android.exoplayer2.audio.MediaCodecAudioRenderer
-import com.google.android.exoplayer2.mediacodec.MediaCodecSelector
-import dev.hadrosaur.videodecodeencodedemo.MainActivity
+import java.nio.ByteBuffer
 
 /**
- * Currently just uses the default audio renderer
+ * Holds an audio buffer and meta-data for encoding
  */
-class VideoMediaCodecAudioRenderer (val mainActivity: MainActivity,  val surfaceNumber: Int) :
-    MediaCodecAudioRenderer(mainActivity, MediaCodecSelector.DEFAULT) {
-}
+class AudioOutputBuffer(
+    val buffer: ByteBuffer,
+    var presentationTimeUs: Long,
+    val lengthUs: Long,
+    val size: Int,
+    val isLastBuffer: Boolean = false
+) {}

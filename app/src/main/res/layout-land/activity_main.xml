@@ -120,6 +120,7 @@
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="24dp"
         android:enabled="false"
+        android:focusedByDefault="true"
         android:text="Decode"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="@id/guideline_vertical"
@@ -142,6 +143,15 @@
         android:text="Sepia Filter"
         app:layout_constraintStart_toStartOf="@id/guideline_vertical"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <Switch
+        android:id="@+id/switch_audio"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Play Audio"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/switch_filter"
+        app:layout_constraintTop_toTopOf="@+id/switch_filter" />
 
     <Switch
         android:id="@+id/switch_encode"
@@ -180,7 +190,7 @@
         android:layout_marginBottom="32dp"
         android:background="@drawable/box_border"
         android:padding="10dp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/text_shortcuts"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="@id/guideline_vertical"
         app:layout_constraintTop_toBottomOf="@+id/seek_framedelay">
@@ -192,6 +202,19 @@
             android:layout_margin="5dp"
             android:text="Log:" />
     </ScrollView>
+
+    <TextView
+        android:id="@+id/text_shortcuts"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginBottom="32dp"
+        android:text="Keyboard shortcuts: 1-4 = toggle stream decode, d = initiate decode, e = toggle encode, f = toggle filter, a = toggle audio playback."
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/guideline_vertical"
+        app:layout_constraintTop_toBottomOf="@+id/scroll_log" />
 
     <TextView
         android:id="@+id/text_frame_delay"

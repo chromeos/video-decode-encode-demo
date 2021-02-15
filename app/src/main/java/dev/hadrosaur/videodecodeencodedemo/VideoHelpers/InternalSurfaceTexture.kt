@@ -21,14 +21,14 @@ import android.graphics.SurfaceTexture.OnFrameAvailableListener
 import android.opengl.*
 import android.os.Handler
 import android.view.SurfaceView
-import androidx.annotation.RequiresApi
 import com.google.android.exoplayer2.util.Assertions
-import com.google.android.exoplayer2.util.Util
+import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioOutputBuffer
 import dev.hadrosaur.videodecodeencodedemo.FrameLedger
 import dev.hadrosaur.videodecodeencodedemo.GlManager
 import dev.hadrosaur.videodecodeencodedemo.GlManager.Companion.generateTextureIds
 import dev.hadrosaur.videodecodeencodedemo.GlManager.Companion.getEglSurface
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
+import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * The underlying SurfaceTexture used for decoding. Calls back to the InternalSurfaceTexturerRenderer
@@ -39,6 +39,7 @@ import dev.hadrosaur.videodecodeencodedemo.MainActivity
 class InternalSurfaceTexture @JvmOverloads constructor(
     val mainActivity: MainActivity, val glManager: GlManager, val outputSurface: SurfaceView,
     val frameLedger: FrameLedger,
+    val audioBufferQueue: ConcurrentLinkedQueue<AudioOutputBuffer>,
     private val handler: Handler,
     private val callback: TextureImageListener? =  /* callback= */null) : OnFrameAvailableListener {
 
@@ -58,7 +59,8 @@ class InternalSurfaceTexture @JvmOverloads constructor(
 
     // It is simpler to manage the encoder from here. Original media file ID is passed in only
     // as an aid in setting up the encode parameters to match.
-    val videoEncoder = VideoEncoder(mainActivity, mainActivity.encodeFileOriginalRawFileId, frameLedger)
+    var shouldEncode = false
+    lateinit var audioVideoEncoder: AudioVideoEncoder
 
     // Call back to InternalSurfaceTextureRenderer after updateTexImage has been called for a new frame
     interface TextureImageListener {
@@ -82,7 +84,7 @@ class InternalSurfaceTexture @JvmOverloads constructor(
             val matrix = FloatArray(16)
             texture!!.getTransformMatrix(matrix)
             encodeFrameProcessor.drawFrame(mainActivity.viewModel.getApplyGlFilterVal(), matrix)
-            videoEncoder.encodeAvailableFrames()
+            // videoEncoder.encodeAvailableFrames()
         }
     }
 
@@ -116,8 +118,15 @@ class InternalSurfaceTexture @JvmOverloads constructor(
         outputSurfaceEGLSurface = getEglSurface(glManager.eglConfig, glManager.eglDisplay, outputSurface.holder.surface)
         drawFrameProcessor = DrawFrameProcessor(textureId, glManager.eglContext, glManager.eglDisplay, outputSurfaceEGLSurface!!, outputSurface.width, outputSurface.height)
 
-        encodeSurfaceEGLSurface = getEglSurface(glManager.eglConfig, glManager.eglDisplay, videoEncoder.encoderInputSurface)
-        encodeFrameProcessor = DrawFrameProcessor(textureId, glManager.eglContext, glManager.eglDisplay, encodeSurfaceEGLSurface!!, videoEncoder.width, videoEncoder.height )
+        if (shouldEncode) {
+            encodeSurfaceEGLSurface = getEglSurface(glManager.eglConfig, glManager.eglDisplay, audioVideoEncoder.videoEncoderInputSurface)
+            encodeFrameProcessor = DrawFrameProcessor(textureId, glManager.eglContext, glManager.eglDisplay, encodeSurfaceEGLSurface!!, audioVideoEncoder.width, audioVideoEncoder.height )
+        }
+    }
+
+    fun initializeVideoEncoder() {
+        shouldEncode = true
+        audioVideoEncoder = AudioVideoEncoder(mainActivity, mainActivity.encodeFileOriginalRawFileId, frameLedger, audioBufferQueue)
     }
 
     fun release() {
@@ -130,7 +139,10 @@ class InternalSurfaceTexture @JvmOverloads constructor(
             }
         } finally {
         }
-        videoEncoder.release()
+
+        if (shouldEncode) {
+            audioVideoEncoder.release()
+        }
     }
 
     /**

@@ -20,13 +20,11 @@ import android.media.MediaCodec
 import android.media.MediaFormat
 import android.os.Build.VERSION.SDK_INT
 import com.google.android.exoplayer2.Format
-import com.google.android.exoplayer2.PlaybackParameters
 import com.google.android.exoplayer2.mediacodec.MediaCodecSelector
 import com.google.android.exoplayer2.util.MediaClock
-import com.google.android.exoplayer2.util.Util
 import com.google.android.exoplayer2.video.MediaCodecVideoRenderer
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
-import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.LOG_EVERY_N_FRAMES
+import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.LOG_VIDEO_EVERY_N_FRAMES
 import java.nio.ByteBuffer
 
 
@@ -35,7 +33,7 @@ class VideoMediaCodecVideoRenderer(
     val internalSurfaceTextureComponent: InternalSurfaceTextureComponent,
     enableDecoderFallback: Boolean,
     val streamNumber: Int,
-    val minFps: Int = 1
+    val mediaClock: SpeedyMediaClock
 ) :
     MediaCodecVideoRenderer(
         mainActivity,
@@ -45,13 +43,10 @@ class VideoMediaCodecVideoRenderer(
         null,
         null,
         -1
-    ), MediaClock {
+    )  {
     var decodeCounter = 0
     var startTime = 0L
     var droppedFrames = 0
-    var lastProcessedFrameUs = 0L
-
-    var internalPlaybackParameters = PlaybackParameters(1f)
 
     /**
      * Keep track of dropped frames
@@ -98,10 +93,10 @@ class VideoMediaCodecVideoRenderer(
     }
 
     /**
-     * Use an internal MediaClock that renders as fast as possible, instead of in real-time
+     * Use a MediaClock that renders as fast as possible, instead of in real-time
      */
     override fun getMediaClock(): MediaClock? {
-        return this
+        return mediaClock
     }
 
     var lastProcessSuccess = 0L
@@ -125,10 +120,13 @@ class VideoMediaCodecVideoRenderer(
 
         // Check the atomic lock to see if a frame can be rendered. If not, return false and wait
         if (internalSurfaceTextureComponent.renderer.frameLedger.shouldBlockRender()) {
-//            mainActivity.updateLog("I am in processOutputBuffer: The renderer is blocked.")
+            // mainActivity.updateLog("I am in processOutputBuffer: The renderer is blocked.")
             return false
         }
 
+        if (isLastBuffer) {
+            internalSurfaceTextureComponent.renderer.frameLedger.lastVideoBufferPresentationTimeUs = bufferPresentationTimeUs
+        }
 //        mainActivity.updateLog("I am in processOutputBuffer. Renderer not blocked.")
         val processSuccess = super.processOutputBuffer(
             positionUs,
@@ -157,11 +155,11 @@ class VideoMediaCodecVideoRenderer(
         }
         decodeCounter++
 
-        if (decodeCounter % LOG_EVERY_N_FRAMES == 0) {
+        if (decodeCounter % LOG_VIDEO_EVERY_N_FRAMES == 0) {
             val currentFPS =
                 decodeCounter / ((System.currentTimeMillis() - startTime) / 1000.0)
             val FPSString = String.format("%.2f", currentFPS)
-            mainActivity.updateLog("Stream ${streamNumber}: ${FPSString}fps @frame $decodeCounter.")
+            mainActivity.updateLog("Decoding video stream ${streamNumber}: ${FPSString}fps @frame $decodeCounter.")
         }
 
         if (lastPresentTime == presentationTimeUs && lastPresentTime != 0L) {
@@ -169,7 +167,7 @@ class VideoMediaCodecVideoRenderer(
         }
 
         lastPresentTime = presentationTimeUs
-        lastProcessedFrameUs = presentationTimeUs
+        mediaClock.updateLastProcessedFrame(presentationTimeUs) // Update media clock with last frame
 
         super.onProcessedOutputBuffer(presentationTimeUs)
     }
@@ -190,20 +188,5 @@ class VideoMediaCodecVideoRenderer(
         return false
     }
 
-    // MediaClock implementation. Render as fast as possible: use last rendered frame + 1 as current
-    // position. See: https://github.com/google/ExoPlayer/issues/3978#issuecomment-372709173
-    // Note: no frames should be dropped so minFps just makes sure clock advances far enough to
-    // include the next frame. Too far is ok in this case.
-    override fun getPositionUs(): Long {
-        return lastProcessedFrameUs + ((1 / minFps) * 100000)
-    }
 
-    override fun getPlaybackParameters(): PlaybackParameters {
-        return internalPlaybackParameters
-    }
-
-    // Note: this implementation actually ignores parameters like speed.
-    override fun setPlaybackParameters(playbackParameters: PlaybackParameters) {
-        internalPlaybackParameters = playbackParameters
-    }
 }

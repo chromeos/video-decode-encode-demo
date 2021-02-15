@@ -23,6 +23,7 @@ class VideoVideoModel() : ViewModel() {
     private val previewFrameFrequency = MutableLiveData<Int>(10)
     private val applyGlFilter = MutableLiveData<Boolean>(false)
     private val encodeStream1 = MutableLiveData<Boolean>(false)
+    private val playAudio = MutableLiveData<Boolean>(false)
 
     private val decodeStream1 = MutableLiveData<Boolean>(true)
     private val decodeStream2 = MutableLiveData<Boolean>(true)
@@ -32,6 +33,7 @@ class VideoVideoModel() : ViewModel() {
     fun getPreviewFrameFrequency(): MutableLiveData<Int> = previewFrameFrequency
     fun getApplyGlFilter(): MutableLiveData<Boolean> = applyGlFilter
     fun getEncodeStream1(): MutableLiveData<Boolean> = encodeStream1
+    fun getPlayAudio(): MutableLiveData<Boolean> = playAudio
     fun getDecodeStream1(): MutableLiveData<Boolean> = decodeStream1
     fun getDecodeStream2(): MutableLiveData<Boolean> = decodeStream2
     fun getDecodeStream3(): MutableLiveData<Boolean> = decodeStream3
@@ -40,6 +42,7 @@ class VideoVideoModel() : ViewModel() {
     fun getPreviewFrameFrequencyVal(): Int = previewFrameFrequency.value ?: 10
     fun getApplyGlFilterVal(): Boolean = applyGlFilter.value ?: false
     fun getEncodeStream1Val(): Boolean = encodeStream1.value ?: false
+    fun getPlayAudioVal(): Boolean = playAudio.value ?: false
     fun getDecodeStream1Val(): Boolean = decodeStream1.value ?: true
     fun getDecodeStream2Val(): Boolean = decodeStream2.value ?: true
     fun getDecodeStream3Val(): Boolean = decodeStream3.value ?: true
@@ -53,6 +56,9 @@ class VideoVideoModel() : ViewModel() {
     }
     fun setEncodeStream1(value: Boolean) {
         encodeStream1.value = value
+    }
+    fun setPlayAudio(value: Boolean) {
+        playAudio.value = value
     }
     fun setDecodeStream1(value: Boolean) {
         decodeStream1.value = value

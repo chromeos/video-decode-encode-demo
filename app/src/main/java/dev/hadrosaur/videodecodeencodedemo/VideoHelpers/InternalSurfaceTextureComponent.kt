@@ -19,20 +19,23 @@ package dev.hadrosaur.videodecodeencodedemo.VideoHelpers
 import android.os.Handler
 import android.view.SurfaceView
 import com.google.android.exoplayer2.Player
+import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioOutputBuffer
 import dev.hadrosaur.videodecodeencodedemo.GlManager
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
+import java.nio.ByteBuffer
+import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * Holder for the internal decoding SurfaceTexture. Ties to gather the ExoPlayer VideoComponent,
  * and the custom SurfaceTexture and Renderer
  */
-class InternalSurfaceTextureComponent(val mainActivity: MainActivity, glManager: GlManager, displaySurface: SurfaceView) {
+class InternalSurfaceTextureComponent(val mainActivity: MainActivity, glManager: GlManager, displaySurface: SurfaceView, val audioBufferQueue: ConcurrentLinkedQueue<AudioOutputBuffer>) {
     val handler: Handler = Handler()
     var renderer: InternalSurfaceTextureRenderer
     lateinit var videoComponent: Player.VideoComponent
 
     init {
-        renderer = InternalSurfaceTextureRenderer(mainActivity, glManager, displaySurface, handler)
+        renderer = InternalSurfaceTextureRenderer(mainActivity, glManager, displaySurface, handler, audioBufferQueue)
     }
 
     fun shouldEncode(shouldEncode: Boolean) {

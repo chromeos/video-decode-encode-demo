@@ -50,6 +50,8 @@ class FrameLedger : VideoFrameMetadataListener {
 
     var haveSkippedFirst = false
 
+    var lastVideoBufferPresentationTimeUs = 0L
+
     // Check if the block render flag is engaged.
     fun shouldBlockRender() : Boolean {
         return eglBlockRenderer.get()

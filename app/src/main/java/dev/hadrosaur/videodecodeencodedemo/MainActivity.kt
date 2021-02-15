@@ -20,6 +20,8 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
+import android.view.KeyEvent
+import android.view.KeyEvent.*
 import android.view.SurfaceView
 import android.view.View
 import android.widget.SeekBar
@@ -32,10 +34,10 @@ import com.google.android.exoplayer2.DefaultLoadControl
 import com.google.android.exoplayer2.PlaybackParameters
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SimpleExoPlayer
-import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.CustomExoRenderersFactory
+import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioOutputBuffer
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.InternalSurfaceTextureComponent
-import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.buildExoMediaSource
 import kotlinx.android.synthetic.main.activity_main.*
+import java.util.concurrent.ConcurrentLinkedQueue
 
 class MainActivity : AppCompatActivity() {
     // Preview surfaces
@@ -73,7 +75,8 @@ class MainActivity : AppCompatActivity() {
     val viewModel: VideoVideoModel by viewModels()
 
     companion object {
-        const val LOG_EVERY_N_FRAMES = 200 // Log dropped frames and fps every N frames
+        const val LOG_VIDEO_EVERY_N_FRAMES = 200 // Log dropped frames and fps every N frames
+        const val LOG_AUDIO_EVERY_N_FRAMES = 500 // Log dropped frames and fps every N frames
         val MIN_DECODE_BUFFER_MS = 68 // Roughly 2 frames at 30fps.
         val LOG_TAG = "VideoDemo"
         val FILE_PREFIX = "VideoDemo"
@@ -112,10 +115,14 @@ class MainActivity : AppCompatActivity() {
 
     // Create the internal SurfaceTextures that will be used for decoding
     fun initializeInternalSurfaces() {
-        internalSurfaceTextureComponentOne = InternalSurfaceTextureComponent(this, glManager, previewSurfaceViewOne)
-        internalSurfaceTextureComponentTwo = InternalSurfaceTextureComponent(this, glManager, previewSurfaceViewTwo)
-        internalSurfaceTextureComponentThree = InternalSurfaceTextureComponent(this, glManager, previewSurfaceViewThree)
-        internalSurfaceTextureComponentFour = InternalSurfaceTextureComponent(this, glManager, previewSurfaceViewFour)
+        val audioBufferQueueOne = ConcurrentLinkedQueue<AudioOutputBuffer>()
+        internalSurfaceTextureComponentOne = InternalSurfaceTextureComponent(this, glManager, previewSurfaceViewOne, audioBufferQueueOne)
+        val audioBufferQueueTwo = ConcurrentLinkedQueue<AudioOutputBuffer>()
+        internalSurfaceTextureComponentTwo = InternalSurfaceTextureComponent(this, glManager, previewSurfaceViewTwo, audioBufferQueueTwo)
+        val audioBufferQueueThree = ConcurrentLinkedQueue<AudioOutputBuffer>()
+        internalSurfaceTextureComponentThree = InternalSurfaceTextureComponent(this, glManager, previewSurfaceViewThree, audioBufferQueueThree)
+        val audioBufferQueueFour = ConcurrentLinkedQueue<AudioOutputBuffer>()
+        internalSurfaceTextureComponentFour = InternalSurfaceTextureComponent(this, glManager, previewSurfaceViewFour, audioBufferQueueFour)
     }
 
     /**
@@ -208,6 +215,10 @@ class MainActivity : AppCompatActivity() {
                 _, isChecked -> viewModel.setEncodeStream1(isChecked) }
         viewModel.getEncodeStream1().observe(this, Observer<Boolean> {
                 encodeStream -> switch_encode.isSelected = encodeStream })
+        switch_audio.setOnCheckedChangeListener {
+                _, isChecked -> viewModel.setPlayAudio(isChecked) }
+        viewModel.getPlayAudio().observe(this, Observer<Boolean> {
+                playAudio -> switch_audio.isSelected = playAudio })
 
         // Set up decode button
         button_start_decode.setOnClickListener {
@@ -237,6 +248,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        when (keyCode) {
+            KEYCODE_1 -> { checkbox_decode_stream1.isChecked = ! checkbox_decode_stream1.isChecked; checkbox_decode_stream1.clearFocus(); return true }
+            KEYCODE_2 -> { checkbox_decode_stream2.isChecked = ! checkbox_decode_stream2.isChecked; checkbox_decode_stream2.clearFocus(); return true }
+            KEYCODE_3 -> { checkbox_decode_stream3.isChecked = ! checkbox_decode_stream3.isChecked; checkbox_decode_stream3.clearFocus(); return true }
+            KEYCODE_4 -> { checkbox_decode_stream4.isChecked = ! checkbox_decode_stream4.isChecked; checkbox_decode_stream4.clearFocus(); return true }
+            KEYCODE_E -> { switch_encode.isChecked = ! switch_encode.isChecked; switch_encode.clearFocus(); return true }
+            KEYCODE_F -> { switch_filter.isChecked = ! switch_filter.isChecked; switch_filter.clearFocus(); return true }
+            KEYCODE_A -> { switch_audio.isChecked = ! switch_audio.isChecked; switch_audio.clearFocus(); return true }
+            KEYCODE_D -> {
+                if (button_start_decode.isEnabled) {
+                    button_start_decode.performClick()
+                    return true
+                }
+            }
+        }
+        return super.onKeyUp(keyCode, event)
+    }
+
     // Set up an Exoplayer decode for the given video file and InternalSurfaceTextureComponent,
     // Note: the InternalSurfaceTextureComponent knows it's own preview SurfaceView
     fun beginVideoDecode(inputVideoRawId: Int, internalSurfaceTextureComponent: InternalSurfaceTextureComponent, streamNumber: Int) {
@@ -247,8 +277,11 @@ class MainActivity : AppCompatActivity() {
             stream1DecodeFinished = false
         }
 
+        // Only encode audio for 1st stream, if switch is on
+        val shouldEncodeAudio = (streamNumber == 1) && viewModel.getEncodeStream1Val()
+
         // Setup custom video and audio renderers
-        val renderersFactory = CustomExoRenderersFactory(this@MainActivity, internalSurfaceTextureComponent, streamNumber)
+        val renderersFactory = CustomExoRenderersFactory(this@MainActivity, internalSurfaceTextureComponent, streamNumber, internalSurfaceTextureComponent.audioBufferQueue, shouldEncodeAudio)
 
         // Reduce default buffering to MIN_DECODE_BUFFER_MS to prevent over allocation when processing multiple large streams
         val loadControl = DefaultLoadControl.Builder().setBufferDurationsMs(MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS * 2, MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS).createDefaultLoadControl()
