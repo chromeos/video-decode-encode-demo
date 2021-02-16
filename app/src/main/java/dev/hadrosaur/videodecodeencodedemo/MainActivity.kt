@@ -34,7 +34,11 @@ import com.google.android.exoplayer2.DefaultLoadControl
 import com.google.android.exoplayer2.PlaybackParameters
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SimpleExoPlayer
-import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioOutputBuffer
+import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBuffer
+import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
+import dev.hadrosaur.videodecodeencodedemo.Utils.CustomExoRenderersFactory
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager
+import dev.hadrosaur.videodecodeencodedemo.Utils.buildExoMediaSource
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.InternalSurfaceTextureComponent
 import kotlinx.android.synthetic.main.activity_main.*
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -115,14 +119,17 @@ class MainActivity : AppCompatActivity() {
 
     // Create the internal SurfaceTextures that will be used for decoding
     fun initializeInternalSurfaces() {
-        val audioBufferQueueOne = ConcurrentLinkedQueue<AudioOutputBuffer>()
-        internalSurfaceTextureComponentOne = InternalSurfaceTextureComponent(this, glManager, previewSurfaceViewOne, audioBufferQueueOne)
-        val audioBufferQueueTwo = ConcurrentLinkedQueue<AudioOutputBuffer>()
-        internalSurfaceTextureComponentTwo = InternalSurfaceTextureComponent(this, glManager, previewSurfaceViewTwo, audioBufferQueueTwo)
-        val audioBufferQueueThree = ConcurrentLinkedQueue<AudioOutputBuffer>()
-        internalSurfaceTextureComponentThree = InternalSurfaceTextureComponent(this, glManager, previewSurfaceViewThree, audioBufferQueueThree)
-        val audioBufferQueueFour = ConcurrentLinkedQueue<AudioOutputBuffer>()
-        internalSurfaceTextureComponentFour = InternalSurfaceTextureComponent(this, glManager, previewSurfaceViewFour, audioBufferQueueFour)
+        // Clean-up any surfaces that need deletion
+        releaseSurfacesMarkedForDeletion()
+
+        val audioBufferManagerOne = AudioBufferManager()
+        internalSurfaceTextureComponentOne = InternalSurfaceTextureComponent(this, glManager, previewSurfaceViewOne, audioBufferManagerOne)
+        val audioBufferManagerTwo = AudioBufferManager()
+        internalSurfaceTextureComponentTwo = InternalSurfaceTextureComponent(this, glManager, previewSurfaceViewTwo, audioBufferManagerTwo)
+        val audioBufferManagerThree = AudioBufferManager()
+        internalSurfaceTextureComponentThree = InternalSurfaceTextureComponent(this, glManager, previewSurfaceViewThree, audioBufferManagerThree)
+        val audioBufferManagerFour = AudioBufferManager()
+        internalSurfaceTextureComponentFour = InternalSurfaceTextureComponent(this, glManager, previewSurfaceViewFour, audioBufferManagerFour)
     }
 
     /**
@@ -248,6 +255,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onStop() {
+        releaseSurfacesMarkedForDeletion()
+        super.onStop()
+    }
+
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
         when (keyCode) {
             KEYCODE_1 -> { checkbox_decode_stream1.isChecked = ! checkbox_decode_stream1.isChecked; checkbox_decode_stream1.clearFocus(); return true }
@@ -281,7 +293,7 @@ class MainActivity : AppCompatActivity() {
         val shouldEncodeAudio = (streamNumber == 1) && viewModel.getEncodeStream1Val()
 
         // Setup custom video and audio renderers
-        val renderersFactory = CustomExoRenderersFactory(this@MainActivity, internalSurfaceTextureComponent, streamNumber, internalSurfaceTextureComponent.audioBufferQueue, shouldEncodeAudio)
+        val renderersFactory = CustomExoRenderersFactory(this@MainActivity, internalSurfaceTextureComponent, streamNumber, internalSurfaceTextureComponent.audioBufferManager, shouldEncodeAudio)
 
         // Reduce default buffering to MIN_DECODE_BUFFER_MS to prevent over allocation when processing multiple large streams
         val loadControl = DefaultLoadControl.Builder().setBufferDurationsMs(MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS * 2, MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS).createDefaultLoadControl()

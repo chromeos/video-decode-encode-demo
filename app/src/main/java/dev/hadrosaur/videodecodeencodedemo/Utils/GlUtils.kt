@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Google LLC
+ * Copyright (c) 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package dev.hadrosaur.videodecodeencodedemo
+package dev.hadrosaur.videodecodeencodedemo.Utils
 
 import android.opengl.*
-import android.util.Log
 import java.nio.Buffer
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -52,7 +51,8 @@ object GlUtils {
                    "gl_Position = %4${"$"}s * %1${"$"}s;\n" +
                    "%3${"$"}s = ((%5${"$"}s) * %2${"$"}s).xy;\n" +
                 "}\n"
-        , POSITION_ATTRIBUTE_NAME, TEXCOORD_ATTRIBUTE_NAME, TEX_COORDINATE_NAME, POS_MATRIX_UNIFORM_NAME, ST_MATRIX_UNIFORM_NAME)
+        , POSITION_ATTRIBUTE_NAME, TEXCOORD_ATTRIBUTE_NAME, TEX_COORDINATE_NAME, POS_MATRIX_UNIFORM_NAME, ST_MATRIX_UNIFORM_NAME
+    )
 
     /**
      * Fragment shader that renders from an external shader to the current target.
@@ -65,7 +65,8 @@ object GlUtils {
                 "void main() {\n" +
                 "  gl_FragColor = texture2D(%1${"$"}s, %2${"$"}s);\n" +
                 "}\n"
-        , TEX_SAMPLER_NAME, TEX_COORDINATE_NAME)
+        , TEX_SAMPLER_NAME, TEX_COORDINATE_NAME
+    )
 
     /**
      * Fragment shader that simply samples the textures with no modifications.
@@ -77,7 +78,8 @@ object GlUtils {
             "void main() {\n" +
             "  gl_FragColor = texture2D(%1${"$"}s, %2${"$"}s);\n" +
             "}\n"
-        , TEX_SAMPLER_NAME, TEX_COORDINATE_NAME)
+        , TEX_SAMPLER_NAME, TEX_COORDINATE_NAME
+    )
 
     /**
      * Fragment shader that applies a simple Sepia filter.
@@ -90,7 +92,8 @@ object GlUtils {
             "  vec4 sampleColor = texture2D(%1${"$"}s, %2${"$"}s);\n" +
             "  gl_FragColor = vec4(sampleColor.r * 0.493 + sampleColor. g * 0.769 + sampleColor.b * 0.289, sampleColor.r * 0.449 + sampleColor.g * 0.686 + sampleColor.b * 0.268, sampleColor.r * 0.272 + sampleColor.g * 0.534 + sampleColor.b * 0.131, 1.0);\n" +
             "}\n"
-        , TEX_SAMPLER_NAME, TEX_COORDINATE_NAME)
+        , TEX_SAMPLER_NAME, TEX_COORDINATE_NAME
+    )
 
     /**
      * Returns an initialized default display.

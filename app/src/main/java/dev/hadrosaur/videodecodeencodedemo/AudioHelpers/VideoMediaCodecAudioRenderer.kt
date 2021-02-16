@@ -23,7 +23,6 @@ import com.google.android.exoplayer2.mediacodec.MediaCodecSelector
 import com.google.android.exoplayer2.util.MediaClock
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import java.nio.ByteBuffer
-import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * Currently just uses the default audio renderer
@@ -31,9 +30,9 @@ import java.util.concurrent.ConcurrentLinkedQueue
 class VideoMediaCodecAudioRenderer (
     val mainActivity: MainActivity,
     val streamNumber: Int,
-    audioBufferQueue: ConcurrentLinkedQueue<AudioOutputBuffer>,
+    audioBufferManager: AudioBufferManager,
     shouldEncode: Boolean
-) : MediaCodecAudioRenderer(mainActivity, MediaCodecSelector.DEFAULT, null, null, CopyAndPlayAudioSink(mainActivity, audioBufferQueue, shouldEncode)) {
+) : MediaCodecAudioRenderer(mainActivity, MediaCodecSelector.DEFAULT, null, null, CopyAndPlayAudioSink(mainActivity, audioBufferManager, shouldEncode)) {
 
     var decodeCounter = 0
     var startTime = 0L

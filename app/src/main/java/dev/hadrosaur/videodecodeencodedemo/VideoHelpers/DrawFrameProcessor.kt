@@ -18,19 +18,19 @@ package dev.hadrosaur.videodecodeencodedemo.VideoHelpers
 
 import android.opengl.*
 import android.util.Log
-import dev.hadrosaur.videodecodeencodedemo.GlUtils
-import dev.hadrosaur.videodecodeencodedemo.GlUtils.TEX_SAMPLER_NAME
-import dev.hadrosaur.videodecodeencodedemo.GlUtils.UnsupportedEglVersionException
-import dev.hadrosaur.videodecodeencodedemo.GlUtils.allocateTexture
-import dev.hadrosaur.videodecodeencodedemo.GlUtils.copyExternalShaderProgram
-import dev.hadrosaur.videodecodeencodedemo.GlUtils.deleteFbo
-import dev.hadrosaur.videodecodeencodedemo.GlUtils.deleteTexture
-import dev.hadrosaur.videodecodeencodedemo.GlUtils.focusSurface
-import dev.hadrosaur.videodecodeencodedemo.GlUtils.getAttributes
-import dev.hadrosaur.videodecodeencodedemo.GlUtils.getFboForTexture
-import dev.hadrosaur.videodecodeencodedemo.GlUtils.getUniforms
-import dev.hadrosaur.videodecodeencodedemo.GlUtils.passthroughShaderProgram
-import dev.hadrosaur.videodecodeencodedemo.GlUtils.sepiaShaderProgram
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlUtils
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlUtils.TEX_SAMPLER_NAME
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlUtils.UnsupportedEglVersionException
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlUtils.allocateTexture
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlUtils.copyExternalShaderProgram
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlUtils.deleteFbo
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlUtils.deleteTexture
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlUtils.focusSurface
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlUtils.getAttributes
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlUtils.getFboForTexture
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlUtils.getUniforms
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlUtils.passthroughShaderProgram
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlUtils.sepiaShaderProgram
 
 /**
  * Copies a frame from the input texture to the output surface, adjusting for size and applying

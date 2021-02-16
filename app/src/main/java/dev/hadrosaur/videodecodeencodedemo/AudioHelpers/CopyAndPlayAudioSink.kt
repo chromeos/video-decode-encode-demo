@@ -25,7 +25,6 @@ import com.google.android.exoplayer2.audio.AuxEffectInfo
 import com.google.android.exoplayer2.util.MimeTypes
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import java.nio.ByteBuffer
-import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * And AudioSink for ExoPlayer that copies out audio buffers to a concurrent queue and can play
@@ -36,7 +35,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
  */
 class CopyAndPlayAudioSink(
     val mainActivity: MainActivity,
-    val audioBufferQueue: ConcurrentLinkedQueue<AudioOutputBuffer>,
+    val audioBufferManager: AudioBufferManager,
     val shouldEncode: Boolean
 ): AudioSink {
 
@@ -134,8 +133,8 @@ class CopyAndPlayAudioSink(
 
         // If buffer is needed for encoding, copy it out
         if (shouldEncode) {
-            audioBufferQueue.add(
-                AudioOutputBuffer(
+            audioBufferManager.addData(
+                AudioBuffer(
                     soundBuffer,
                     presentationTimeUs,
                     bufferLengthUs,
@@ -215,8 +214,8 @@ class CopyAndPlayAudioSink(
             playPendingData()
 
             // Stream is ended, include a EOS buffer for the audio encoder
-            audioBufferQueue.add(AudioOutputBuffer(ByteBuffer.allocate(1), lastPosition, 0, 0, true))
-            handledEndOfStream = true;
+            audioBufferManager.addData(AudioBuffer(ByteBuffer.allocate(1), lastPosition, 0, 0, true))
+            handledEndOfStream = true
 
             mainActivity.updateLog("All audio buffers handled. # == ${numBuffersHandled}")
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Google LLC
+ * Copyright (c) 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-package dev.hadrosaur.videodecodeencodedemo
+package dev.hadrosaur.videodecodeencodedemo.Utils
 
 import android.opengl.*
 import com.google.android.exoplayer2.util.GlUtil
 import com.google.android.exoplayer2.util.Util
-import dev.hadrosaur.videodecodeencodedemo.GlUtils.createEglDisplay
+import dev.hadrosaur.videodecodeencodedemo.MainActivity
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlUtils.createEglDisplay
 
 /**
  * GlManager provides a common EGLDisplay/EGLContext/EGLConfig for all gl operators.
@@ -118,13 +119,13 @@ class GlManager {
                 0
             )
             if (surface == null) {
-                throw GlManager.GlException("eglCreatePbufferSurface failed")
+                throw GlException("eglCreatePbufferSurface failed")
             }
 
             val eglMadeCurrent =
                 EGL14.eglMakeCurrent(display,  /* draw= */surface,  /* read= */surface, context)
             if (!eglMadeCurrent) {
-                throw GlManager.GlException("eglMakeCurrent failed")
+                throw GlException("eglMakeCurrent failed")
             }
             return surface
         }

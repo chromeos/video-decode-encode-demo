@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Google LLC
+ * Copyright (c) 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package dev.hadrosaur.videodecodeencodedemo
+package dev.hadrosaur.videodecodeencodedemo.VideoHelpers
 
 import android.media.MediaFormat
 import com.google.android.exoplayer2.Format
@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicInteger
  * The encodeLedger counts frames received from the decoder rendered and records their presentation
  * time for use in encoding.
  */
-class FrameLedger : VideoFrameMetadataListener {
+class VideoFrameLedger : VideoFrameMetadataListener {
     val decodeLedger = ConcurrentHashMap<Long, Long>()
     val encodeLedger = ConcurrentHashMap<Int, Long>()
     var frames_entered = AtomicInteger(0)

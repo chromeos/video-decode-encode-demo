@@ -49,7 +49,7 @@ fun usToSecondsString(timeUs: Long): String {
     return usToSeconds(timeUs).toString()
 }
 
-// Deep copy of ByteBuffer
+// Copy a ByteBuffer (only data between position and limit)
 // Adapted from: https://stackoverflow.com/a/21388198/3151916
 fun cloneByteBuffer(original: ByteBuffer): ByteBuffer {
     // Create a read-only copy of the original so position is not altered while reading
@@ -57,15 +57,15 @@ fun cloneByteBuffer(original: ByteBuffer): ByteBuffer {
 
     val clone =
         if (readOnlyCopy.isDirect)
-            ByteBuffer.allocateDirect(readOnlyCopy.capacity())
+            ByteBuffer.allocateDirect(readOnlyCopy.remaining())
         else
-            ByteBuffer.allocate(readOnlyCopy.capacity())
+            ByteBuffer.allocate(readOnlyCopy.remaining())
 
     // Copy from the original.
     clone.put(readOnlyCopy)
 
     // Copy original attributes
-    clone.position(original.position())
+    clone.position(0)
     clone.limit(original.limit())
     clone.order(original.order())
 

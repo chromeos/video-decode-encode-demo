@@ -22,13 +22,11 @@ import android.opengl.*
 import android.os.Handler
 import android.view.SurfaceView
 import com.google.android.exoplayer2.util.Assertions
-import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioOutputBuffer
-import dev.hadrosaur.videodecodeencodedemo.FrameLedger
-import dev.hadrosaur.videodecodeencodedemo.GlManager
-import dev.hadrosaur.videodecodeencodedemo.GlManager.Companion.generateTextureIds
-import dev.hadrosaur.videodecodeencodedemo.GlManager.Companion.getEglSurface
+import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager.Companion.generateTextureIds
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager.Companion.getEglSurface
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
-import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * The underlying SurfaceTexture used for decoding. Calls back to the InternalSurfaceTexturerRenderer
@@ -38,12 +36,12 @@ import java.util.concurrent.ConcurrentLinkedQueue
  */
 class InternalSurfaceTexture @JvmOverloads constructor(
     val mainActivity: MainActivity, val glManager: GlManager, val outputSurface: SurfaceView,
-    val frameLedger: FrameLedger,
-    val audioBufferQueue: ConcurrentLinkedQueue<AudioOutputBuffer>,
+    val frameLedger: VideoFrameLedger,
+    val audioBufferManager: AudioBufferManager,
     private val handler: Handler,
     private val callback: TextureImageListener? =  /* callback= */null) : OnFrameAvailableListener {
 
-    // Interal GL Surfaces
+    // Internal GL Surfaces
     private var surfaceTextureEGLSurface: EGLSurface? = null
     private var outputSurfaceEGLSurface: EGLSurface? = null
     private var encodeSurfaceEGLSurface: EGLSurface? = null
@@ -126,7 +124,7 @@ class InternalSurfaceTexture @JvmOverloads constructor(
 
     fun initializeVideoEncoder() {
         shouldEncode = true
-        audioVideoEncoder = AudioVideoEncoder(mainActivity, mainActivity.encodeFileOriginalRawFileId, frameLedger, audioBufferQueue)
+        audioVideoEncoder = AudioVideoEncoder(mainActivity, mainActivity.encodeFileOriginalRawFileId, frameLedger, audioBufferManager)
     }
 
     fun release() {

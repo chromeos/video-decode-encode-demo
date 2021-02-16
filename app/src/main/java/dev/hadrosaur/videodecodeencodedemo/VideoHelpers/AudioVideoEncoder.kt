@@ -23,16 +23,17 @@ import android.media.MediaFormat.*
 import android.os.Environment
 import android.view.Surface
 import dev.hadrosaur.videodecodeencodedemo.*
-import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioOutputBuffer
+import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBuffer
+import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.cloneByteBuffer
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.getBufferDurationUs
 import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.LOG_VIDEO_EVERY_N_FRAMES
+import dev.hadrosaur.videodecodeencodedemo.Utils.*
 import java.io.*
 import java.lang.IllegalStateException
 import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 import java.util.*
-import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -44,10 +45,11 @@ import java.util.concurrent.atomic.AtomicInteger
  * This does not check for an EOS flag. The encode ends when "decodeComplete" is indicated and the
  * number of encoded frames matches the number of decoded frames
  */
-class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, val frameLedger: FrameLedger, val audioBufferQueue: ConcurrentLinkedQueue<AudioOutputBuffer>){
+class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, val frameLedger: VideoFrameLedger, val audioBufferManager: AudioBufferManager) {
     // Video encoding variables
     val videoEncoderInputSurface: Surface
     val videoEncoder: MediaCodec
+    val videoEncoderCallback: VideoEncoderCallback
     val encoderVideoFormat: MediaFormat
     var videoDecodeComplete = false
     var numDecodedVideoFrames = AtomicInteger(0)
@@ -65,6 +67,7 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
 
     // Audio encoding variables
     val audioEncoder: MediaCodec
+    val audioEncoderCallback: AudioEncoderCallback
     val encoderAudioFormat: MediaFormat
     var audioEncodeComplete = false
 
@@ -75,6 +78,7 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
     var videoTrackIndex: Int = -1
     var audioTrackIndex: Int = -1
 
+    val audioBufferListener : AudioBufferManager.AudioBufferManagerListener
 
     init{
         // Load file from raw directory
@@ -107,11 +111,27 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
 
         // Use asynchronous modes with callbacks - encoding logic contained in the callback classes
         // See: https://developer.android.com/reference/android/media/MediaCodec#asynchronous-processing-using-buffers
-        videoEncoder.setCallback(VideoEncoderCallback(mainActivity, encoderVideoFormat))
+
+        // Video encoder
+        videoEncoderCallback = VideoEncoderCallback(mainActivity, encoderVideoFormat)
+        videoEncoder.setCallback(videoEncoderCallback)
         videoEncoder.configure(encoderVideoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-        audioEncoder.setCallback(AudioEncoderCallback(mainActivity, encoderAudioFormat))
+
+        // Audio encoder
+        audioEncoderCallback = AudioEncoderCallback(mainActivity, encoderAudioFormat)
+        audioEncoder.setCallback(audioEncoderCallback)
         audioEncoder.configure(encoderAudioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
         audioEncodeComplete = false
+
+        // Register a listener for when the AudioBufferManager gets new data
+        audioBufferListener = object: AudioBufferManager.AudioBufferManagerListener {
+            override fun newAudioData() {
+                // There is new audio data in the audioBufferQueue. If there are queued input buffers
+                // in the audio encoder, use them.
+                audioEncoderCallback.onNewAudioData()
+            }
+        }
+        audioBufferManager.listener = audioBufferListener
 
         // Get the input surface from the encoder, decoded frames from the decoder should be
         // placed here.
@@ -350,26 +370,63 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
 
     /**
      * The callback functions for Audio encoding
+     *
+     * Encoding can be "driven" in 2 ways.
+     *   1 - onInputBufferAvailable is called. If there is audio data waiting, process it.
+     *   2 - onNewAudioData is (manually) called. If there are queued input buffers, use them.
+     *
+     * Muxing happens (or is queued) when onOutputBufferAvailable is called
      */
     inner class AudioEncoderCallback(val mainActivity: MainActivity, var format: MediaFormat): MediaCodec.Callback() {
         val muxingQueue = LinkedBlockingQueue<MuxingBuffer>()
+        val inputBufferQueue = LinkedBlockingQueue<InputBufferIndex>()
+
+        // Called when there is audio data ready to go. If there are any queued input buffers, use
+        // them up.
+        fun onNewAudioData() {
+            var inputBufferIndex = inputBufferQueue.peek()
+
+            while(inputBufferIndex != null) {
+                // Queued buffer might be larger the codec input buffer, do not remove from queue
+                // yet. encodeAudioData will remove it when all data is processed.
+                val audioBuffer = audioBufferManager.queue.peek()
+
+                if (audioBuffer != null) {
+                    // There is audio data and an input buffer. Encode it.
+                    encodeAudioData(inputBufferIndex.codec, inputBufferIndex.index, audioBuffer)
+
+                    // Remove used input buffer index from the queue
+                    inputBufferQueue.poll()
+                } else {
+                    // Not any(more) audio data, exit
+                    break
+                }
+
+                // Check if there are anymore input buffers that can be used, don't remove until
+                // it is used.
+                inputBufferIndex = inputBufferQueue.peek()
+            }
+        }
 
         // Encoder is ready buffers to encode
         override fun onInputBufferAvailable(codec: MediaCodec, index: Int) {
             // Queued buffer might be larger the codec input buffer, do not remove from queue yet
-            val audioOutputBuffer = audioBufferQueue.peek()
+            val audioBuffer = audioBufferManager.queue.peek()
 
-            // If there is no decoded audio waiting for the encoder, just send an empty buffer
-            // Otherwise this will block the encoder
-            if (audioOutputBuffer == null) {
-                codec.queueInputBuffer(index, 0, 0, 0, 0)
-                return
+            if (audioBuffer != null) {
+                // There is audio data and an input buffer. Encode it.
+                encodeAudioData(codec, index, audioBuffer)
+            } else {
+                // No audio data yet, queue this input buffer so it can be used when data is available
+                inputBufferQueue.add(InputBufferIndex(codec, index))
             }
 
-            audioOutputBuffer?.let { // The queued audio buffer
+        }
 
+        fun encodeAudioData(codec: MediaCodec, bufferIndex: Int, audioBuffer: AudioBuffer) {
+            audioBuffer.let { // The queued audio buffer
                 // Get the available encoder input buffer
-                val inputBuffer = codec.getInputBuffer(index)
+                val inputBuffer = codec.getInputBuffer(bufferIndex)
                 if (inputBuffer != null) {
                     // Copy remaining bytes up to the encoder buffers max length
                     val bytesToCopy = Math.min(inputBuffer.capacity(), it.buffer.remaining())
@@ -384,18 +441,18 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
                     // Restore queued buffer's limit
                     it.buffer.limit(oldQueuedBufferLimit)
 
-                     val bufferDurationUs = getBufferDurationUs(bytesToCopy, format)
-                     // mainActivity.updateLog("Audio Encode audio buf verification: ${it.presentationTimeUs / 1000}, length: ${bufferDurationUs / 1000}, size: ${it.size}, remaining: ${it.buffer.remaining()}")
-                     // mainActivity.updateLog("Audio Encode audio buf verification: size: ${inputBuffer.capacity()}, bytes to copy: ${bytesToCopy}")
-                     // mainActivity.updateLog("Audio Encode input buf verification: ${it.presentationTimeUs / 1000}, length: ${bufferDurationUs / 1000}, size: ${bytesToCopy}")
+                    val bufferDurationUs = getBufferDurationUs(bytesToCopy, format)
+                    // mainActivity.updateLog("Audio Encode audio buf verification: ${it.presentationTimeUs / 1000}, length: ${bufferDurationUs / 1000}, size: ${it.size}, remaining: ${it.buffer.remaining()}")
+                    // mainActivity.updateLog("Audio Encode audio buf verification: size: ${inputBuffer.capacity()}, bytes to copy: ${bytesToCopy}")
+                    // mainActivity.updateLog("Audio Encode input buf verification: ${it.presentationTimeUs / 1000}, length: ${bufferDurationUs / 1000}, size: ${bytesToCopy}")
 
                     // Send to the encoder
-                    codec.queueInputBuffer(index, 0, bytesToCopy, it.presentationTimeUs, if(it.isLastBuffer) BUFFER_FLAG_END_OF_STREAM else 0)
+                    codec.queueInputBuffer(bufferIndex, 0, bytesToCopy, it.presentationTimeUs, if(it.isLastBuffer) BUFFER_FLAG_END_OF_STREAM else 0)
 
                     // If all bytes from the queued buffer have been sent to the encoder, remove from the queue
                     // Otherwise, advance the presentation time for the next chunk of the queued buffer
                     if (!it.buffer.hasRemaining()) {
-                        audioBufferQueue.poll()
+                        audioBufferManager.queue.poll()
                     } else {
                         val bufferDurationUs = getBufferDurationUs(bytesToCopy, format)
                         it.presentationTimeUs += bufferDurationUs
@@ -456,6 +513,7 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
         }
     }
 
+    inner class InputBufferIndex(val codec: MediaCodec, val index: Int)
     inner class MuxingBuffer(val buffer: ByteBuffer, val info: MediaCodec.BufferInfo)
     inner class LedgerBuffer(val buffer: ByteBuffer, val info: MediaCodec.BufferInfo, val frameNum: Int)
 }

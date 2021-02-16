@@ -21,7 +21,7 @@ import java.nio.ByteBuffer
 /**
  * Holds an audio buffer and meta-data for encoding
  */
-class AudioOutputBuffer(
+class AudioBuffer(
     val buffer: ByteBuffer,
     var presentationTimeUs: Long,
     val lengthUs: Long,

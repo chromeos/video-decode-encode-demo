@@ -14,61 +14,15 @@
  * limitations under the License.
  */
 
-package dev.hadrosaur.videodecodeencodedemo
+package dev.hadrosaur.videodecodeencodedemo.Utils
 
 import android.content.res.AssetFileDescriptor
-import android.media.*
-import android.media.MediaFormat.KEY_HEIGHT
-import android.media.MediaFormat.KEY_WIDTH
-import android.os.Handler
-import com.google.android.exoplayer2.Renderer
-import com.google.android.exoplayer2.RenderersFactory
-import com.google.android.exoplayer2.audio.AudioRendererEventListener
-import com.google.android.exoplayer2.metadata.MetadataOutput
-import com.google.android.exoplayer2.source.MediaSource
-import com.google.android.exoplayer2.source.ProgressiveMediaSource
-import com.google.android.exoplayer2.text.TextOutput
-import com.google.android.exoplayer2.upstream.DataSource
-import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
-import com.google.android.exoplayer2.upstream.RawResourceDataSource
-import com.google.android.exoplayer2.video.VideoRendererEventListener
-import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioOutputBuffer
-import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.VideoMediaCodecAudioRenderer
-import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.InternalSurfaceTextureComponent
-import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.SpeedyMediaClock
-import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoMediaCodecVideoRenderer
-import java.util.concurrent.ConcurrentLinkedQueue
+import android.media.MediaCodecInfo
+import android.media.MediaCodecList
+import android.media.MediaExtractor
+import android.media.MediaFormat
+import dev.hadrosaur.videodecodeencodedemo.MainActivity
 
-// Create an ExoPlayer media source from a raw resource ID
-fun buildExoMediaSource(mainActivity: MainActivity, raw: Int): MediaSource {
-    val uri = RawResourceDataSource.buildRawResourceUri(raw)
-
-    val dataSourceFactory: DataSource.Factory =
-        DefaultDataSourceFactory(mainActivity,
-            MainActivity.LOG_TAG
-        )
-    return ProgressiveMediaSource.Factory(dataSourceFactory)
-        .createMediaSource(uri)
-}
-
-class CustomExoRenderersFactory(val mainActivity: MainActivity, val internalSurfaceTextureComponent: InternalSurfaceTextureComponent, val streamNumber: Int,
-                                val audioBufferQueue: ConcurrentLinkedQueue<AudioOutputBuffer>, val shouldEncode: Boolean) :
-    RenderersFactory {
-    override fun createRenderers(
-        eventHandler: Handler,
-        videoRendererEventListener: VideoRendererEventListener,
-        audioRendererEventListener: AudioRendererEventListener,
-        textRendererOutput: TextOutput,
-        metadataRendererOutput: MetadataOutput
-    ): Array<Renderer> {
-        val mediaClock = SpeedyMediaClock()
-
-        return arrayOf(
-            VideoMediaCodecVideoRenderer(mainActivity, internalSurfaceTextureComponent, true, streamNumber, mediaClock),
-            VideoMediaCodecAudioRenderer(mainActivity, streamNumber, audioBufferQueue, shouldEncode)
-        )
-    }
-}
 
 /**
  * Returns the first codec capable of encoding the specified MIME type, or null if no
@@ -336,8 +290,8 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
         }
     }
 
-    encoderFormat.setInteger(KEY_WIDTH, encoderWidth)
-    encoderFormat.setInteger(KEY_HEIGHT, encoderHeight)
+    encoderFormat.setInteger(MediaFormat.KEY_WIDTH, encoderWidth)
+    encoderFormat.setInteger(MediaFormat.KEY_HEIGHT, encoderHeight)
 
     extractor.release()
     return encoderFormat
@@ -366,4 +320,3 @@ fun getBestAudioEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
     extractor.release()
     return inputAudioFormat
 }
-

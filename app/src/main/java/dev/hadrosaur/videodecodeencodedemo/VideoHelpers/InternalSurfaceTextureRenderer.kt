@@ -19,11 +19,9 @@ package dev.hadrosaur.videodecodeencodedemo.VideoHelpers
 import android.os.Handler
 import android.view.Surface
 import android.view.SurfaceView
-import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioOutputBuffer
-import dev.hadrosaur.videodecodeencodedemo.FrameLedger
-import dev.hadrosaur.videodecodeencodedemo.GlManager
+import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
-import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * The custom SurfaceTexture Renderer. Manages the underlying SurfaceTexture and keeps track of
@@ -31,9 +29,9 @@ import java.util.concurrent.ConcurrentLinkedQueue
  *
  * Logs to the main log as the render progresses.
  */
-class InternalSurfaceTextureRenderer(val mainActivity: MainActivity, glManager: GlManager, displaySurface: SurfaceView, handler: Handler, audioBufferQueue: ConcurrentLinkedQueue<AudioOutputBuffer>) : InternalSurfaceTexture.TextureImageListener {
-    val frameLedger = FrameLedger()
-    val internalSurfaceTexture: InternalSurfaceTexture = InternalSurfaceTexture(mainActivity, glManager, displaySurface, frameLedger, audioBufferQueue, handler, this)
+class InternalSurfaceTextureRenderer(val mainActivity: MainActivity, glManager: GlManager, displaySurface: SurfaceView, handler: Handler, audioBufferManager: AudioBufferManager) : InternalSurfaceTexture.TextureImageListener {
+    val frameLedger = VideoFrameLedger()
+    val internalSurfaceTexture: InternalSurfaceTexture = InternalSurfaceTexture(mainActivity, glManager, displaySurface, frameLedger, audioBufferManager, handler, this)
     var onFrameAvailableCounter = 0
     var isEncoderStarted = false
     var doEncode = false
