@@ -20,32 +20,37 @@ import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import dev.hadrosaur.videodecodeencodedemo.Utils.SmartMutableLiveData
 import java.io.File
 
-class MainViewModel() : ViewModel() {
-    private val previewFrameFrequency = MutableLiveData<Int>(10)
-    private val applyGlFilter = MutableLiveData<Boolean>(false)
-    private val encodeStream1 = MutableLiveData<Boolean>(false)
-    private val playAudio = MutableLiveData<Boolean>(false)
+class MainViewModel : ViewModel() {
+    // App options
+    private val previewFrameFrequency = SmartMutableLiveData<Int>(10)
+    private val applyGlFilter = SmartMutableLiveData<Boolean>(false)
+    private val encodeStream1 = SmartMutableLiveData<Boolean>(false)
+    private val playAudio = SmartMutableLiveData<Boolean>(false)
 
-    private val decodeStream1 = MutableLiveData<Boolean>(true)
-    private val decodeStream2 = MutableLiveData<Boolean>(true)
-    private val decodeStream3 = MutableLiveData<Boolean>(true)
-    private val decodeStream4 = MutableLiveData<Boolean>(true)
+    // Stream decode switches
+    private val decodeStream1 = SmartMutableLiveData<Boolean>(true)
+    private val decodeStream2 = SmartMutableLiveData<Boolean>(true)
+    private val decodeStream3 = SmartMutableLiveData<Boolean>(true)
+    private val decodeStream4 = SmartMutableLiveData<Boolean>(true)
 
-    private val logText = MutableLiveData<String>("")
+    // Log text window
+    private val logText = SmartMutableLiveData<String>("")
 
-    private val encodingInProgress = MutableLiveData<Boolean>(false)
+    // Flag for the encoder to signal when encoding is complete
+    private val encodingInProgress = SmartMutableLiveData<Boolean>(false)
 
     // Convenience MediaFormats for the encoder
     var originalRawFileId: Int = R.raw.paris_01_1080p
+    var encodeOutputDir: File? = null
     var videoEncoderCodecInfo: MediaCodecInfo? = null
     var audioEncoderCodecInfo: MediaCodecInfo? = null
     var encoderVideoFormat: MediaFormat = MediaFormat.createVideoFormat("video/avc", 1920, 1080)
     var encoderAudioFormat: MediaFormat = MediaFormat.createAudioFormat("audio/mp4a-latm", 48000, 2)
 
-    var encodeOutputDir: File? = null
-
+    // Getters for the MutableLiveData variables for use with observers
     fun getPreviewFrameFrequency(): MutableLiveData<Int> = previewFrameFrequency
     fun getApplyGlFilter(): MutableLiveData<Boolean> = applyGlFilter
     fun getEncodeStream1(): MutableLiveData<Boolean> = encodeStream1
@@ -57,6 +62,7 @@ class MainViewModel() : ViewModel() {
     fun getLogText(): MutableLiveData<String> = logText
     fun getEncodingInProgress(): MutableLiveData<Boolean> = encodingInProgress
 
+    // Convenience methods to get the actual values of variables
     fun getPreviewFrameFrequencyVal(): Int = previewFrameFrequency.value ?: 10
     fun getApplyGlFilterVal(): Boolean = applyGlFilter.value ?: false
     fun getEncodeStream1Val(): Boolean = encodeStream1.value ?: false
@@ -68,38 +74,40 @@ class MainViewModel() : ViewModel() {
     fun getLogTextVal(): String = logText.value ?: ""
     fun getEncodingInProgressVal(): Boolean = encodingInProgress.value ?: false
 
+    // Setters
     fun setPreviewFrameFrequency(value: Int) {
-        previewFrameFrequency.value = value
+        previewFrameFrequency.setValue(value)
     }
     fun setApplyGlFilter(value: Boolean) {
-        applyGlFilter.value = value
+        applyGlFilter.setValue(value)
     }
     fun setEncodeStream1(value: Boolean) {
-        encodeStream1.value = value
+        encodeStream1.setValue(value)
     }
     fun setPlayAudio(value: Boolean) {
-        playAudio.value = value
+        playAudio.setValue(value)
     }
     fun setDecodeStream1(value: Boolean) {
-        decodeStream1.value = value
+        decodeStream1.setValue(value)
     }
     fun setDecodeStream2(value: Boolean) {
-        decodeStream2.value = value
+        decodeStream2.setValue(value)
     }
     fun setDecodeStream3(value: Boolean) {
-        decodeStream3.value = value
+        decodeStream3.setValue(value)
     }
     fun setDecodeStream4(value: Boolean) {
-        decodeStream4.value = value
+        decodeStream4.setValue(value)
     }
     fun setLogText(value: String) {
         logText.postValue(value)
     }
-    fun updateLog(newText: String) {
-        logText.postValue(logText.value + "\n${newText}")
-        MainActivity.logd(newText)
-    }
     fun setEncodingInProgress(value: Boolean) {
         encodingInProgress.postValue(value)
+    }
+    // Update log text and logcat debug log
+    fun updateLog(newText: String) {
+        setLogText(logText.value + "\n${newText}")
+        MainActivity.logd(newText)
     }
 }
