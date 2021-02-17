@@ -409,6 +409,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                     // TODO: This case happens sometimes randomly and causes a IllegalArgumentException in setting it.buffer.limit(copyToPosition)
                     // This check should not be necessary. Figure out why bytesToCopy can be -'ve or buffer capacity can be incorrect
                     if (bytesToCopy < 0 || copyToPosition > it.buffer.capacity()) {
+                        viewModel.updateLog("Something wrong at ${it.presentationTimeUs}us: copy to position: ${copyToPosition}, bytesToCopy = ${bytesToCopy}, pos: ${it.buffer.position()}, cap: ${it.buffer.capacity()}, old limit: ${it.buffer.limit()}. Not copying data.")
                         copyToPosition = it.buffer.position()
                     }
 
@@ -453,12 +454,13 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
 
                 when (info.flags) {
                     BUFFER_FLAG_CODEC_CONFIG -> {
-                        // When a codec config buffer is received, no need to pass it to the muxer
+                        // Add audio track to muxer and start, no need to mux this buffer
                         audioTrackIndex = muxer?.addTrack(format) ?: -1
                         startMuxerIfReady()
                     }
 
                     BUFFER_FLAG_END_OF_STREAM -> {
+                        // Fake audio buffer constructed in AudioSink to indicate EOS. Don't mux.
                         audioEncodeComplete = true
                     }
 
