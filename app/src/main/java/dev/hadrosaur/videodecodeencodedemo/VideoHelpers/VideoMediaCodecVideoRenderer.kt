@@ -157,6 +157,8 @@ class VideoMediaCodecVideoRenderer(
         }
         decodeCounter++
 
+        // viewModel.updateLog("I have decoded ${decodeCounter} video frames.")
+
         if (decodeCounter % LOG_VIDEO_EVERY_N_FRAMES == 0) {
             val currentFPS =
                 decodeCounter / ((System.currentTimeMillis() - startTime) / 1000.0)

@@ -84,6 +84,8 @@ class VideoMediaCodecAudioRenderer (
         }
         decodeCounter++
 
+        // viewModel.updateLog("I have decoded ${decodeCounter} audio frames.")
+
         if (decodeCounter % MainActivity.LOG_AUDIO_EVERY_N_FRAMES == 0) {
             val currentBPS =
                 decodeCounter / ((System.currentTimeMillis() - startTime) / 1000.0)

@@ -17,10 +17,8 @@
 package dev.hadrosaur.videodecodeencodedemo.VideoHelpers
 
 import android.media.*
-import android.media.MediaCodec.BUFFER_FLAG_CODEC_CONFIG
-import android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM
+import android.media.MediaCodec.*
 import android.media.MediaFormat.*
-import android.os.Environment
 import android.view.Surface
 import dev.hadrosaur.videodecodeencodedemo.*
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBuffer
@@ -32,8 +30,6 @@ import dev.hadrosaur.videodecodeencodedemo.Utils.*
 import java.io.*
 import java.lang.IllegalStateException
 import java.nio.ByteBuffer
-import java.text.SimpleDateFormat
-import java.util.*
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -205,6 +201,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
     inner class VideoEncoderCallback(val viewModel: MainViewModel, var format: MediaFormat): MediaCodec.Callback() {
         val muxingQueue = LinkedBlockingQueue<MuxingBuffer>()
         val ledgerQueue = LinkedBlockingQueue<LedgerBuffer>()
+        var numMuxedVideoFrames = 0
 
         // Do not do anything. Incoming frames should
         // be auto-queued into the encoder from the input surface
@@ -231,67 +228,75 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
             val outputBuffer = codec.getOutputBuffer(index)
 
             if (outputBuffer != null) {
-                // When a codec config buffer is received, no need to pass it to the muxer
-                if (info.flags == BUFFER_FLAG_CODEC_CONFIG) {
-                    videoTrackIndex = muxer?.addTrack(format) ?: -1
-                    startMuxerIfReady()
-
-                } else {
-                    val frameNum = numEncodedVideoFrames.incrementAndGet()
-
-                    // The encode ledger contains the correct presentation time from the decoder,
-                    // stored based on the frame number. This assumes frames
-                    // hit the decoder output surface in the same order as they exit the encoder.
-                    // If this assumption is not true, frames may be encoded out of order.
-                    // If the ledger value is not stored by this point in the code,
-                    // add the frame to the ledger queue to be muxed when we the correct time
-                    if (frameLedger.encodeLedger.containsKey(frameNum)) {
-                        info.presentationTimeUs = frameLedger.encodeLedger.get(frameNum)!!
-                        // viewModel.updateLog("Video encoder, got frame number ${frameNum}@${info.presentationTimeUs}, last time was ${lastPresentationTime}.")
-                        lastPresentationTime = info.presentationTimeUs
-
-                        // If the muxer hasn't started yet - eg. if the audio stream hasn't been
-                        // configured yet - queue the output data for later.
-                        if (!isMuxerRunning) {
-                            viewModel.updateLog("Adding buffer to video muxing buffer: ${frameNum}")
-                            muxingQueue.add(MuxingBuffer(cloneByteBuffer(outputBuffer), info))
-                        } else {
-                            // Mux any buffers that were waiting for the muxer to start
-                            if (!muxingQueue.isEmpty()) {
-                                while (muxingQueue.peek() != null) {
-                                    val muxingBuffer = muxingQueue.poll()
-                                    viewModel.updateLog("Muxing buffer out of mux queue: ${muxingBuffer.info.presentationTimeUs}")
-                                    muxer?.writeSampleData(
-                                        videoTrackIndex,
-                                        muxingBuffer.buffer,
-                                        muxingBuffer.info
-                                    )
-                                }
-                            }
-
-                            // Check if there are any frames that were not matched with ledger data
-                            muxLedgerQueue()
-
-                            // Send the new frame to the muxer
-                            muxer?.writeSampleData(videoTrackIndex, outputBuffer, info)
-
-                            // Log current encoding speed
-                            if (numEncodedVideoFrames.get() % LOG_VIDEO_EVERY_N_FRAMES == 0) {
-                                val currentFPS =
-                                    numEncodedVideoFrames.get() / ((System.currentTimeMillis() - startTime) / 1000.0)
-                                val FPSString = String.format("%.2f", currentFPS)
-                                viewModel.updateLog("Encoding video stream at ${FPSString}fps, frame $numEncodedVideoFrames.")
-                            }
-                        } // Is muxer running
-
-                    } else {
-                        // No ledger info yet for this buffer, add it to the ledger queue to be processed later
-                        viewModel.updateLog("WARNING: Frame number ${frameNum} not found in ledger, adding to ledgerQueue.")
-                        ledgerQueue.add(LedgerBuffer(outputBuffer, info, frameNum))
+                when (info.flags) {
+                    BUFFER_FLAG_CODEC_CONFIG -> {
+                        // When a codec config buffer is received, no need to pass it to the muxer
+                        videoTrackIndex = muxer?.addTrack(format) ?: -1
+                        startMuxerIfReady()
                     }
-               } // If not a config buffer
+                    // Else, mux this frame
+                    else -> {
+                        val frameNum = numEncodedVideoFrames.incrementAndGet()
+
+                        // The encode ledger contains the correct presentation time from the decoder,
+                        // stored based on the frame number. This assumes frames
+                        // hit the decoder output surface in the same order as they exit the encoder.
+                        // If this assumption is not true, frames may be encoded out of order.
+                        // If the ledger value is not stored by this point in the code,
+                        // add the frame to the ledger queue to be muxed when we the correct time
+                        if (frameLedger.encodeLedger.containsKey(frameNum)) {
+                            info.presentationTimeUs = frameLedger.encodeLedger.get(frameNum)!!
+                            // viewModel.updateLog("Video encoder, got frame number ${frameNum}@${info.presentationTimeUs}, last time was ${lastPresentationTime}.")
+                            lastPresentationTime = info.presentationTimeUs
+
+                            // If the muxer hasn't started yet - eg. if the audio stream hasn't been
+                            // configured yet - queue the output data for later.
+                            if (!isMuxerRunning) {
+                                viewModel.updateLog("Adding buffer to video muxing buffer: ${frameNum}")
+                                muxingQueue.add(MuxingBuffer(cloneByteBuffer(outputBuffer), info))
+                            } else {
+                                // Mux any buffers that were waiting for the muxer to start
+                                if (!muxingQueue.isEmpty()) {
+                                    while (muxingQueue.peek() != null) {
+                                        val muxingBuffer = muxingQueue.poll()
+                                        viewModel.updateLog("Muxing buffer out of mux queue: ${muxingBuffer.info.presentationTimeUs}")
+                                        muxer?.writeSampleData(
+                                            videoTrackIndex,
+                                            muxingBuffer.buffer,
+                                            muxingBuffer.info
+                                        )
+                                        numMuxedVideoFrames++
+                                    }
+                                }
+
+                                // Check if there are any frames that were not matched with ledger data
+                                muxLedgerQueue()
+
+                                // Send the new frame to the muxer
+                                muxer?.writeSampleData(videoTrackIndex, outputBuffer, info)
+                                numMuxedVideoFrames++
+
+                                // Log current encoding speed
+                                if (numEncodedVideoFrames.get() % LOG_VIDEO_EVERY_N_FRAMES == 0) {
+                                    val currentFPS =
+                                        numEncodedVideoFrames.get() / ((System.currentTimeMillis() - startTime) / 1000.0)
+                                    val FPSString = String.format("%.2f", currentFPS)
+                                    viewModel.updateLog("Encoding video stream at ${FPSString}fps, frame $numEncodedVideoFrames.")
+                                }
+                            } // Is muxer running
+
+                        } else {
+                            // No ledger info yet for this buffer, add it to the ledger queue to be processed later
+                            viewModel.updateLog("WARNING: Frame number ${frameNum} not found in ledger, adding to ledgerQueue.")
+                            ledgerQueue.add(LedgerBuffer(outputBuffer, info, frameNum))
+                        }
+                    }
+                } // when
+
             } // Is output buffer null
             codec.releaseOutputBuffer(index, false)
+
+//            viewModel.updateLog("I have muxed ${numMuxedVideoFrames} video frames.")
 
             // If encode is finished, there will be no more output buffers received, check manually
             // if video encode is finished
@@ -311,11 +316,12 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
             while (!ledgerQueue.isEmpty()) {
                 val ledgerBuffer = ledgerQueue.peek()
                 // If there is still no ledger data for this frame, exit and leave it in the queue
-                if (frameLedger.encodeLedger.containsKey(ledgerBuffer.frameNum)) {
-                    ledgerBuffer.info.presentationTimeUs = frameLedger.encodeLedger.get(ledgerBuffer.frameNum)!!
+                if (frameLedger.encodeLedger.containsKey(ledgerBuffer?.frameNum)) {
+                    ledgerBuffer?.info?.presentationTimeUs = frameLedger.encodeLedger.get(ledgerBuffer?.frameNum)!!
                     if (isMuxerRunning) {
-                        viewModel.updateLog("Muxing frame ${ledgerBuffer.frameNum} from ledger queue at ${ledgerBuffer.info.presentationTimeUs}")
+                        viewModel.updateLog("Muxing frame ${ledgerBuffer?.frameNum} from ledger queue at ${ledgerBuffer?.info?.presentationTimeUs}")
                         muxer?.writeSampleData(videoTrackIndex, ledgerBuffer.buffer, ledgerBuffer.info)
+                        numMuxedVideoFrames++
                         ledgerQueue.poll()
                     }
                 } else {
@@ -337,6 +343,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
     inner class AudioEncoderCallback(val viewModel: MainViewModel, var format: MediaFormat): MediaCodec.Callback() {
         val muxingQueue = LinkedBlockingQueue<MuxingBuffer>()
         val inputBufferQueue = LinkedBlockingQueue<InputBufferIndex>()
+        var numMuxedBuffers = 0
 
         // Called when there is audio data ready to go. If there are any queued input buffers, use
         // them up.
@@ -398,7 +405,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                     // Restore queued buffer's limit
                     it.buffer.limit(oldQueuedBufferLimit)
 
-                    val bufferDurationUs = getBufferDurationUs(bytesToCopy, format)
+                    //val bufferDurationUs = getBufferDurationUs(bytesToCopy, format)
                     // viewModel.updateLog("Audio Encode audio buf verification: ${it.presentationTimeUs / 1000}, length: ${bufferDurationUs / 1000}, size: ${it.size}, remaining: ${it.buffer.remaining()}")
                     // viewModel.updateLog("Audio Encode audio buf verification: size: ${inputBuffer.capacity()}, bytes to copy: ${bytesToCopy}")
                     // viewModel.updateLog("Audio Encode input buf verification: ${it.presentationTimeUs / 1000}, length: ${bufferDurationUs / 1000}, size: ${bytesToCopy}")
@@ -426,38 +433,46 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
             val outputBuffer = codec.getOutputBuffer(index)
 
             if (outputBuffer != null) {
-                // When a codec config buffer is received, no need to pass it to the muxer
-                if (info.flags == BUFFER_FLAG_CODEC_CONFIG) {
-                    audioTrackIndex = muxer?.addTrack(format) ?: -1
-                    startMuxerIfReady()
 
-                } else {
-                    if(info.flags == BUFFER_FLAG_END_OF_STREAM) {
-                        audioEncodeComplete = true
+                when (info.flags) {
+                    BUFFER_FLAG_CODEC_CONFIG -> {
+                        // When a codec config buffer is received, no need to pass it to the muxer
+                        audioTrackIndex = muxer?.addTrack(format) ?: -1
+                        startMuxerIfReady()
                     }
 
-                    // If the mixer hasn't started yet - eg. if the video stream hasn't been configured
-                    // yet - queue the output data for later.
-                    if (!isMuxerRunning) {
-                        //viewModel.updateLog("Need to add to mux queue: ${info.presentationTimeUs}")
-                        muxingQueue.add(MuxingBuffer(cloneByteBuffer(outputBuffer), info))
-
-                    } else {
-                        // Mux any waiting data
-                        if (!muxingQueue.isEmpty()) {
-                            while(muxingQueue.peek() != null) {
-                                val muxingBuffer = muxingQueue.poll()
-                                muxer?.writeSampleData(audioTrackIndex, muxingBuffer.buffer, muxingBuffer.info)
-                                //viewModel.updateLog("Muxing audio buffer out of mux queue: ${muxingBuffer.info.presentationTimeUs}")
-                            }
+                    // Otherwise mux in this buffer
+                    else -> {
+                        if(info.flags == BUFFER_FLAG_END_OF_STREAM) {
+                            audioEncodeComplete = true
                         }
 
-                        // Send the new frame to the muxer
-                        muxer?.writeSampleData(audioTrackIndex, outputBuffer, info)
-                        //viewModel.updateLog("Muxing audio buffer: ${info.presentationTimeUs}")
+                        // If the mixer hasn't started yet - eg. if the video stream hasn't been configured
+                        // yet - queue the output data for later.
+                        if (!isMuxerRunning) {
+                            //viewModel.updateLog("Need to add to mux queue: ${info.presentationTimeUs}")
+                            muxingQueue.add(MuxingBuffer(cloneByteBuffer(outputBuffer), info))
+
+                        } else {
+                            // Mux any waiting data
+                            if (!muxingQueue.isEmpty()) {
+                                while(muxingQueue.peek() != null) {
+                                    val muxingBuffer = muxingQueue.poll()
+                                    muxer?.writeSampleData(audioTrackIndex, muxingBuffer.buffer, muxingBuffer.info)
+                                    numMuxedBuffers++
+                                    //viewModel.updateLog("Muxing audio buffer out of mux queue: ${muxingBuffer.info.presentationTimeUs}")
+                                }
+                            }
+
+                            // Send the new frame to the muxer
+                            muxer?.writeSampleData(audioTrackIndex, outputBuffer, info)
+                            numMuxedBuffers++
+                            //viewModel.updateLog("Muxing audio buffer: ${info.presentationTimeUs}")
+                        }
                     }
-                }
+                } // when
             }
+            // viewModel.updateLog("I have muxed ${numMuxedBuffers} audio buffers.")
             codec.releaseOutputBuffer(index, false)
         }
 
