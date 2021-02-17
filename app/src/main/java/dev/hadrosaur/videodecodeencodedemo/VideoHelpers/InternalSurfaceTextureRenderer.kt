@@ -22,6 +22,7 @@ import android.view.SurfaceView
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
 import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
+import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 
 /**
  * The custom SurfaceTexture Renderer. Manages the underlying SurfaceTexture and keeps track of
@@ -29,9 +30,9 @@ import dev.hadrosaur.videodecodeencodedemo.MainActivity
  *
  * Logs to the main log as the render progresses.
  */
-class InternalSurfaceTextureRenderer(val mainActivity: MainActivity, glManager: GlManager, displaySurface: SurfaceView, handler: Handler, audioBufferManager: AudioBufferManager) : InternalSurfaceTexture.TextureImageListener {
+class InternalSurfaceTextureRenderer(val viewModel: MainViewModel, glManager: GlManager, displaySurface: SurfaceView, handler: Handler, audioBufferManager: AudioBufferManager) : InternalSurfaceTexture.TextureImageListener {
     val frameLedger = VideoFrameLedger()
-    val internalSurfaceTexture: InternalSurfaceTexture = InternalSurfaceTexture(mainActivity, glManager, displaySurface, frameLedger, audioBufferManager, handler, this)
+    val internalSurfaceTexture: InternalSurfaceTexture = InternalSurfaceTexture(viewModel, glManager, displaySurface, frameLedger, audioBufferManager, handler, this)
     var onFrameAvailableCounter = 0
     var isEncoderStarted = false
     var doEncode = false
@@ -73,8 +74,8 @@ class InternalSurfaceTextureRenderer(val mainActivity: MainActivity, glManager: 
 
                 // If this frame matches the requested draw frequency, or the frequency is set to
                 // draw every frame, draw the frame to the preview surface
-                if (framesRendered % mainActivity.viewModel.getPreviewFrameFrequencyVal() == 1 ||
-                    mainActivity.viewModel.getPreviewFrameFrequencyVal() == 1) {
+                if (framesRendered % viewModel.getPreviewFrameFrequencyVal() == 1 ||
+                    viewModel.getPreviewFrameFrequencyVal() == 1) {
                     internalSurfaceTexture.drawFrameToScreen()
                 }
 
@@ -91,11 +92,6 @@ class InternalSurfaceTextureRenderer(val mainActivity: MainActivity, glManager: 
                     // number of frames that should be encoded to know the encoding is done
                     internalSurfaceTexture.audioVideoEncoder.numDecodedVideoFrames.incrementAndGet()
 
-                    // Indicate to encoder that all frames have been sent to decoder
-                    if (mainActivity.stream1DecodeFinished) {
-                        internalSurfaceTexture.audioVideoEncoder.signalDecodingComplete()
-                    }
-
                     if (!internalSurfaceTexture.audioVideoEncoder.videoEncodeComplete) {
                         internalSurfaceTexture.encodeFrame()
                     }
@@ -103,7 +99,7 @@ class InternalSurfaceTextureRenderer(val mainActivity: MainActivity, glManager: 
 
             } else {
                 // Frame not found in the ledger. This should not happen.
-                mainActivity.updateLog("Frame NOT FOUND! Key: ${surfaceTimestamp}, frame: ${frameLedger.decodeLedger.get(surfaceTimestamp)}")
+                viewModel.updateLog("Frame NOT FOUND! Key: ${surfaceTimestamp}, frame: ${frameLedger.decodeLedger.get(surfaceTimestamp)}")
             }
         } else {
             // Surface timestamp 0 - This frame not really rendered, but add to keep the ledger even
@@ -112,7 +108,7 @@ class InternalSurfaceTextureRenderer(val mainActivity: MainActivity, glManager: 
 
         // Log the current state to make sure no frames have been dropped
         // if (frameLedger.frames_entered.get() % LOG_VIDEO_EVERY_N_FRAMES == 0) {
-            // mainActivity.updateLog("Decoded: ${frameLedger.frames_entered.get()}. Rendered: ${frameLedger.frames_rendered.get()}. Dropped: ${frameLedger.frames_entered.get() - frameLedger.frames_rendered.get()}")
+            // viewModel.updateLog("Decoded: ${frameLedger.frames_entered.get()}. Rendered: ${frameLedger.frames_rendered.get()}. Dropped: ${frameLedger.frames_entered.get() - frameLedger.frames_rendered.get()}")
         // }
     }
 

@@ -22,6 +22,7 @@ import com.google.android.exoplayer2.audio.MediaCodecAudioRenderer
 import com.google.android.exoplayer2.mediacodec.MediaCodecSelector
 import com.google.android.exoplayer2.util.MediaClock
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
+import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 import java.nio.ByteBuffer
 
 /**
@@ -29,10 +30,11 @@ import java.nio.ByteBuffer
  */
 class VideoMediaCodecAudioRenderer (
     val mainActivity: MainActivity,
+    val viewModel: MainViewModel,
     val streamNumber: Int,
     audioBufferManager: AudioBufferManager,
     shouldEncode: Boolean
-) : MediaCodecAudioRenderer(mainActivity, MediaCodecSelector.DEFAULT, null, null, CopyAndPlayAudioSink(mainActivity, audioBufferManager, shouldEncode)) {
+) : MediaCodecAudioRenderer(mainActivity, MediaCodecSelector.DEFAULT, null, null, CopyAndPlayAudioSink(viewModel, audioBufferManager, shouldEncode)) {
 
     var decodeCounter = 0
     var startTime = 0L
@@ -86,11 +88,11 @@ class VideoMediaCodecAudioRenderer (
             val currentBPS =
                 decodeCounter / ((System.currentTimeMillis() - startTime) / 1000.0)
             val BPSString = String.format("%.2f", currentBPS)
-            mainActivity.updateLog("Decoding audio Stream ${streamNumber}: ${BPSString}bps @buffer $decodeCounter.")
+            viewModel.updateLog("Decoding audio Stream ${streamNumber}: ${BPSString}bps @buffer $decodeCounter.")
         }
 
         if (lastPresentTime == presentationTimeUs && lastPresentTime != 0L) {
-            mainActivity.updateLog("Last AUDIO present time is current present time. Audio is stuck! Time: ${presentationTimeUs}")
+            viewModel.updateLog("Last AUDIO present time is current present time. Audio is stuck! Time: ${presentationTimeUs}")
         }
         lastPresentTime = presentationTimeUs
 

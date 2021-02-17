@@ -25,11 +25,13 @@ import com.google.android.exoplayer2.util.MediaClock
 import com.google.android.exoplayer2.video.MediaCodecVideoRenderer
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.LOG_VIDEO_EVERY_N_FRAMES
+import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 import java.nio.ByteBuffer
 
 
 class VideoMediaCodecVideoRenderer(
     val mainActivity: MainActivity,
+    val viewModel: MainViewModel,
     val internalSurfaceTextureComponent: InternalSurfaceTextureComponent,
     enableDecoderFallback: Boolean,
     val streamNumber: Int,
@@ -53,7 +55,7 @@ class VideoMediaCodecVideoRenderer(
      */
     override fun dropOutputBuffer(codec: MediaCodec, index: Int, presentationTimeUs: Long) {
         droppedFrames++
-        mainActivity.updateLog("Dropped frame in surface ${index}. Total dropped: ${droppedFrames}")
+        viewModel.updateLog("Dropped frame in surface ${index}. Total dropped: ${droppedFrames}")
         super.dropOutputBuffer(codec, index, presentationTimeUs)
     }
 
@@ -120,14 +122,14 @@ class VideoMediaCodecVideoRenderer(
 
         // Check the atomic lock to see if a frame can be rendered. If not, return false and wait
         if (internalSurfaceTextureComponent.renderer.frameLedger.shouldBlockRender()) {
-            // mainActivity.updateLog("I am in processOutputBuffer: The renderer is blocked.")
+            // viewModel.updateLog("I am in processOutputBuffer: The renderer is blocked.")
             return false
         }
 
         if (isLastBuffer) {
             internalSurfaceTextureComponent.renderer.frameLedger.lastVideoBufferPresentationTimeUs = bufferPresentationTimeUs
         }
-//        mainActivity.updateLog("I am in processOutputBuffer. Renderer not blocked.")
+//        viewModel.updateLog("I am in processOutputBuffer. Renderer not blocked.")
         val processSuccess = super.processOutputBuffer(
             positionUs,
             elapsedRealtimeUs,
@@ -159,11 +161,11 @@ class VideoMediaCodecVideoRenderer(
             val currentFPS =
                 decodeCounter / ((System.currentTimeMillis() - startTime) / 1000.0)
             val FPSString = String.format("%.2f", currentFPS)
-            mainActivity.updateLog("Decoding video stream ${streamNumber}: ${FPSString}fps @frame $decodeCounter.")
+            viewModel.updateLog("Decoding video stream ${streamNumber}: ${FPSString}fps @frame $decodeCounter.")
         }
 
         if (lastPresentTime == presentationTimeUs && lastPresentTime != 0L) {
-            mainActivity.updateLog("Last present time is current present time. Frame is stuck! Time: ${presentationTimeUs}")
+            viewModel.updateLog("Last present time is current present time. Frame is stuck! Time: ${presentationTimeUs}")
         }
 
         lastPresentTime = presentationTimeUs
@@ -187,6 +189,4 @@ class VideoMediaCodecVideoRenderer(
     ): Boolean {
         return false
     }
-
-
 }

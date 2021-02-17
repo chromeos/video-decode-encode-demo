@@ -31,6 +31,7 @@ import com.google.android.exoplayer2.video.VideoRendererEventListener
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.VideoMediaCodecAudioRenderer
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
+import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.InternalSurfaceTextureComponent
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.SpeedyMediaClock
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoMediaCodecVideoRenderer
@@ -47,7 +48,7 @@ fun buildExoMediaSource(mainActivity: MainActivity, raw: Int): MediaSource {
         .createMediaSource(uri)
 }
 
-class CustomExoRenderersFactory(val mainActivity: MainActivity, val internalSurfaceTextureComponent: InternalSurfaceTextureComponent, val streamNumber: Int,
+class CustomExoRenderersFactory(val mainActivity: MainActivity, val viewModel: MainViewModel, val internalSurfaceTextureComponent: InternalSurfaceTextureComponent, val streamNumber: Int,
                                 val audioBufferManager: AudioBufferManager, val shouldEncode: Boolean) :
     RenderersFactory {
     override fun createRenderers(
@@ -60,8 +61,8 @@ class CustomExoRenderersFactory(val mainActivity: MainActivity, val internalSurf
         val mediaClock = SpeedyMediaClock()
 
         return arrayOf(
-            VideoMediaCodecVideoRenderer(mainActivity, internalSurfaceTextureComponent, true, streamNumber, mediaClock),
-            VideoMediaCodecAudioRenderer(mainActivity, streamNumber, audioBufferManager, shouldEncode)
+            VideoMediaCodecVideoRenderer(mainActivity, viewModel, internalSurfaceTextureComponent, true, streamNumber, mediaClock),
+            VideoMediaCodecAudioRenderer(mainActivity, viewModel, streamNumber, audioBufferManager, shouldEncode)
         )
     }
 }

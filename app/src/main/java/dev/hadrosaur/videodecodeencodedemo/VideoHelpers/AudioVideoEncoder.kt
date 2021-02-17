@@ -45,7 +45,7 @@ import java.util.concurrent.atomic.AtomicInteger
  * This does not check for an EOS flag. The encode ends when "decodeComplete" is indicated and the
  * number of encoded frames matches the number of decoded frames
  */
-class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, val frameLedger: VideoFrameLedger, val audioBufferManager: AudioBufferManager) {
+class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFrameLedger, val audioBufferManager: AudioBufferManager) {
     // Video encoding variables
     val videoEncoderInputSurface: Surface
     val videoEncoder: MediaCodec
@@ -81,44 +81,26 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
     val audioBufferListener : AudioBufferManager.AudioBufferManagerListener
 
     init{
-        // Load file from raw directory
-        val videoFd = mainActivity.resources.openRawResourceFd(originalRawFileId)
-        val videoMimeType = getVideoTrackMimeType(videoFd)
-        val videoEncoderCodecInfo = selectEncoder(videoMimeType)
-        if (videoEncoderCodecInfo == null) {
-            mainActivity.updateLog("WARNING: No valid video encoder codec. Encoded file may be broken.")
-        }
-        videoEncoder = MediaCodec.createByCodecName(videoEncoderCodecInfo?.getName()!!)
-        encoderVideoFormat = getBestVideoEncodingFormat(videoFd)
+        videoEncoder = MediaCodec.createByCodecName(viewModel.videoEncoderCodecInfo?.getName()!!)
+        encoderVideoFormat = viewModel.encoderVideoFormat
 
         // Save encoder width and height for surfaces that use this encoder
         width = encoderVideoFormat.getInteger(KEY_WIDTH)
         height = encoderVideoFormat.getInteger(KEY_HEIGHT)
 
-        val audioMimeType = getAudioTrackMimeType(videoFd)
-        val audioEncoderCodecInfo = selectEncoder(audioMimeType)
-        if (audioEncoderCodecInfo == null) {
-            mainActivity.updateLog("WARNING: No valid audio encoder codec. Audio in encoded file will not work")
-        }
-        audioEncoder = MediaCodec.createByCodecName(audioEncoderCodecInfo?.getName()!!)
-        encoderAudioFormat = getBestAudioEncodingFormat(videoFd)
-
-        videoFd.close()
-
-        // Encoder debug info
-        // mainActivity.updateLog("Video encoder: ${videoEncoderCodecInfo?.name}, ${videoFormat}")
-        // mainActivity.updateLog("Audio encoder: ${audioEncoderCodecInfo?.name},  ${audioFormat}")
+        audioEncoder = MediaCodec.createByCodecName(viewModel.audioEncoderCodecInfo?.getName()!!)
+        encoderAudioFormat = viewModel.encoderAudioFormat
 
         // Use asynchronous modes with callbacks - encoding logic contained in the callback classes
         // See: https://developer.android.com/reference/android/media/MediaCodec#asynchronous-processing-using-buffers
 
         // Video encoder
-        videoEncoderCallback = VideoEncoderCallback(mainActivity, encoderVideoFormat)
+        videoEncoderCallback = VideoEncoderCallback(viewModel, encoderVideoFormat)
         videoEncoder.setCallback(videoEncoderCallback)
         videoEncoder.configure(encoderVideoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
 
         // Audio encoder
-        audioEncoderCallback = AudioEncoderCallback(mainActivity, encoderAudioFormat)
+        audioEncoderCallback = AudioEncoderCallback(viewModel, encoderAudioFormat)
         audioEncoder.setCallback(audioEncoderCallback)
         audioEncoder.configure(encoderAudioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
         audioEncodeComplete = false
@@ -139,8 +121,7 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
 
         // Setup Muxer
         val outputFilename = MainActivity.FILE_PREFIX + "-" + generateTimestamp() + ".mp4"
-        val outputVideoDir = getAppSpecificVideoStorageDir(mainActivity, MainActivity.FILE_PREFIX)
-        val outputVideoFile = File(outputVideoDir, outputFilename)
+        val outputVideoFile = File(viewModel.encodeOutputDir, outputFilename)
         encodedFilename = outputVideoFile.name
         muxer = MediaMuxer(outputVideoFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
     }
@@ -159,7 +140,8 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
             muxer?.stop()
             isMuxerRunning = false
         }
-        mainActivity.encodeFinished()
+        // Signal to the MainActivity that the encoding has now finished
+        viewModel.setEncodingInProgress(false)
     }
 
     fun release() {
@@ -171,7 +153,7 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
             muxer?.release()
         } catch (e: IllegalStateException) {
             // This will be thrown if the muxer was started but no data sent, ok for this app
-            // mainActivity.updateLog("Error stopping VideoEncoder MediaMuxer: ${e.message}.")
+            // viewModel.updateLog("Error stopping VideoEncoder MediaMuxer: ${e.message}.")
         }
 
         videoEncoder.stop()
@@ -190,31 +172,6 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
     }
 
     /**
-     * Generate a timestamp to append to saved filenames.
-     */
-    fun generateTimestamp(): String {
-        val sdf = SimpleDateFormat("yyyy_MM_dd_HH_mm_ss_SSS", Locale.US)
-        return sdf.format(Date())
-    }
-
-    /**
-     * Get the Movies directory that's inside the app-specific directory on
-     * external storage.
-     */
-    fun getAppSpecificVideoStorageDir(mainActivity: MainActivity, prefix: String): File? {
-        val file = File(mainActivity.getExternalFilesDir(
-            Environment.DIRECTORY_MOVIES), prefix)
-
-        // Make the directory if it does not exist yet
-        if (!file.exists()) {
-            if (!file.mkdirs()) {
-                mainActivity.updateLog("Error creating encoding directory: ${file.absolutePath}")
-            }
-        }
-        return file
-    }
-
-    /**
      * Because video frames are just raw frames coming in from a surface, the encoder needs to
      * manually check if the encode is complete.
      */
@@ -226,7 +183,7 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
             val timeString = String.format("%.2f", totalTime)
             val FPSString = String.format("%.2f", totalFPS)
 
-            mainActivity.updateLog("Encode done, written to ${encodedFilename}. ${numEncodedVideoFrames.get()} frames in ${timeString}s (${FPSString}fps).")
+            viewModel.updateLog("Encode done, written to ${encodedFilename}. ${numEncodedVideoFrames.get()} frames in ${timeString}s (${FPSString}fps).")
             signalEncodingComplete()
             finishEncode()
         }
@@ -245,7 +202,7 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
     /**
      * The callback functions for Video encoding
      */
-    inner class VideoEncoderCallback(val mainActivity: MainActivity, var format: MediaFormat): MediaCodec.Callback() {
+    inner class VideoEncoderCallback(val viewModel: MainViewModel, var format: MediaFormat): MediaCodec.Callback() {
         val muxingQueue = LinkedBlockingQueue<MuxingBuffer>()
         val ledgerQueue = LinkedBlockingQueue<LedgerBuffer>()
 
@@ -290,20 +247,20 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
                     // add the frame to the ledger queue to be muxed when we the correct time
                     if (frameLedger.encodeLedger.containsKey(frameNum)) {
                         info.presentationTimeUs = frameLedger.encodeLedger.get(frameNum)!!
-                        // mainActivity.updateLog("Video encoder, got frame number ${frameNum}@${info.presentationTimeUs}, last time was ${lastPresentationTime}.")
+                        // viewModel.updateLog("Video encoder, got frame number ${frameNum}@${info.presentationTimeUs}, last time was ${lastPresentationTime}.")
                         lastPresentationTime = info.presentationTimeUs
 
                         // If the muxer hasn't started yet - eg. if the audio stream hasn't been
                         // configured yet - queue the output data for later.
                         if (!isMuxerRunning) {
-                            mainActivity.updateLog("Adding buffer to video muxing buffer: ${frameNum}")
+                            viewModel.updateLog("Adding buffer to video muxing buffer: ${frameNum}")
                             muxingQueue.add(MuxingBuffer(cloneByteBuffer(outputBuffer), info))
                         } else {
                             // Mux any buffers that were waiting for the muxer to start
                             if (!muxingQueue.isEmpty()) {
                                 while (muxingQueue.peek() != null) {
                                     val muxingBuffer = muxingQueue.poll()
-                                    mainActivity.updateLog("Muxing buffer out of mux queue: ${muxingBuffer.info.presentationTimeUs}")
+                                    viewModel.updateLog("Muxing buffer out of mux queue: ${muxingBuffer.info.presentationTimeUs}")
                                     muxer?.writeSampleData(
                                         videoTrackIndex,
                                         muxingBuffer.buffer,
@@ -323,13 +280,13 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
                                 val currentFPS =
                                     numEncodedVideoFrames.get() / ((System.currentTimeMillis() - startTime) / 1000.0)
                                 val FPSString = String.format("%.2f", currentFPS)
-                                mainActivity.updateLog("Encoding video stream at ${FPSString}fps, frame $numEncodedVideoFrames.")
+                                viewModel.updateLog("Encoding video stream at ${FPSString}fps, frame $numEncodedVideoFrames.")
                             }
                         } // Is muxer running
 
                     } else {
                         // No ledger info yet for this buffer, add it to the ledger queue to be processed later
-                        mainActivity.updateLog("WARNING: Frame number ${frameNum} not found in ledger, adding to ledgerQueue.")
+                        viewModel.updateLog("WARNING: Frame number ${frameNum} not found in ledger, adding to ledgerQueue.")
                         ledgerQueue.add(LedgerBuffer(outputBuffer, info, frameNum))
                     }
                } // If not a config buffer
@@ -342,7 +299,7 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
         }
 
         override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {
-            mainActivity.updateLog("ERROR: something occurred during video encoding: ${e.diagnosticInfo}")
+            viewModel.updateLog("ERROR: something occurred during video encoding: ${e.diagnosticInfo}")
         }
 
         override fun onOutputFormatChanged(codec: MediaCodec, format: MediaFormat) {
@@ -357,7 +314,7 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
                 if (frameLedger.encodeLedger.containsKey(ledgerBuffer.frameNum)) {
                     ledgerBuffer.info.presentationTimeUs = frameLedger.encodeLedger.get(ledgerBuffer.frameNum)!!
                     if (isMuxerRunning) {
-                        mainActivity.updateLog("Muxing frame ${ledgerBuffer.frameNum} from ledger queue at ${ledgerBuffer.info.presentationTimeUs}")
+                        viewModel.updateLog("Muxing frame ${ledgerBuffer.frameNum} from ledger queue at ${ledgerBuffer.info.presentationTimeUs}")
                         muxer?.writeSampleData(videoTrackIndex, ledgerBuffer.buffer, ledgerBuffer.info)
                         ledgerQueue.poll()
                     }
@@ -377,7 +334,7 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
      *
      * Muxing happens (or is queued) when onOutputBufferAvailable is called
      */
-    inner class AudioEncoderCallback(val mainActivity: MainActivity, var format: MediaFormat): MediaCodec.Callback() {
+    inner class AudioEncoderCallback(val viewModel: MainViewModel, var format: MediaFormat): MediaCodec.Callback() {
         val muxingQueue = LinkedBlockingQueue<MuxingBuffer>()
         val inputBufferQueue = LinkedBlockingQueue<InputBufferIndex>()
 
@@ -442,9 +399,9 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
                     it.buffer.limit(oldQueuedBufferLimit)
 
                     val bufferDurationUs = getBufferDurationUs(bytesToCopy, format)
-                    // mainActivity.updateLog("Audio Encode audio buf verification: ${it.presentationTimeUs / 1000}, length: ${bufferDurationUs / 1000}, size: ${it.size}, remaining: ${it.buffer.remaining()}")
-                    // mainActivity.updateLog("Audio Encode audio buf verification: size: ${inputBuffer.capacity()}, bytes to copy: ${bytesToCopy}")
-                    // mainActivity.updateLog("Audio Encode input buf verification: ${it.presentationTimeUs / 1000}, length: ${bufferDurationUs / 1000}, size: ${bytesToCopy}")
+                    // viewModel.updateLog("Audio Encode audio buf verification: ${it.presentationTimeUs / 1000}, length: ${bufferDurationUs / 1000}, size: ${it.size}, remaining: ${it.buffer.remaining()}")
+                    // viewModel.updateLog("Audio Encode audio buf verification: size: ${inputBuffer.capacity()}, bytes to copy: ${bytesToCopy}")
+                    // viewModel.updateLog("Audio Encode input buf verification: ${it.presentationTimeUs / 1000}, length: ${bufferDurationUs / 1000}, size: ${bytesToCopy}")
 
                     // Send to the encoder
                     codec.queueInputBuffer(bufferIndex, 0, bytesToCopy, it.presentationTimeUs, if(it.isLastBuffer) BUFFER_FLAG_END_OF_STREAM else 0)
@@ -482,7 +439,7 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
                     // If the mixer hasn't started yet - eg. if the video stream hasn't been configured
                     // yet - queue the output data for later.
                     if (!isMuxerRunning) {
-                        //mainActivity.updateLog("Need to add to mux queue: ${info.presentationTimeUs}")
+                        //viewModel.updateLog("Need to add to mux queue: ${info.presentationTimeUs}")
                         muxingQueue.add(MuxingBuffer(cloneByteBuffer(outputBuffer), info))
 
                     } else {
@@ -491,13 +448,13 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
                             while(muxingQueue.peek() != null) {
                                 val muxingBuffer = muxingQueue.poll()
                                 muxer?.writeSampleData(audioTrackIndex, muxingBuffer.buffer, muxingBuffer.info)
-                                //mainActivity.updateLog("Muxing audio buffer out of mux queue: ${muxingBuffer.info.presentationTimeUs}")
+                                //viewModel.updateLog("Muxing audio buffer out of mux queue: ${muxingBuffer.info.presentationTimeUs}")
                             }
                         }
 
                         // Send the new frame to the muxer
                         muxer?.writeSampleData(audioTrackIndex, outputBuffer, info)
-                        //mainActivity.updateLog("Muxing audio buffer: ${info.presentationTimeUs}")
+                        //viewModel.updateLog("Muxing audio buffer: ${info.presentationTimeUs}")
                     }
                 }
             }
@@ -505,7 +462,7 @@ class AudioVideoEncoder(val mainActivity: MainActivity, originalRawFileId: Int, 
         }
 
         override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {
-            mainActivity.updateLog(("AudioEncoder error: ${e.errorCode} + ${e.diagnosticInfo}"))
+            viewModel.updateLog(("AudioEncoder error: ${e.errorCode} + ${e.diagnosticInfo}"))
         }
 
         override fun onOutputFormatChanged(codec: MediaCodec, format: MediaFormat) {

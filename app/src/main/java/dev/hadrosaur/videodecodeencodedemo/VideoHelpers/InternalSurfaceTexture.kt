@@ -27,6 +27,7 @@ import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager
 import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager.Companion.generateTextureIds
 import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager.Companion.getEglSurface
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
+import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 
 /**
  * The underlying SurfaceTexture used for decoding. Calls back to the InternalSurfaceTexturerRenderer
@@ -35,7 +36,7 @@ import dev.hadrosaur.videodecodeencodedemo.MainActivity
  * Has runners for rendering out to a display surface or to a video encoder.
  */
 class InternalSurfaceTexture @JvmOverloads constructor(
-    val mainActivity: MainActivity, val glManager: GlManager, val outputSurface: SurfaceView,
+    val viewModel: MainViewModel, val glManager: GlManager, val outputSurface: SurfaceView,
     val frameLedger: VideoFrameLedger,
     val audioBufferManager: AudioBufferManager,
     private val handler: Handler,
@@ -71,7 +72,7 @@ class InternalSurfaceTexture @JvmOverloads constructor(
         override fun run() {
             val matrix = FloatArray(16)
             texture!!.getTransformMatrix(matrix)
-            drawFrameProcessor.drawFrame(mainActivity.viewModel.getApplyGlFilterVal(), matrix)
+            drawFrameProcessor.drawFrame(viewModel.getApplyGlFilterVal(), matrix)
         }
     }
 
@@ -81,7 +82,7 @@ class InternalSurfaceTexture @JvmOverloads constructor(
         override fun run() {
             val matrix = FloatArray(16)
             texture!!.getTransformMatrix(matrix)
-            encodeFrameProcessor.drawFrame(mainActivity.viewModel.getApplyGlFilterVal(), matrix)
+            encodeFrameProcessor.drawFrame(viewModel.getApplyGlFilterVal(), matrix)
             // videoEncoder.encodeAvailableFrames()
         }
     }
@@ -124,7 +125,16 @@ class InternalSurfaceTexture @JvmOverloads constructor(
 
     fun initializeVideoEncoder() {
         shouldEncode = true
-        audioVideoEncoder = AudioVideoEncoder(mainActivity, mainActivity.encodeFileOriginalRawFileId, frameLedger, audioBufferManager)
+        audioVideoEncoder = AudioVideoEncoder(viewModel, frameLedger, audioBufferManager)
+    }
+
+    /**
+     * Signal to the encoder that the decode has finished
+     */
+    fun signalDecodingComplete() {
+        if (shouldEncode) {
+            audioVideoEncoder.signalDecodingComplete()
+        }
     }
 
     fun release() {

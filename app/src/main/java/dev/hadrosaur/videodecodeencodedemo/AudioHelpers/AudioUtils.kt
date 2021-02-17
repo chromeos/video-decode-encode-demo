@@ -22,6 +22,7 @@ import android.media.MediaFormat.KEY_SAMPLE_RATE
 import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.Format
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
+import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 import java.nio.ByteBuffer
 
 fun getBufferDurationUs(bytesWritten: Int, format: MediaFormat): Long {
@@ -75,7 +76,7 @@ fun cloneByteBuffer(original: ByteBuffer): ByteBuffer {
 /**
  * Logs value of byte buffer if absolute value is > 50
  */
-fun logAudioBufferValues(mainActivity: MainActivity, original: ByteBuffer, presentationTimeUs: Long = 0L) {
+fun logAudioBufferValues(viewModel: MainViewModel, original: ByteBuffer, presentationTimeUs: Long = 0L) {
     // Create a read-only copy of the original so position is not altered while reading
     val readOnlyCopy = original.asReadOnlyBuffer()
 
@@ -84,7 +85,7 @@ fun logAudioBufferValues(mainActivity: MainActivity, original: ByteBuffer, prese
         val value = readOnlyCopy.get().toLong()
 
         if (Math.abs(value) > 50) {
-            mainActivity.updateLog("@time: ${presentationTimeUs} + sample: ${sampleNum}, Audio value: ${value}")
+            viewModel.updateLog("@time: ${presentationTimeUs} + sample: ${sampleNum}, Audio value: ${value}")
         }
         sampleNum++
     }

@@ -24,6 +24,7 @@ import com.google.android.exoplayer2.audio.AudioSink
 import com.google.android.exoplayer2.audio.AuxEffectInfo
 import com.google.android.exoplayer2.util.MimeTypes
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
+import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 import java.nio.ByteBuffer
 
 /**
@@ -34,7 +35,7 @@ import java.nio.ByteBuffer
  * view model.
  */
 class CopyAndPlayAudioSink(
-    val mainActivity: MainActivity,
+    val viewModel: MainViewModel,
     val audioBufferManager: AudioBufferManager,
     val shouldEncode: Boolean
 ): AudioSink {
@@ -129,7 +130,7 @@ class CopyAndPlayAudioSink(
         val got = (presentationTimeUs / 1000).toInt()
         val missing = got - expecting
         val message = if (missing > 0) "(MISSING ${missing} ms)" else "(Correct)"
-        // mainActivity.updateLog("Presentation time: ${presentationTimeUs / 1000}ms, duration: ${bufferLengthUs / 1000}ms, bytes: ${buffer.remaining()}. I was expecting pres time of ${expecting}ms ${message}")
+        // viewModel.updateLog("Presentation time: ${presentationTimeUs / 1000}ms, duration: ${bufferLengthUs / 1000}ms, bytes: ${buffer.remaining()}. I was expecting pres time of ${expecting}ms ${message}")
 
         // If buffer is needed for encoding, copy it out
         if (shouldEncode) {
@@ -144,7 +145,7 @@ class CopyAndPlayAudioSink(
         }
 
         // Play audio buffer through speakers
-        if (mainActivity.viewModel.getPlayAudioVal()) {
+        if (viewModel.getPlayAudioVal()) {
             val playBuffer = buffer.slice()
             val audioTrackBufferSize = audioTrack.bufferSizeInFrames
             var bytesToPlay = 0
@@ -184,7 +185,7 @@ class CopyAndPlayAudioSink(
 
 
     override fun getCurrentPositionUs(sourceEnded: Boolean): Long {
-        // mainActivity.updateLog("AudioSink: getCurrentPositionUs is called @ ${lastPosition}")
+        // viewModel.updateLog("AudioSink: getCurrentPositionUs is called @ ${lastPosition}")
         return lastPosition
     }
 
@@ -193,7 +194,7 @@ class CopyAndPlayAudioSink(
         specifiedBufferSize: Int,
         outputChannels: IntArray?
     ) {
-        // mainActivity.updateLog("AudioSink format: ${inputFormat}")
+        // viewModel.updateLog("AudioSink format: ${inputFormat}")
         this.inputFormat = inputFormat
         isSinkInitialized = true
     }
@@ -217,7 +218,7 @@ class CopyAndPlayAudioSink(
             audioBufferManager.addData(AudioBuffer(ByteBuffer.allocate(1), lastPosition, 0, 0, true))
             handledEndOfStream = true
 
-            mainActivity.updateLog("All audio buffers handled. # == ${numBuffersHandled}")
+            viewModel.updateLog("All audio buffers handled. # == ${numBuffersHandled}")
         }
     }
 

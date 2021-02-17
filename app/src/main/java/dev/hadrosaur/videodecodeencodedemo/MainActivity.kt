@@ -34,14 +34,10 @@ import com.google.android.exoplayer2.DefaultLoadControl
 import com.google.android.exoplayer2.PlaybackParameters
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SimpleExoPlayer
-import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBuffer
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
-import dev.hadrosaur.videodecodeencodedemo.Utils.CustomExoRenderersFactory
-import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager
-import dev.hadrosaur.videodecodeencodedemo.Utils.buildExoMediaSource
+import dev.hadrosaur.videodecodeencodedemo.Utils.*
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.InternalSurfaceTextureComponent
 import kotlinx.android.synthetic.main.activity_main.*
-import java.util.concurrent.ConcurrentLinkedQueue
 
 class MainActivity : AppCompatActivity() {
     // Preview surfaces
@@ -71,12 +67,11 @@ class MainActivity : AppCompatActivity() {
     val NUMBER_OF_PREVIEW_SURFACES = 4
     var numberOfReadySurfaces = 0
     var activeDecodes = 0
-    var stream1DecodeFinished = false // keep track of stream 1 decode for encoder
     var waitForSteam1EncodeToFinish = false
 
-    var encodeFileOriginalRawFileId = R.raw.paris_01_1080p // Hack to easily pass original file info down to encoder
+//    var encodeFileOriginalRawFileId = R.raw.paris_01_1080p // Hack to easily pass original file info down to encoder
 
-    val viewModel: VideoVideoModel by viewModels()
+    val viewModel: MainViewModel by viewModels()
 
     companion object {
         const val LOG_VIDEO_EVERY_N_FRAMES = 200 // Log dropped frames and fps every N frames
@@ -123,13 +118,13 @@ class MainActivity : AppCompatActivity() {
         releaseSurfacesMarkedForDeletion()
 
         val audioBufferManagerOne = AudioBufferManager()
-        internalSurfaceTextureComponentOne = InternalSurfaceTextureComponent(this, glManager, previewSurfaceViewOne, audioBufferManagerOne)
+        internalSurfaceTextureComponentOne = InternalSurfaceTextureComponent(viewModel, glManager, previewSurfaceViewOne, audioBufferManagerOne)
         val audioBufferManagerTwo = AudioBufferManager()
-        internalSurfaceTextureComponentTwo = InternalSurfaceTextureComponent(this, glManager, previewSurfaceViewTwo, audioBufferManagerTwo)
+        internalSurfaceTextureComponentTwo = InternalSurfaceTextureComponent(viewModel, glManager, previewSurfaceViewTwo, audioBufferManagerTwo)
         val audioBufferManagerThree = AudioBufferManager()
-        internalSurfaceTextureComponentThree = InternalSurfaceTextureComponent(this, glManager, previewSurfaceViewThree, audioBufferManagerThree)
+        internalSurfaceTextureComponentThree = InternalSurfaceTextureComponent(viewModel, glManager, previewSurfaceViewThree, audioBufferManagerThree)
         val audioBufferManagerFour = AudioBufferManager()
-        internalSurfaceTextureComponentFour = InternalSurfaceTextureComponent(this, glManager, previewSurfaceViewFour, audioBufferManagerFour)
+        internalSurfaceTextureComponentFour = InternalSurfaceTextureComponent(viewModel, glManager, previewSurfaceViewFour, audioBufferManagerFour)
     }
 
     /**
@@ -178,7 +173,12 @@ class MainActivity : AppCompatActivity() {
             updateLog("File permissions not granted. Encoding will not save to file.")
         }
 
-        // Setup seekbar
+        // Set up encoder default formats
+        setDefaultEncoderFormats(this, viewModel)
+        // Set up output directory for muxer
+        viewModel.encodeOutputDir = getAppSpecificVideoStorageDir(this, viewModel, FILE_PREFIX)
+
+        // Set up seekbar
         seek_framedelay.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 viewModel.setPreviewFrameFrequency(progress)
@@ -193,6 +193,14 @@ class MainActivity : AppCompatActivity() {
         })
         viewModel.getPreviewFrameFrequency().observe(this, Observer<Int>{ frameFrequency ->
             seek_framedelay.progress = frameFrequency
+        })
+
+        // Set up on-screen log
+        viewModel.getLogText().observe(this, Observer<String> { logText ->
+            runOnUiThread {
+                text_log.text = logText
+                scroll_log.post(Runnable { scroll_log.fullScroll(View.FOCUS_DOWN) })
+            }
         })
 
         // Set up decode checkboxes. Stream 1 will always decode but set up properly anyway
@@ -232,10 +240,13 @@ class MainActivity : AppCompatActivity() {
             button_start_decode.isEnabled = false
             releaseSurfacesMarkedForDeletion()
 
-            encodeFileOriginalRawFileId = R.raw.paris_01_1080p
-
-            // Keep track of if we are encoding this run (user can toggle switch during decode)
+            // Are we encoding this run?
             if (viewModel.getEncodeStream1Val()) {
+                // Set-up an observer so the AudioVideoEncoder can signal the encode is complete
+                // through the view model
+                viewModel.getEncodingInProgress().value = true // Set this directly (not post) so the observer doesn't trigger immediately
+                viewModel.getEncodingInProgress().observe(this, Observer<Boolean> {
+                        inProgress -> if(inProgress == false) encodeFinished() })
                 waitForSteam1EncodeToFinish = true
             }
             internalSurfaceTextureComponentOne.shouldEncode(viewModel.getEncodeStream1Val()) // When decode button is clicked, set if encoding should happen or not
@@ -284,16 +295,11 @@ class MainActivity : AppCompatActivity() {
     fun beginVideoDecode(inputVideoRawId: Int, internalSurfaceTextureComponent: InternalSurfaceTextureComponent, streamNumber: Int) {
         activeDecodes++
 
-        // Keep track of stream 1 decode to signal encoder
-        if (streamNumber == 1) {
-            stream1DecodeFinished = false
-        }
-
-        // Only encode audio for 1st stream, if switch is on
+        // Only encode audio for 1st stream if switch is on
         val shouldEncodeAudio = (streamNumber == 1) && viewModel.getEncodeStream1Val()
 
         // Setup custom video and audio renderers
-        val renderersFactory = CustomExoRenderersFactory(this@MainActivity, internalSurfaceTextureComponent, streamNumber, internalSurfaceTextureComponent.audioBufferManager, shouldEncodeAudio)
+        val renderersFactory = CustomExoRenderersFactory(this@MainActivity, viewModel, internalSurfaceTextureComponent, streamNumber, internalSurfaceTextureComponent.audioBufferManager, shouldEncodeAudio)
 
         // Reduce default buffering to MIN_DECODE_BUFFER_MS to prevent over allocation when processing multiple large streams
         val loadControl = DefaultLoadControl.Builder().setBufferDurationsMs(MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS * 2, MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS).createDefaultLoadControl()
@@ -314,9 +320,8 @@ class MainActivity : AppCompatActivity() {
             override fun onPlayerStateChanged(playWhenReady: Boolean , playbackState: Int) {
                 if (playbackState == Player.STATE_ENDED) {
                     if (streamNumber == 1) {
-                        stream1DecodeFinished = true
+                        internalSurfaceTextureComponentOne.signalDecodeComplete()
                     }
-//                    player.clearVideoSurface()
                     player.release()
                     this@MainActivity.decodeFinished()
                 }
@@ -373,6 +378,7 @@ class MainActivity : AppCompatActivity() {
         markSurfacesForDeletion()
         initializeSurfaces()
         waitForSteam1EncodeToFinish = false
+        viewModel.getEncodingInProgress().removeObservers(this)
     }
 
     /**

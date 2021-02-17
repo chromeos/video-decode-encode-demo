@@ -118,7 +118,7 @@ caveats below.
  * Use this code at your own risk, it is intended as a proof-of-concept and for reference only.
  * 4 - 1080p mp4 files from a Pixel 4 phone are included for testing in the raw directory.
  * Encoded files are found in the sdcard/Android/data/dev.hadrosaur.videodecodeencodedemo directory.
- * Much logging code is intentionally left in the code. Uncommenting "mainActivity.updateLog" lines
+ * Much logging code is intentionally left in the code. Uncommenting "viewModel.updateLog" lines
  will add logging to the in-app log area as well as the logcat messages.
 
 ## Usage

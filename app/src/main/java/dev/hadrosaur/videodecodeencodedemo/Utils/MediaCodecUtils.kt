@@ -17,11 +17,9 @@
 package dev.hadrosaur.videodecodeencodedemo.Utils
 
 import android.content.res.AssetFileDescriptor
-import android.media.MediaCodecInfo
-import android.media.MediaCodecList
-import android.media.MediaExtractor
-import android.media.MediaFormat
+import android.media.*
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
+import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 
 
 /**
@@ -68,7 +66,7 @@ fun getVideoTrackMimeType(videoFd: AssetFileDescriptor) : String {
         val trackFormat = extractor.getTrackFormat(i)
         mimeType = trackFormat.getString(MediaFormat.KEY_MIME) ?: ""
         if (mimeType.startsWith("video/")) {
-            // mainActivity.updateLog("Video MIME type: ${mimeType}")
+            // viewModel.updateLog("Video MIME type: ${mimeType}")
             break
         }
     }
@@ -91,7 +89,7 @@ fun getAudioTrackMimeType(videoFd: AssetFileDescriptor) : String {
         val trackFormat = extractor.getTrackFormat(i)
         mimeType = trackFormat.getString(MediaFormat.KEY_MIME) ?: ""
         if (mimeType.startsWith("audio/")) {
-            // mainActivity.updateLog("Audio MIME type: ${mimeType}")
+            // viewModel.updateLog("Audio MIME type: ${mimeType}")
             break
         }
     }
@@ -120,7 +118,7 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
         val trackFormat = extractor.getTrackFormat(i)
         mimeType = trackFormat.getString(MediaFormat.KEY_MIME) ?: ""
         if (mimeType.startsWith("video/")) {
-            // mainActivity.updateLog("Video MIME type: ${mimeType}")
+            // viewModel.updateLog("Video MIME type: ${mimeType}")
             inputMediaFormat = trackFormat
             break
         }
@@ -311,7 +309,7 @@ fun getBestAudioEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
         val trackFormat = extractor.getTrackFormat(i)
         mimeType = trackFormat.getString(MediaFormat.KEY_MIME) ?: ""
         if (mimeType.startsWith("audio/")) {
-            // mainActivity.updateLog("Audio MIME type: ${mimeType}")
+            // viewModel.updateLog("Audio MIME type: ${mimeType}")
             inputAudioFormat = trackFormat
             break
         }
@@ -319,4 +317,34 @@ fun getBestAudioEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
 
     extractor.release()
     return inputAudioFormat
+}
+
+/**
+ * For convenience, set up the encoder to use the same video/audio format as the originial file
+ *
+ * This method should be run to save these variables in the view model for later use
+ */
+fun setDefaultEncoderFormats(mainActivity: MainActivity, viewModel: MainViewModel) {
+    // Video
+    val videoFd = mainActivity.resources.openRawResourceFd(viewModel.originalRawFileId)
+    val videoMimeType = getVideoTrackMimeType(videoFd)
+    viewModel.videoEncoderCodecInfo = selectEncoder(videoMimeType)
+    if (viewModel.videoEncoderCodecInfo == null) {
+        viewModel.updateLog("WARNING: No valid video encoder codec. Encoded file may be broken.")
+    }
+    viewModel.encoderVideoFormat = getBestVideoEncodingFormat(videoFd)
+
+    // Audio
+    val audioMimeType = getAudioTrackMimeType(videoFd)
+    viewModel.audioEncoderCodecInfo = selectEncoder(audioMimeType)
+    if (viewModel.audioEncoderCodecInfo == null) {
+        viewModel.updateLog("WARNING: No valid audio encoder codec. Audio in encoded file will not work")
+    }
+    viewModel.encoderAudioFormat = getBestAudioEncodingFormat(videoFd)
+
+    // Encoder debug info
+    //viewModel.updateLog("Video encoder: ${viewModel.videoEncoderCodecInfo?.name}, ${viewModel.encoderVideoFormat}")
+    //viewModel.updateLog("Audio encoder: ${viewModel.audioEncoderCodecInfo?.name},  ${viewModel.encoderAudioFormat}")
+
+    videoFd.close()
 }

@@ -23,23 +23,31 @@ import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBuffer
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
 import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
+import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * Holder for the internal decoding SurfaceTexture. Ties to gather the ExoPlayer VideoComponent,
  * and the custom SurfaceTexture and Renderer
  */
-class InternalSurfaceTextureComponent(val mainActivity: MainActivity, glManager: GlManager, displaySurface: SurfaceView, val audioBufferManager: AudioBufferManager) {
+class InternalSurfaceTextureComponent(val viewModel: MainViewModel, glManager: GlManager, displaySurface: SurfaceView, val audioBufferManager: AudioBufferManager) {
     val handler: Handler = Handler()
     var renderer: InternalSurfaceTextureRenderer
     lateinit var videoComponent: Player.VideoComponent
 
     init {
-        renderer = InternalSurfaceTextureRenderer(mainActivity, glManager, displaySurface, handler, audioBufferManager)
+        renderer = InternalSurfaceTextureRenderer(viewModel, glManager, displaySurface, handler, audioBufferManager)
     }
 
     fun shouldEncode(shouldEncode: Boolean) {
         renderer.shouldEncode(shouldEncode)
+    }
+
+    /**
+     * Signal to the encoder that the decode has finished
+     */
+    fun signalDecodeComplete() {
+        renderer.internalSurfaceTexture.signalDecodingComplete()
     }
 
     fun initialize(videoComponent: Player.VideoComponent) {
