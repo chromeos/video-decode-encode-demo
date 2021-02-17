@@ -59,7 +59,6 @@ class CustomExoRenderersFactory(val mainActivity: MainActivity, val viewModel: M
         metadataRendererOutput: MetadataOutput
     ): Array<Renderer> {
         val mediaClock = SpeedyMediaClock()
-
         return arrayOf(
             VideoMediaCodecVideoRenderer(mainActivity, viewModel, internalSurfaceTextureComponent, true, streamNumber, mediaClock),
             VideoMediaCodecAudioRenderer(mainActivity, viewModel, streamNumber, audioBufferManager, shouldEncode)

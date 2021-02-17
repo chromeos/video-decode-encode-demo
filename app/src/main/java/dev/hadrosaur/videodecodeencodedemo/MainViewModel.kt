@@ -102,12 +102,10 @@ class MainViewModel : ViewModel() {
     fun setLogText(value: String) {
         logText.postValue(value)
     }
+    fun updateLog(newText: String) {
+        setLogText(newText)
+    }
     fun setEncodingInProgress(value: Boolean) {
         encodingInProgress.postValue(value)
-    }
-    // Update log text and logcat debug log
-    fun updateLog(newText: String) {
-        setLogText(logText.value + "\n${newText}")
-        MainActivity.logd(newText)
     }
 }

@@ -34,7 +34,7 @@ class VideoMediaCodecAudioRenderer (
     val streamNumber: Int,
     audioBufferManager: AudioBufferManager,
     shouldEncode: Boolean
-) : MediaCodecAudioRenderer(mainActivity, MediaCodecSelector.DEFAULT, null, null, CopyAndPlayAudioSink(viewModel, audioBufferManager, shouldEncode)) {
+) : MediaCodecAudioRenderer(mainActivity, MediaCodecSelector.DEFAULT, null, null, CopyAndPlayAudioSink(viewModel, audioBufferManager, streamNumber, shouldEncode)) {
 
     var decodeCounter = 0
     var startTime = 0L

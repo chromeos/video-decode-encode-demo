@@ -37,6 +37,7 @@ import java.nio.ByteBuffer
 class CopyAndPlayAudioSink(
     val viewModel: MainViewModel,
     val audioBufferManager: AudioBufferManager,
+    val streamNum: Int,
     val shouldEncode: Boolean
 ): AudioSink {
 
@@ -180,6 +181,8 @@ class CopyAndPlayAudioSink(
         buffer.position(buffer.limit())
         numBuffersHandled++
 
+        //viewModel.updateLog("Audio Sink copying out buffer #${numBuffersHandled} @ ${presentationTimeUs}, endtime: ${lastPosition}")
+
         return true
     }
 
@@ -212,13 +215,12 @@ class CopyAndPlayAudioSink(
     // Currently no internal buffers
     override fun playToEndOfStream() {
         if (!handledEndOfStream && isSinkInitialized && drainToEndOfStream()) {
+            handledEndOfStream = true
             playPendingData()
 
-            // Stream is ended, include a EOS buffer for the audio encoder
+            // Stream is ended, include a fake EOS buffer for the audio encoder
             audioBufferManager.addData(AudioBuffer(ByteBuffer.allocate(1), lastPosition, 0, 0, true))
-            handledEndOfStream = true
-
-            viewModel.updateLog("All audio buffers handled. # == ${numBuffersHandled}")
+            viewModel.updateLog("All audio buffers handled for Stream ${streamNum}. # == ${numBuffersHandled}")
         }
     }
 

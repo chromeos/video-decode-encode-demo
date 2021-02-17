@@ -198,8 +198,7 @@ class MainActivity : AppCompatActivity() {
         // Set up on-screen log
         viewModel.getLogText().observe(this, Observer<String> { logText ->
             runOnUiThread {
-                text_log.text = logText
-                scroll_log.post(Runnable { scroll_log.fullScroll(View.FOCUS_DOWN) })
+                updateLog(logText)
             }
         })
 

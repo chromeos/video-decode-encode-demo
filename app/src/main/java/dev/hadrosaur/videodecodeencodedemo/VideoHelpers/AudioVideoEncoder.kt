@@ -234,6 +234,10 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                         videoTrackIndex = muxer?.addTrack(format) ?: -1
                         startMuxerIfReady()
                     }
+
+                    BUFFER_FLAG_END_OF_STREAM -> {
+
+                    }
                     // Else, mux this frame
                     else -> {
                         val frameNum = numEncodedVideoFrames.incrementAndGet()
@@ -393,11 +397,24 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                 val inputBuffer = codec.getInputBuffer(bufferIndex)
                 if (inputBuffer != null) {
                     // Copy remaining bytes up to the encoder buffers max length
-                    val bytesToCopy = Math.min(inputBuffer.capacity(), it.buffer.remaining())
+                    var bytesToCopy = Math.min(inputBuffer.capacity(), it.buffer.remaining())
+                    bytesToCopy = Math.min(bytesToCopy, it.size)
+                    var copyToPosition = it.buffer.position() + bytesToCopy
+
+                    //if (bytesToCopy != 4096 && it.buffer.position() != 0) {
+                    //    viewModel.updateLog("${it.presentationTimeUs}us: BYTES TO COPY = ${bytesToCopy}, pos: ${it.buffer.position()}, cap: ${it.buffer.capacity()}, old limit: ${it.buffer.limit()}")
+                    //}
+
+                    // Something is wrong, do not copy anything
+                    // TODO: This case happens sometimes randomly and causes a IllegalArgumentException in setting it.buffer.limit(copyToPosition)
+                    // This check should not be necessary. Figure out why bytesToCopy can be -'ve or buffer capacity can be incorrect
+                    if (bytesToCopy < 0 || copyToPosition > it.buffer.capacity()) {
+                        copyToPosition = it.buffer.position()
+                    }
 
                     // Save old queued buffer limit, set new limit to be the bytes needed
                     val oldQueuedBufferLimit = it.buffer.limit()
-                    it.buffer.limit(it.buffer.position() + bytesToCopy)
+                    it.buffer.limit(copyToPosition)
 
                     // Copy bytes from queued buffer into encoder buffer, auto advance position
                     inputBuffer.put(it.buffer)
@@ -441,12 +458,12 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                         startMuxerIfReady()
                     }
 
+                    BUFFER_FLAG_END_OF_STREAM -> {
+                        audioEncodeComplete = true
+                    }
+
                     // Otherwise mux in this buffer
                     else -> {
-                        if(info.flags == BUFFER_FLAG_END_OF_STREAM) {
-                            audioEncodeComplete = true
-                        }
-
                         // If the mixer hasn't started yet - eg. if the video stream hasn't been configured
                         // yet - queue the output data for later.
                         if (!isMuxerRunning) {
@@ -460,14 +477,14 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                                     val muxingBuffer = muxingQueue.poll()
                                     muxer?.writeSampleData(audioTrackIndex, muxingBuffer.buffer, muxingBuffer.info)
                                     numMuxedBuffers++
-                                    //viewModel.updateLog("Muxing audio buffer out of mux queue: ${muxingBuffer.info.presentationTimeUs}")
+                                    // viewModel.updateLog("Muxing audio buffer out #${numMuxedBuffers} of mux queue: ${muxingBuffer.info.presentationTimeUs}, size: ${muxingBuffer.info.size},  flags: ${info.flags}, offset: ${info.offset}")
                                 }
                             }
 
                             // Send the new frame to the muxer
                             muxer?.writeSampleData(audioTrackIndex, outputBuffer, info)
                             numMuxedBuffers++
-                            //viewModel.updateLog("Muxing audio buffer: ${info.presentationTimeUs}")
+                            // viewModel.updateLog("Muxed audio buffer #${numMuxedBuffers}: ${info.presentationTimeUs}, size: ${info.size}, flags: ${info.flags}, offset: ${info.offset}")
                         }
                     }
                 } // when

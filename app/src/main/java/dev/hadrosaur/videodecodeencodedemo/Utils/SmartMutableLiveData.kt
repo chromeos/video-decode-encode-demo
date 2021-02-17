@@ -17,7 +17,9 @@
 package dev.hadrosaur.videodecodeencodedemo.Utils
 
 import androidx.lifecycle.MutableLiveData
+import java.util.concurrent.BlockingQueue
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.LinkedBlockingQueue
 
 /**
  * MutableLiveData that will not lose data if postValue is called multiple times.
@@ -25,7 +27,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * Adapted from: https://stackoverflow.com/questions/56097647/can-we-use-livedata-without-loosing-any-value
  */
 class SmartMutableLiveData<T>(defaultValue: T? = null) : MutableLiveData<T>() {
-    private val queue = ConcurrentLinkedQueue<T>()
+    private val queue = LinkedBlockingQueue<T>()
 
     init {
         if (defaultValue != null) {
