@@ -36,7 +36,7 @@ import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SimpleExoPlayer
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
 import dev.hadrosaur.videodecodeencodedemo.Utils.*
-import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.InternalSurfaceTextureComponent
+import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoSurfaceManager
 import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
@@ -50,15 +50,20 @@ class MainActivity : AppCompatActivity() {
     var previewSurfaceViewThreeToDelete: SurfaceView? = null
     var previewSurfaceViewFourToDelete: SurfaceView? = null
 
-    // Internal decoding surfaces
-    lateinit var internalSurfaceTextureComponentOne: InternalSurfaceTextureComponent
-    lateinit var internalSurfaceTextureComponentTwo: InternalSurfaceTextureComponent
-    lateinit var internalSurfaceTextureComponentThree: InternalSurfaceTextureComponent
-    lateinit var internalSurfaceTextureComponentFour: InternalSurfaceTextureComponent
-    var internalSurfaceTextureComponentOneToDelete: InternalSurfaceTextureComponent? = null
-    var internalSurfaceTextureComponentTwoToDelete: InternalSurfaceTextureComponent? = null
-    var internalSurfaceTextureComponentThreeToDelete: InternalSurfaceTextureComponent? = null
-    var internalSurfaceTextureComponentFourToDelete: InternalSurfaceTextureComponent? = null
+    var videoSurfaceManagers = ArrayList<VideoSurfaceManager>()
+    var audioBufferManagers = ArrayList<AudioBufferManager>()
+    var audioVideoEncoders = ArrayList<AudioVideoEncoder>()
+
+    var videoSurfaceManagersToDelete = ArrayList<VideoSurfaceManager>()
+
+    //lateinit var videoSurfaceManagerOne: VideoSurfaceManager
+    //lateinit var videoSurfaceManagerTwo: VideoSurfaceManager
+    //lateinit var videoSurfaceManagerThree: VideoSurfaceManager
+    //lateinit var videoSurfaceManagerFour: VideoSurfaceManager
+    //var videoSurfaceManagerOneToDelete: VideoSurfaceManager? = null
+    //var videoSurfaceManagerTwoToDelete: VideoSurfaceManager? = null
+    //var videoSurfaceManagerThreeToDelete: VideoSurfaceManager? = null
+    //var videoSurfaceManagerFourToDelete: VideoSurfaceManager? = null
 
     // The GlManager manages the eglcontext for all renders and filters
     val glManager = GlManager()
@@ -67,7 +72,7 @@ class MainActivity : AppCompatActivity() {
     val NUMBER_OF_PREVIEW_SURFACES = 4
     var numberOfReadySurfaces = 0
     var activeDecodes = 0
-    var waitForSteam1EncodeToFinish = false
+    var activeEncodes = 0
 
 //    var encodeFileOriginalRawFileId = R.raw.paris_01_1080p // Hack to easily pass original file info down to encoder
 
@@ -87,6 +92,26 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    fun initializeEncoders() {
+        // Free up old encoders and audio buffer managers
+        releaseEncoders()
+
+        // Stream 1
+        audioBufferManagers.add(AudioBufferManager())
+        audioVideoEncoders.add(AudioVideoEncoder(viewModel, videoSurfaceManagers[0].renderer.frameLedger, audioBufferManagers[0]))
+
+        // Stream 2
+        // audioBufferManagers.add(AudioBufferManager())
+        // audioVideoEncoders.add(AudioVideoEncoder(viewModel, videoSurfaceManagers[1].renderer.frameLedger, audioBufferManagers[1]))
+
+        // Stream 3
+        // audioBufferManagers.add(AudioBufferManager())
+        // audioVideoEncoders.add(AudioVideoEncoder(viewModel, videoSurfaceManagers[2].renderer.frameLedger, audioBufferManagers[2]))
+
+        // Stream 4
+        // audioBufferManagers.add(AudioBufferManager())
+        // audioVideoEncoders.add(AudioVideoEncoder(viewModel, videoSurfaceManagers[3].renderer.frameLedger, audioBufferManagers[3]))
+    }
     fun initializeSurfaces() {
         numberOfReadySurfaces = 0
 
@@ -97,10 +122,10 @@ class MainActivity : AppCompatActivity() {
         previewSurfaceViewFour = SurfaceView(this)
 
         // Setup surface listeners to indicate when surfaces have been created/destroyed
-        previewSurfaceViewOne.holder.addCallback(VideoSurfaceViewListener(this))
-        previewSurfaceViewTwo.holder.addCallback(VideoSurfaceViewListener(this))
-        previewSurfaceViewThree.holder.addCallback(VideoSurfaceViewListener(this))
-        previewSurfaceViewFour.holder.addCallback(VideoSurfaceViewListener(this))
+        previewSurfaceViewOne.holder.addCallback(VideoSurfaceViewListener(this, 1))
+        previewSurfaceViewTwo.holder.addCallback(VideoSurfaceViewListener(this, 2))
+        previewSurfaceViewThree.holder.addCallback(VideoSurfaceViewListener(this, 3))
+        previewSurfaceViewFour.holder.addCallback(VideoSurfaceViewListener(this, 4))
 
         // Create the internal SurfaceTextures that will be used for decoding
         initializeInternalSurfaces()
@@ -117,20 +142,25 @@ class MainActivity : AppCompatActivity() {
         // Clean-up any surfaces that need deletion
         releaseSurfacesMarkedForDeletion()
 
-        val audioBufferManagerOne = AudioBufferManager()
-        internalSurfaceTextureComponentOne = InternalSurfaceTextureComponent(viewModel, glManager, previewSurfaceViewOne, audioBufferManagerOne)
-        val audioBufferManagerTwo = AudioBufferManager()
-        internalSurfaceTextureComponentTwo = InternalSurfaceTextureComponent(viewModel, glManager, previewSurfaceViewTwo, audioBufferManagerTwo)
-        val audioBufferManagerThree = AudioBufferManager()
-        internalSurfaceTextureComponentThree = InternalSurfaceTextureComponent(viewModel, glManager, previewSurfaceViewThree, audioBufferManagerThree)
-        val audioBufferManagerFour = AudioBufferManager()
-        internalSurfaceTextureComponentFour = InternalSurfaceTextureComponent(viewModel, glManager, previewSurfaceViewFour, audioBufferManagerFour)
+        // Empty and free current arrays of surface managers
+        videoSurfaceManagers.clear()
+
+        // Stream 1 - decoding needs video surface manager, encoding needs audio manager and encoder
+        videoSurfaceManagers.add(VideoSurfaceManager(viewModel, glManager, previewSurfaceViewOne))
+
+        // Stream 2
+        videoSurfaceManagers.add(VideoSurfaceManager(viewModel, glManager, previewSurfaceViewTwo))
+
+        // Stream 3
+        videoSurfaceManagers.add(VideoSurfaceManager(viewModel, glManager, previewSurfaceViewThree))
+
+        // Stream 4
+        videoSurfaceManagers.add(VideoSurfaceManager(viewModel, glManager, previewSurfaceViewFour))
     }
 
     /**
-     * To start a new test, fresh surfaces are desired, but the encoder or decoder may
-     * still be finishing up. We leave these surfaces around until the next time the "go" button
-     * is pressed.
+     * To start a new test, fresh surfaces are need but do not garbage collect until the next
+     * time "Decode" is pressed.
      */
     fun markSurfacesForDeletion() {
         previewSurfaceViewOneToDelete = previewSurfaceViewOne
@@ -138,10 +168,7 @@ class MainActivity : AppCompatActivity() {
         previewSurfaceViewThreeToDelete = previewSurfaceViewThree
         previewSurfaceViewFourToDelete = previewSurfaceViewFour
 
-        internalSurfaceTextureComponentOneToDelete = internalSurfaceTextureComponentOne
-        internalSurfaceTextureComponentTwoToDelete = internalSurfaceTextureComponentTwo
-        internalSurfaceTextureComponentThreeToDelete = internalSurfaceTextureComponentThree
-        internalSurfaceTextureComponentFourToDelete = internalSurfaceTextureComponentFour
+        videoSurfaceManagersToDelete = videoSurfaceManagers
     }
 
     fun releaseSurfacesMarkedForDeletion() {
@@ -150,19 +177,35 @@ class MainActivity : AppCompatActivity() {
         previewSurfaceViewThreeToDelete = null
         previewSurfaceViewFourToDelete = null
 
-        internalSurfaceTextureComponentOneToDelete?.release()
-        internalSurfaceTextureComponentTwoToDelete?.release()
-        internalSurfaceTextureComponentThreeToDelete?.release()
-        internalSurfaceTextureComponentFourToDelete?.release()
-        internalSurfaceTextureComponentOneToDelete = null
-        internalSurfaceTextureComponentTwoToDelete = null
-        internalSurfaceTextureComponentThreeToDelete = null
-        internalSurfaceTextureComponentFourToDelete = null
+        for (manager in videoSurfaceManagersToDelete) {
+            manager.release()
+        }
+        videoSurfaceManagersToDelete.clear()
+        videoSurfaceManagersToDelete = ArrayList()
+    }
+
+    fun releaseEncoders() {
+        // Empty and free current arrays encoders and audio managers
+        audioBufferManagers.clear()
+        for (encoder in audioVideoEncoders) {
+            encoder.release()
+        }
+        audioVideoEncoders.clear()
+    }
+
+    fun release() {
+        releaseSurfacesMarkedForDeletion()
+        releaseEncoders()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // Set up encoder default formats
+        setDefaultEncoderFormats(this, viewModel)
+        // Set up output directory for muxer
+        viewModel.encodeOutputDir = getAppSpecificVideoStorageDir(this, viewModel, FILE_PREFIX)
 
         initializeSurfaces()
 
@@ -172,11 +215,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             updateLog("File permissions not granted. Encoding will not save to file.")
         }
-
-        // Set up encoder default formats
-        setDefaultEncoderFormats(this, viewModel)
-        // Set up output directory for muxer
-        viewModel.encodeOutputDir = getAppSpecificVideoStorageDir(this, viewModel, FILE_PREFIX)
 
         // Set up seekbar
         seek_framedelay.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -202,7 +240,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        // Set up decode checkboxes. Stream 1 will always decode but set up properly anyway
+        // Set up decode checkboxes
         checkbox_decode_stream1.setOnCheckedChangeListener{
                 _, isChecked -> viewModel.setDecodeStream1(isChecked) }
         viewModel.getDecodeStream1().observe(this, Observer<Boolean> {
@@ -220,7 +258,7 @@ class MainActivity : AppCompatActivity() {
         viewModel.getDecodeStream4().observe(this, Observer<Boolean> {
                 isChecked -> checkbox_decode_stream4.isSelected = isChecked })
 
-        // Set up toggle switches to auto track with the ViewModel
+        // Set up toggle switches to track the ViewModel
         switch_filter.setOnCheckedChangeListener {
                 _, isChecked -> viewModel.setApplyGlFilter(isChecked) }
         viewModel.getApplyGlFilter().observe(this, Observer<Boolean> {
@@ -239,37 +277,47 @@ class MainActivity : AppCompatActivity() {
             button_start_decode.isEnabled = false
             releaseSurfacesMarkedForDeletion()
 
-            // Are we encoding this run?
-            if (viewModel.getEncodeStream1Val()) {
-                // Set-up an observer so the AudioVideoEncoder can signal the encode is complete
-                // through the view model
-                viewModel.getEncodingInProgress().value = true // Set this directly (not post) so the observer doesn't trigger immediately
-                viewModel.getEncodingInProgress().observe(this, Observer<Boolean> {
-                        inProgress -> if(inProgress == false) encodeFinished() })
-                waitForSteam1EncodeToFinish = true
-            }
-            internalSurfaceTextureComponentOne.shouldEncode(viewModel.getEncodeStream1Val()) // When decode button is clicked, set if encoding should happen or not
-
             if (viewModel.getDecodeStream1Val()) {
-                beginVideoDecode(R.raw.paris_01_1080p, internalSurfaceTextureComponentOne, 1)
+                // Are we encoding this run?
+                if (viewModel.getEncodeStream1Val()) {
+                    // Set-up an observer so the AudioVideoEncoder can signal the encode is complete
+                    // through the view model
+                    viewModel.getEncodingInProgress().value = true // Set this directly (not post) so the observer doesn't trigger immediately
+                    viewModel.getEncodingInProgress().observe(this, Observer<Boolean> {
+                            inProgress -> if(inProgress == false) encodeFinished() })
+                    activeEncodes++
+
+                    // Set up encoder and audio buffer manager
+                    initializeEncoders()
+
+                    // Decode and Encode
+                    beginVideoDecode(R.raw.paris_01_1080p, videoSurfaceManagers[0], 1,
+                        audioVideoEncoders[0], audioBufferManagers[0])
+                } else {
+                    // Decode only
+                    beginVideoDecode(R.raw.paris_01_1080p, videoSurfaceManagers[0], 1)
+                }
             }
             if (viewModel.getDecodeStream2Val()) {
-                beginVideoDecode(R.raw.paris_02_1080p, internalSurfaceTextureComponentTwo, 2)
+                beginVideoDecode(R.raw.paris_02_1080p, videoSurfaceManagers[1], 2)
             }
             if (viewModel.getDecodeStream3Val()) {
-                beginVideoDecode(R.raw.paris_03_1080p, internalSurfaceTextureComponentThree, 3)
+                beginVideoDecode(R.raw.paris_03_1080p, videoSurfaceManagers[2], 3)
             }
             if (viewModel.getDecodeStream4Val()) {
-                beginVideoDecode(R.raw.paris_04_1080p, internalSurfaceTextureComponentFour, 4)
+                beginVideoDecode(R.raw.paris_04_1080p, videoSurfaceManagers[3], 4)
             }
         }
     }
 
     override fun onStop() {
-        releaseSurfacesMarkedForDeletion()
+        release()
         super.onStop()
     }
 
+    /**
+     * Handy keyboard shortcuts
+     */
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
         when (keyCode) {
             KEYCODE_1 -> { checkbox_decode_stream1.isChecked = ! checkbox_decode_stream1.isChecked; checkbox_decode_stream1.clearFocus(); return true }
@@ -291,23 +339,38 @@ class MainActivity : AppCompatActivity() {
 
     // Set up an Exoplayer decode for the given video file and InternalSurfaceTextureComponent,
     // Note: the InternalSurfaceTextureComponent knows it's own preview SurfaceView
-    fun beginVideoDecode(inputVideoRawId: Int, internalSurfaceTextureComponent: InternalSurfaceTextureComponent, streamNumber: Int) {
+    // TODO: clean up line wrapping
+    fun beginVideoDecode(inputVideoRawId: Int,
+                         videoSurfaceManager: VideoSurfaceManager,
+                         streamNumber: Int,
+                         audioVideoEncoder: AudioVideoEncoder? = null,
+                         audioBufferManager: AudioBufferManager? = null) {
         activeDecodes++
 
-        // Only encode audio for 1st stream if switch is on
-        val shouldEncodeAudio = (streamNumber == 1) && viewModel.getEncodeStream1Val()
-
         // Setup custom video and audio renderers
-        val renderersFactory = CustomExoRenderersFactory(this@MainActivity, viewModel, internalSurfaceTextureComponent, streamNumber, internalSurfaceTextureComponent.audioBufferManager, shouldEncodeAudio)
+        val renderersFactory = CustomExoRenderersFactory(this@MainActivity, viewModel, videoSurfaceManager, streamNumber, audioBufferManager)
 
         // Reduce default buffering to MIN_DECODE_BUFFER_MS to prevent over allocation when processing multiple large streams
         val loadControl = DefaultLoadControl.Builder().setBufferDurationsMs(MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS * 2, MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS).createDefaultLoadControl()
         val player: SimpleExoPlayer = SimpleExoPlayer.Builder(this@MainActivity, renderersFactory).setLoadControl(loadControl).build()
 
         if (player.videoComponent != null) {
-            internalSurfaceTextureComponent.initialize(player.videoComponent as Player.VideoComponent)
+            if (audioVideoEncoder != null) {
+                // Set up encode and decode surfaces
+                videoSurfaceManager.initialize(player.videoComponent as Player.VideoComponent,
+                    audioVideoEncoder.videoEncoderInputSurface,
+                    audioVideoEncoder.width,
+                    audioVideoEncoder.height)
+
+                // Start the encoder
+                audioVideoEncoder.startEncode()
+            } else {
+                // Only set up decode surfaces
+                videoSurfaceManager.initialize(player.videoComponent as Player.VideoComponent)
+            }
         } else {
             updateLog("Player video component is NULL, this will not work")
+            return
         }
 
         // Note: the decoder uses a custom MediaClock that goes as fast as possible so this speed
@@ -318,9 +381,7 @@ class MainActivity : AppCompatActivity() {
         player.addListener(object: Player.EventListener {
             override fun onPlayerStateChanged(playWhenReady: Boolean , playbackState: Int) {
                 if (playbackState == Player.STATE_ENDED) {
-                    if (streamNumber == 1) {
-                        internalSurfaceTextureComponentOne.signalDecodeComplete()
-                    }
+                    audioVideoEncoder?.signalDecodingComplete()
                     player.release()
                     this@MainActivity.decodeFinished()
                 }
@@ -363,9 +424,9 @@ class MainActivity : AppCompatActivity() {
     fun decodeFinished() {
         activeDecodes--
 
-        if (activeDecodes == 0) {
+        if (activeDecodes == 0 && activeEncodes == 0) {
             runOnUiThread {
-                if (!waitForSteam1EncodeToFinish) {
+                if (activeEncodes <= 0) {
                     markSurfacesForDeletion()
                     initializeSurfaces()
                 }
@@ -374,10 +435,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun encodeFinished() {
-        markSurfacesForDeletion()
-        initializeSurfaces()
-        waitForSteam1EncodeToFinish = false
+        activeEncodes--
         viewModel.getEncodingInProgress().removeObservers(this)
+        if (activeDecodes == 0 && activeEncodes == 0) {
+            runOnUiThread {
+                markSurfacesForDeletion()
+                initializeSurfaces()
+            }
+        }
     }
 
     /**

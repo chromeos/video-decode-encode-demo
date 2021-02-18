@@ -18,6 +18,7 @@ package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.LinkedBlockingQueue
 
 class AudioBufferManager {
     /**
@@ -28,7 +29,7 @@ class AudioBufferManager {
         fun newAudioData()
     }
 
-    val queue = ConcurrentLinkedQueue<AudioBuffer>()
+    val queue = LinkedBlockingQueue<AudioBuffer>()
     var listener: AudioBufferManagerListener? = null
 
     /**

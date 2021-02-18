@@ -17,41 +17,42 @@
 package dev.hadrosaur.videodecodeencodedemo.VideoHelpers
 
 import android.os.Handler
+import android.view.Surface
 import android.view.SurfaceView
 import com.google.android.exoplayer2.Player
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBuffer
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
+import dev.hadrosaur.videodecodeencodedemo.AudioVideoEncoder
 import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
- * Holder for the internal decoding SurfaceTexture. Ties to gather the ExoPlayer VideoComponent,
+ * Holder for the internal decoding SurfaceTexture. Ties together the ExoPlayer VideoComponent,
  * and the custom SurfaceTexture and Renderer
  */
-class InternalSurfaceTextureComponent(val viewModel: MainViewModel, glManager: GlManager, displaySurface: SurfaceView, val audioBufferManager: AudioBufferManager) {
+class VideoSurfaceManager(val viewModel: MainViewModel, glManager: GlManager, displaySurface: SurfaceView) {
     val handler: Handler = Handler()
     var renderer: InternalSurfaceTextureRenderer
     lateinit var videoComponent: Player.VideoComponent
 
     init {
-        renderer = InternalSurfaceTextureRenderer(viewModel, glManager, displaySurface, handler, audioBufferManager)
+        renderer = InternalSurfaceTextureRenderer(viewModel, glManager, displaySurface, handler)
     }
 
-    fun shouldEncode(shouldEncode: Boolean) {
-        renderer.shouldEncode(shouldEncode)
-    }
+    // Set up the internal surfaces
+    // If encoding is desired, ensure setupEncodeSurfaces has been called
+    fun initialize(videoComponent: Player.VideoComponent, encoderInputSurface: Surface? = null, encoderWidth: Int = 0, encoderHeight: Int = 0) {
+        // Initialize decoding surfaces only
+        if (encoderInputSurface == null) {
+            renderer.initialize()
 
-    /**
-     * Signal to the encoder that the decode has finished
-     */
-    fun signalDecodeComplete() {
-        renderer.internalSurfaceTexture.signalDecodingComplete()
-    }
+        // Initialize both decoding and encoding surfaces
+        } else {
+            renderer.initialize(encoderInputSurface, encoderWidth, encoderHeight)
+        }
 
-    fun initialize(videoComponent: Player.VideoComponent) {
-        renderer.initialize()
         this.videoComponent = videoComponent
 
         // Tell ExoPlayer to decode to this surface

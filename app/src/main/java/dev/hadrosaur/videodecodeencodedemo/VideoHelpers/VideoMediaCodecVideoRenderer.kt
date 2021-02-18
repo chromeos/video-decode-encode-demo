@@ -32,7 +32,7 @@ import java.nio.ByteBuffer
 class VideoMediaCodecVideoRenderer(
     val mainActivity: MainActivity,
     val viewModel: MainViewModel,
-    val internalSurfaceTextureComponent: InternalSurfaceTextureComponent,
+    val videoSurfaceManager: VideoSurfaceManager,
     enableDecoderFallback: Boolean,
     val streamNumber: Int,
     val mediaClock: SpeedyMediaClock
@@ -121,13 +121,13 @@ class VideoMediaCodecVideoRenderer(
     ): Boolean {
 
         // Check the atomic lock to see if a frame can be rendered. If not, return false and wait
-        if (internalSurfaceTextureComponent.renderer.frameLedger.shouldBlockRender()) {
+        if (videoSurfaceManager.renderer.frameLedger.shouldBlockRender()) {
             // viewModel.updateLog("I am in processOutputBuffer: The renderer is blocked.")
             return false
         }
 
         if (isLastBuffer) {
-            internalSurfaceTextureComponent.renderer.frameLedger.lastVideoBufferPresentationTimeUs = bufferPresentationTimeUs
+            videoSurfaceManager.renderer.frameLedger.lastVideoBufferPresentationTimeUs = bufferPresentationTimeUs
         }
 //        viewModel.updateLog("I am in processOutputBuffer. Renderer not blocked.")
         val processSuccess = super.processOutputBuffer(

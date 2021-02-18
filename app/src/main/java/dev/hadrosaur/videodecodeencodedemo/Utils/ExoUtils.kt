@@ -32,7 +32,7 @@ import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.VideoMediaCodecAudioRenderer
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
-import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.InternalSurfaceTextureComponent
+import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoSurfaceManager
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.SpeedyMediaClock
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoMediaCodecVideoRenderer
 
@@ -48,8 +48,8 @@ fun buildExoMediaSource(mainActivity: MainActivity, raw: Int): MediaSource {
         .createMediaSource(uri)
 }
 
-class CustomExoRenderersFactory(val mainActivity: MainActivity, val viewModel: MainViewModel, val internalSurfaceTextureComponent: InternalSurfaceTextureComponent, val streamNumber: Int,
-                                val audioBufferManager: AudioBufferManager, val shouldEncode: Boolean) :
+class CustomExoRenderersFactory(val mainActivity: MainActivity, val viewModel: MainViewModel, val videoSurfaceManager: VideoSurfaceManager, val streamNumber: Int,
+                                val audioBufferManager: AudioBufferManager?) :
     RenderersFactory {
     override fun createRenderers(
         eventHandler: Handler,
@@ -60,8 +60,8 @@ class CustomExoRenderersFactory(val mainActivity: MainActivity, val viewModel: M
     ): Array<Renderer> {
         val mediaClock = SpeedyMediaClock()
         return arrayOf(
-            VideoMediaCodecVideoRenderer(mainActivity, viewModel, internalSurfaceTextureComponent, true, streamNumber, mediaClock),
-            VideoMediaCodecAudioRenderer(mainActivity, viewModel, streamNumber, audioBufferManager, shouldEncode)
+            VideoMediaCodecVideoRenderer(mainActivity, viewModel, videoSurfaceManager, true, streamNumber, mediaClock),
+            VideoMediaCodecAudioRenderer(mainActivity, viewModel, streamNumber, audioBufferManager)
         )
     }
 }

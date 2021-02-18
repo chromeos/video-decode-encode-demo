@@ -30,24 +30,27 @@ import dev.hadrosaur.videodecodeencodedemo.MainViewModel
  *
  * Logs to the main log as the render progresses.
  */
-class InternalSurfaceTextureRenderer(val viewModel: MainViewModel, glManager: GlManager, displaySurface: SurfaceView, handler: Handler, audioBufferManager: AudioBufferManager) : InternalSurfaceTexture.TextureImageListener {
+class InternalSurfaceTextureRenderer(val viewModel: MainViewModel, glManager: GlManager, displaySurface: SurfaceView, handler: Handler) : InternalSurfaceTexture.TextureImageListener {
     val frameLedger = VideoFrameLedger()
-    val internalSurfaceTexture: InternalSurfaceTexture = InternalSurfaceTexture(viewModel, glManager, displaySurface, frameLedger, audioBufferManager, handler, this)
+    val internalSurfaceTexture: InternalSurfaceTexture = InternalSurfaceTexture(viewModel, glManager, displaySurface, handler, this)
     var onFrameAvailableCounter = 0
-    var isEncoderStarted = false
     var doEncode = false
 
     // The internal Surface from the SurfaceTexture to be decoded to, used by ExoPlayer
     lateinit var decoderSurface: Surface
 
-    fun initialize() {
-        internalSurfaceTexture.initialize()
-        decoderSurface = Surface(internalSurfaceTexture.surfaceTexture)
-    }
+    fun initialize(encoderInputSurface: Surface? = null, encoderWidth: Int = 0, encoderHeight: Int = 0) {
+        // Initialize decoding surfaces only
+        if (encoderInputSurface == null) {
+            internalSurfaceTexture.initialize()
 
-    fun shouldEncode(shouldEncode: Boolean) {
-        doEncode = shouldEncode
-        internalSurfaceTexture.initializeVideoEncoder()
+        // Initialize both decoding and encoding surfaces
+        } else {
+            internalSurfaceTexture.initialize(encoderInputSurface, encoderWidth, encoderHeight)
+            doEncode = true
+        }
+
+        decoderSurface = Surface(internalSurfaceTexture.surfaceTexture)
     }
 
     /** Called when a new frame is available on the SurfaceTexture from it's image producer.
@@ -81,20 +84,7 @@ class InternalSurfaceTextureRenderer(val viewModel: MainViewModel, glManager: Gl
 
                 // If encoding is engaged, encode this frame
                 if (doEncode) {
-                    // Don't start the encoder until we actually need it
-                    if(!isEncoderStarted) {
-                        internalSurfaceTexture.audioVideoEncoder.startEncode()
-                        isEncoderStarted = true
-                    }
-
-                    // Because the encoder is not directly receiving frames from a media stream but
-                    // but from a surface, no EOS flag will be received. Instead, just count the
-                    // number of frames that should be encoded to know the encoding is done
-                    internalSurfaceTexture.audioVideoEncoder.numDecodedVideoFrames.incrementAndGet()
-
-                    if (!internalSurfaceTexture.audioVideoEncoder.videoEncodeComplete) {
-                        internalSurfaceTexture.encodeFrame()
-                    }
+                    internalSurfaceTexture.encodeFrame()
                 }
 
             } else {

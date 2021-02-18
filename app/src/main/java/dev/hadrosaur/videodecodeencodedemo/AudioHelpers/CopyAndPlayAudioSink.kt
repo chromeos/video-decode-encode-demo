@@ -31,14 +31,15 @@ import java.nio.ByteBuffer
  * And AudioSink for ExoPlayer that copies out audio buffers to a concurrent queue and can play
  * back audio as buffers are received.
  *
+ * If audioBufferManager is null, do not encode
+ *
  * Note: for this simple demo, playback control from the GUI is passed through the MainActivity's
  * view model.
  */
 class CopyAndPlayAudioSink(
     val viewModel: MainViewModel,
-    val audioBufferManager: AudioBufferManager,
     val streamNum: Int,
-    val shouldEncode: Boolean
+    val audioBufferManager: AudioBufferManager? = null
 ): AudioSink {
 
     var isSinkInitialized = false
@@ -134,7 +135,7 @@ class CopyAndPlayAudioSink(
         // viewModel.updateLog("Presentation time: ${presentationTimeUs / 1000}ms, duration: ${bufferLengthUs / 1000}ms, bytes: ${buffer.remaining()}. I was expecting pres time of ${expecting}ms ${message}")
 
         // If buffer is needed for encoding, copy it out
-        if (shouldEncode) {
+        if (audioBufferManager != null) {
             audioBufferManager.addData(
                 AudioBuffer(
                     soundBuffer,
@@ -146,6 +147,7 @@ class CopyAndPlayAudioSink(
         }
 
         // Play audio buffer through speakers
+        // This will be chunky and crackly with no buffering
         if (viewModel.getPlayAudioVal()) {
             val playBuffer = buffer.slice()
             val audioTrackBufferSize = audioTrack.bufferSizeInFrames
@@ -219,7 +221,10 @@ class CopyAndPlayAudioSink(
             playPendingData()
 
             // Stream is ended, include a fake EOS buffer for the audio encoder
-            audioBufferManager.addData(AudioBuffer(ByteBuffer.allocate(1), lastPosition, 0, 0, true))
+            if (audioBufferManager != null) {
+                audioBufferManager.addData(AudioBuffer(ByteBuffer.allocate(1), lastPosition, 0, 0, true))
+            }
+
             viewModel.updateLog("All audio buffers handled for Stream ${streamNum}. # == ${numBuffersHandled}")
         }
     }

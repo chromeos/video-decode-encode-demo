@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Google LLC
+ * Copyright (c) 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 
-package dev.hadrosaur.videodecodeencodedemo.VideoHelpers
+package dev.hadrosaur.videodecodeencodedemo
 
 import android.media.*
 import android.media.MediaCodec.*
 import android.media.MediaFormat.*
 import android.view.Surface
-import dev.hadrosaur.videodecodeencodedemo.*
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBuffer
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.cloneByteBuffer
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.getBufferDurationUs
 import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.LOG_VIDEO_EVERY_N_FRAMES
 import dev.hadrosaur.videodecodeencodedemo.Utils.*
+import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoFrameLedger
 import java.io.*
 import java.lang.IllegalStateException
 import java.nio.ByteBuffer
@@ -34,7 +34,7 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicInteger
 
 
-// TODO: there is a memory leak of about 20mb per run. Track it down
+// TODO: there is a memory leak of about 20mb per run. Track it down Seems like 10mb decode and 10-15mb encode
 /**
  * Encode frames sent into the encoderInputSurface
  *
@@ -48,7 +48,6 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
     val videoEncoderCallback: VideoEncoderCallback
     val encoderVideoFormat: MediaFormat
     var videoDecodeComplete = false
-    var numDecodedVideoFrames = AtomicInteger(0)
     var videoEncodeComplete = false
     var numEncodedVideoFrames = AtomicInteger(0)
 
@@ -77,14 +76,14 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
     val audioBufferListener : AudioBufferManager.AudioBufferManagerListener
 
     init{
-        videoEncoder = MediaCodec.createByCodecName(viewModel.videoEncoderCodecInfo?.getName()!!)
+        videoEncoder = createByCodecName(viewModel.videoEncoderCodecInfo?.getName()!!)
         encoderVideoFormat = viewModel.encoderVideoFormat
 
         // Save encoder width and height for surfaces that use this encoder
         width = encoderVideoFormat.getInteger(KEY_WIDTH)
         height = encoderVideoFormat.getInteger(KEY_HEIGHT)
 
-        audioEncoder = MediaCodec.createByCodecName(viewModel.audioEncoderCodecInfo?.getName()!!)
+        audioEncoder = createByCodecName(viewModel.audioEncoderCodecInfo?.getName()!!)
         encoderAudioFormat = viewModel.encoderAudioFormat
 
         // Use asynchronous modes with callbacks - encoding logic contained in the callback classes
@@ -172,7 +171,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
      * manually check if the encode is complete.
      */
     fun checkIfEncodeDone() {
-        if ((videoDecodeComplete && audioEncodeComplete && (numEncodedVideoFrames.get() == numDecodedVideoFrames.get()))) {
+        if ((videoDecodeComplete && audioEncodeComplete && (numEncodedVideoFrames.get() == frameLedger.frames_rendered.get()))) {
             endTime = System.currentTimeMillis()
             val totalTime = (endTime - startTime) / 1000.0
             val totalFPS = numEncodedVideoFrames.get() / totalTime
@@ -397,19 +396,14 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                 val inputBuffer = codec.getInputBuffer(bufferIndex)
                 if (inputBuffer != null) {
                     // Copy remaining bytes up to the encoder buffers max length
-                    var bytesToCopy = Math.min(inputBuffer.capacity(), it.buffer.remaining())
-                    bytesToCopy = Math.min(bytesToCopy, it.size)
+                    val bytesToCopy = inputBuffer.capacity().coerceAtMost(it.buffer.remaining()) // Like Math.min
                     var copyToPosition = it.buffer.position() + bytesToCopy
-
-                    //if (bytesToCopy != 4096 && it.buffer.position() != 0) {
-                    //    viewModel.updateLog("${it.presentationTimeUs}us: BYTES TO COPY = ${bytesToCopy}, pos: ${it.buffer.position()}, cap: ${it.buffer.capacity()}, old limit: ${it.buffer.limit()}")
-                    //}
 
                     // Something is wrong, do not copy anything
                     // TODO: This case happens sometimes randomly and causes a IllegalArgumentException in setting it.buffer.limit(copyToPosition)
-                    // This check should not be necessary. Figure out why bytesToCopy can be -'ve or buffer capacity can be incorrect
+                    // This check should not be necessary. Figure out why bytesToCopy can exceed it.buffer.remaining()...
                     if (bytesToCopy < 0 || copyToPosition > it.buffer.capacity()) {
-                        viewModel.updateLog("Something wrong at ${it.presentationTimeUs}us: copy to position: ${copyToPosition}, bytesToCopy = ${bytesToCopy}, pos: ${it.buffer.position()}, cap: ${it.buffer.capacity()}, old limit: ${it.buffer.limit()}. Not copying data.")
+                        viewModel.updateLog("Something wrong copying audio data to encoder at ${it.presentationTimeUs}us: copy to position: ${copyToPosition}, bytesToCopy = ${bytesToCopy}, pos: ${it.buffer.position()}, cap: ${it.buffer.capacity()}, old limit: ${it.buffer.limit()}, remaining: ${it.buffer.remaining()}. Not copying data.")
                         copyToPosition = it.buffer.position()
                     }
 

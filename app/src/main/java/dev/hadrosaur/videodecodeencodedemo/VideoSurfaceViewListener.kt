@@ -23,7 +23,7 @@ import android.view.TextureView
 import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.logd
 import kotlinx.android.synthetic.main.activity_main.*
 
-class VideoSurfaceViewListener(val mainActivity: MainActivity) : SurfaceHolder.Callback {
+class VideoSurfaceViewListener(val mainActivity: MainActivity, val surfaceNumber: Int) : SurfaceHolder.Callback {
     override fun surfaceChanged(holder: SurfaceHolder?, format: Int, width: Int, height: Int) {
     }
 
