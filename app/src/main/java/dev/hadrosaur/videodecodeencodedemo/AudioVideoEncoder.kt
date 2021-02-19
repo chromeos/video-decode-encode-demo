@@ -44,16 +44,16 @@ import java.util.concurrent.atomic.AtomicInteger
 class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFrameLedger, val audioBufferManager: AudioBufferManager) {
     // Video encoding variables
     val videoEncoderInputSurface: Surface
-    val videoEncoder: MediaCodec
-    val videoEncoderCallback: VideoEncoderCallback
-    val encoderVideoFormat: MediaFormat
     var videoDecodeComplete = false
     var videoEncodeComplete = false
     var numEncodedVideoFrames = AtomicInteger(0)
+    private val videoEncoder: MediaCodec
+    private val videoEncoderCallback: VideoEncoderCallback
+    private val encoderVideoFormat: MediaFormat
 
     // Video encoder default values, will be changed when video encoder is set up
-    var width = 1920
-    var height = 1080
+    var encoderWidth = 1920
+    var encoderHeight = 1080
 
     // FPS trackers
     var startTime = 0L
@@ -80,8 +80,8 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
         encoderVideoFormat = viewModel.encoderVideoFormat
 
         // Save encoder width and height for surfaces that use this encoder
-        width = encoderVideoFormat.getInteger(KEY_WIDTH)
-        height = encoderVideoFormat.getInteger(KEY_HEIGHT)
+        encoderWidth = encoderVideoFormat.getInteger(KEY_WIDTH)
+        encoderHeight = encoderVideoFormat.getInteger(KEY_HEIGHT)
 
         audioEncoder = createByCodecName(viewModel.audioEncoderCodecInfo?.getName()!!)
         encoderAudioFormat = viewModel.encoderAudioFormat

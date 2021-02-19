@@ -359,8 +359,8 @@ class MainActivity : AppCompatActivity() {
                 // Set up encode and decode surfaces
                 videoSurfaceManager.initialize(player.videoComponent as Player.VideoComponent,
                     audioVideoEncoder.videoEncoderInputSurface,
-                    audioVideoEncoder.width,
-                    audioVideoEncoder.height)
+                    audioVideoEncoder.encoderWidth,
+                    audioVideoEncoder.encoderHeight)
 
                 // Start the encoder
                 audioVideoEncoder.startEncode()
