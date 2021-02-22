@@ -25,20 +25,20 @@ import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 import java.nio.ByteBuffer
 
-fun getBufferDurationUs(bytesWritten: Int, format: MediaFormat): Long {
+fun getBufferDurationUs(bytes: Int, format: MediaFormat): Long {
     val bytesPerFrame = format.getInteger(KEY_CHANNEL_COUNT) * 2
     val sampleRate = format.getInteger(KEY_SAMPLE_RATE)
-    return getBufferDurationUs(bytesWritten, bytesPerFrame, sampleRate)
+    return getBufferDurationUs(bytes, bytesPerFrame, sampleRate)
 }
 
-fun getBufferDurationUs(bytesWritten: Int, format: Format): Long {
+fun getBufferDurationUs(bytes: Int, format: Format): Long {
     val bytesPerFrame = format.channelCount * 2 // 2 bytes per frame for 16-bit PCM
     val sampleRate = format.sampleRate
-    return getBufferDurationUs(bytesWritten, bytesPerFrame, sampleRate)
+    return getBufferDurationUs(bytes, bytesPerFrame, sampleRate)
 }
 
-fun getBufferDurationUs(bytesWritten: Int, bytesPerFrame: Int, sampleRate: Int): Long {
-    val framesWritten = bytesWritten / bytesPerFrame
+fun getBufferDurationUs(bytes: Int, bytesPerFrame: Int, sampleRate: Int): Long {
+    val framesWritten = bytes / bytesPerFrame
     return framesWritten * C.MICROS_PER_SECOND / sampleRate
 }
 

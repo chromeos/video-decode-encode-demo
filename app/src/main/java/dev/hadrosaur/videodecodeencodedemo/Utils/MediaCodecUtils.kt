@@ -18,6 +18,7 @@ package dev.hadrosaur.videodecodeencodedemo.Utils
 
 import android.content.res.AssetFileDescriptor
 import android.media.*
+import android.util.Log
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 
@@ -347,8 +348,8 @@ fun setDefaultEncoderFormats(mainActivity: MainActivity, viewModel: MainViewMode
     viewModel.encoderAudioFormat = getBestAudioEncodingFormat(videoFd)
 
     // Encoder debug info
-    //viewModel.updateLog("Video encoder: ${viewModel.videoEncoderCodecInfo?.name}, ${viewModel.encoderVideoFormat}")
-    //viewModel.updateLog("Audio encoder: ${viewModel.audioEncoderCodecInfo?.name},  ${viewModel.encoderAudioFormat}")
+    // viewModel.updateLog("Video encoder: ${viewModel.videoEncoderCodecInfo?.name}, ${viewModel.encoderVideoFormat}")
+    // viewModel.updateLog("Audio encoder: ${viewModel.audioEncoderCodecInfo?.name},  ${viewModel.encoderAudioFormat}")
 
     videoFd.close()
 }

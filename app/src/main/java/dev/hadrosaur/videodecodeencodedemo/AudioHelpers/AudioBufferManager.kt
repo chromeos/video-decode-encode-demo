@@ -18,6 +18,7 @@ package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.LinkedBlockingQueue
 
 class AudioBufferManager {
@@ -29,20 +30,37 @@ class AudioBufferManager {
         fun newAudioData()
     }
 
-    val queue = LinkedBlockingQueue<AudioBuffer>()
+    private val queue = LinkedBlockingDeque<AudioBuffer>()
     var listener: AudioBufferManagerListener? = null
     var audioDecodeComplete = false
 
     /**
      * Adds AudioBuffer to the queue. If a callback is registered, trigger it
      */
-    fun addData(audioBuffer: AudioBuffer): Boolean {
+    fun addData(audioBuffer: AudioBuffer, triggerCallback: Boolean = true): Boolean {
+        // Add to tail of queue
         val success = queue.add(audioBuffer)
 
         // If there is a listener registered, trigger it
-        listener?.newAudioData()
+        if (triggerCallback) {
+            listener?.newAudioData()
+        }
 
         return success
+    }
+
+    fun addDataFirst(audioBuffer: AudioBuffer, triggerCallback: Boolean = true) {
+        // Add to front of queue
+        queue.addFirst(audioBuffer)
+
+        // If there is a listener registered, trigger it
+        if (triggerCallback) {
+            listener?.newAudioData()
+        }
+    }
+
+    fun pollData() : AudioBuffer? {
+        return queue.poll()
     }
 }
 

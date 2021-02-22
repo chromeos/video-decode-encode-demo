@@ -346,6 +346,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
     inner class AudioEncoderCallback(val viewModel: MainViewModel, var format: MediaFormat): MediaCodec.Callback() {
         private val muxingQueue = LinkedBlockingQueue<MuxingBuffer>()
         private val inputBufferQueue = LinkedBlockingQueue<InputBufferIndex>()
+        private var lastMuxedAudioPresentationTimeUs = 0L
         private var numMuxedBuffers = 0
 
         // Called when there is audio data ready to go. If there are any queued input buffers, use
@@ -355,7 +356,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
             var inputBufferIndex = inputBufferQueue.peek()
 
             while(inputBufferIndex != null) {
-                val audioBuffer = audioBufferManager.queue.poll()
+                val audioBuffer = audioBufferManager.pollData()
 
                 if (audioBuffer != null) {
                     // There is audio data and an input buffer. Encode it.
@@ -384,7 +385,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                 inputBufferQueue.add(InputBufferIndex(codec, index)) // Queue for onNewAudioData
 
             } else {
-                val audioBuffer = audioBufferManager.queue.poll()
+                val audioBuffer = audioBufferManager.pollData()
                 if (audioBuffer != null) {
                     // There is audio data and an input buffer. Encode it.
                     encodeAudioData(codec, index, audioBuffer)
@@ -430,11 +431,13 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
 
                     // If not all bytes from buffer could be sent to the encoder, re-queue remaining
                     // bytes into the audio buffer manager.
+                    // TODO: this seems to work correctly, but creates pure static on the right channel for HTC 10 which has a smaller input buffer.
                     if (it.buffer.hasRemaining()) {
-                        viewModel.updateLog("Audio data did not fit into encoder input buffer, re-queueing remaining data. Remaining: ${it.buffer.remaining()}, limit: ${it.buffer.limit()}, pos: ${it.buffer.position()}")
+                        // viewModel.updateLog("Audio data did not fit into encoder input buffer, re-queueing remaining data. Remaining: ${it.buffer.remaining()}, limit: ${it.buffer.limit()}, pos: ${it.buffer.position()}")
+                        // viewModel.updateLog("Buffer duration for re-queue: ${bufferDurationUs}")
                         val bufferDurationUs = getBufferDurationUs(bytesToCopy, format)
                         it.presentationTimeUs += bufferDurationUs
-                        audioBufferManager.addData(it)
+                        audioBufferManager.addDataFirst(it, false)
                     }
                 }
             }
@@ -474,14 +477,37 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                             if (!muxingQueue.isEmpty()) {
                                 while(muxingQueue.peek() != null) {
                                     val muxingBuffer = muxingQueue.poll()
+
+                                    // On devices where the encoder input buffer size is less than
+                                    // the decoder output buffer size, there can be multiple buffers
+                                    // with the same presentation time (left and right channels).
+                                    // Very occasionally this can drift by a few micro-seconds.
+                                    // Force it to be no earlier than the present mux position.
+                                    if (muxingBuffer.info.presentationTimeUs < lastMuxedAudioPresentationTimeUs) {
+                                        viewModel.updateLog("Presentation time muxed buffer ${muxingBuffer.info.presentationTimeUs} is in the past, adjusting to ${lastMuxedAudioPresentationTimeUs} to prevent muxing errors.")
+                                        muxingBuffer.info.presentationTimeUs = lastMuxedAudioPresentationTimeUs
+                                    }
+
                                     muxer?.writeSampleData(audioTrackIndex, muxingBuffer.buffer, muxingBuffer.info)
+                                    lastMuxedAudioPresentationTimeUs = muxingBuffer.info.presentationTimeUs
                                     numMuxedBuffers++
                                     // viewModel.updateLog("Muxing audio buffer out #${numMuxedBuffers} of mux queue: ${muxingBuffer.info.presentationTimeUs}, size: ${muxingBuffer.info.size},  flags: ${info.flags}, offset: ${info.offset}")
                                 }
                             }
 
+                            // On devices where the encoder input buffer size is less than
+                            // the decoder output buffer size, there can be multiple buffers
+                            // with the same presentation time (left and right channels).
+                            // Very occasionally this can drift by a few micro-seconds.
+                            // Force it to be no earlier than the present mux position.
+                            if (info.presentationTimeUs < lastMuxedAudioPresentationTimeUs) {
+                                viewModel.updateLog("Presentation time muxed buffer ${info.presentationTimeUs} is in the past, adjusting to ${lastMuxedAudioPresentationTimeUs} to prevent muxing errors.")
+                                info.presentationTimeUs = lastMuxedAudioPresentationTimeUs
+                            }
+
                             // Send the new frame to the muxer
                             muxer?.writeSampleData(audioTrackIndex, outputBuffer, info)
+                            lastMuxedAudioPresentationTimeUs = info.presentationTimeUs
                             numMuxedBuffers++
                             // viewModel.updateLog("Muxed audio buffer #${numMuxedBuffers}: ${info.presentationTimeUs}, size: ${info.size}, flags: ${info.flags}, offset: ${info.offset}")
                         }
