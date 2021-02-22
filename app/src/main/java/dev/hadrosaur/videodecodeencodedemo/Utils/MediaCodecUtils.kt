@@ -148,8 +148,8 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
 
     // Settings to copy from the original video format
     val intFormatSettings = ArrayList<String>()
-    intFormatSettings.add(MediaFormat.KEY_LEVEL)
-    intFormatSettings.add(MediaFormat.KEY_PROFILE)
+    // intFormatSettings.add(MediaFormat.KEY_LEVEL)
+    // intFormatSettings.add(MediaFormat.KEY_PROFILE)
     intFormatSettings.add(MediaFormat.KEY_PRIORITY)
     intFormatSettings.add(MediaFormat.KEY_WIDTH)
     intFormatSettings.add(MediaFormat.KEY_HEIGHT)
@@ -268,23 +268,29 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
         val profileLevels = capabilities.profileLevels
         var containsProfile = false
         for (profileLevel in profileLevels) {
-            if (profileLevel.profile == encoderFormat.getInteger(MediaFormat.KEY_PROFILE) && profileLevel.level == encoderFormat.getInteger(
-                    MediaFormat.KEY_LEVEL
-                )) {
-                containsProfile = true
+            if (profileLevel.profile == inputMediaFormat.getInteger(MediaFormat.KEY_PROFILE)
+                && profileLevel.level == inputMediaFormat.getInteger(MediaFormat.KEY_LEVEL)) {
+                    // This encoder supports the input media profile/level, use it for the encoder
+                    encoderFormat.setInteger(MediaFormat.KEY_PROFILE, inputMediaFormat.getInteger(MediaFormat.KEY_PROFILE))
+                    encoderFormat.setInteger(MediaFormat.KEY_LEVEL, inputMediaFormat.getInteger(MediaFormat.KEY_LEVEL))
+                    containsProfile = true
             }
         }
+
         // If this encoder cannot encode with this level and profile, choose something basic
+        // TODO: Seems to be better just to let the device default. Some Samsung phones don't support Main Profile 4
         if (!containsProfile) {
-            // Basically everything should support this
-            encoderFormat.setInteger(
-                MediaFormat.KEY_PROFILE,
-                MediaCodecInfo.CodecProfileLevel.AVCProfileMain
-            )
-            encoderFormat.setInteger(
-                MediaFormat.KEY_PROFILE,
-                MediaCodecInfo.CodecProfileLevel.AVCLevel4
-            )
+            /*
+                // Basically everything should support this
+                encoderFormat.setInteger(
+                    MediaFormat.KEY_PROFILE,
+                    MediaCodecInfo.CodecProfileLevel.AVCProfileMain
+                )
+                encoderFormat.setInteger(
+                    MediaFormat.KEY_PROFILE,
+                    MediaCodecInfo.CodecProfileLevel.AVCLevel4
+                )
+            */
         }
     }
 

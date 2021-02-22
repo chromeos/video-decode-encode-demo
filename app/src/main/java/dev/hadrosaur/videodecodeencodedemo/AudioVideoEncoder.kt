@@ -178,7 +178,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
             val timeString = String.format("%.2f", totalTime)
             val FPSString = String.format("%.2f", totalFPS)
 
-            viewModel.updateLog("Encode done, written to ${encodedFilename}. ${numEncodedVideoFrames.get()} frames in ${timeString}s (${FPSString}fps).")
+            viewModel.updateLog("Encode done, written to ${encodedFilename}. ${numEncodedVideoFrames.get()} video frames in ${timeString}s (${FPSString}fps).")
             signalEncodingComplete()
             finishEncode()
         }
@@ -394,7 +394,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
 
         private fun encodeAudioData(codec: MediaCodec, bufferIndex: Int, audioBuffer: AudioBuffer) {
             audioBuffer.let { // it == the queued AudioBuffer
-                viewModel.updateLog("I am encoding audio buffer #${audioBuffer.id} @ time ${audioBuffer.presentationTimeUs}")
+                // viewModel.updateLog("I am encoding audio buffer #${audioBuffer.id} @ time ${audioBuffer.presentationTimeUs}")
 
                 // Get the available encoder input buffer
                 val inputBuffer = codec.getInputBuffer(bufferIndex)
@@ -476,14 +476,14 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                                     val muxingBuffer = muxingQueue.poll()
                                     muxer?.writeSampleData(audioTrackIndex, muxingBuffer.buffer, muxingBuffer.info)
                                     numMuxedBuffers++
-                                     viewModel.updateLog("Muxing audio buffer out #${numMuxedBuffers} of mux queue: ${muxingBuffer.info.presentationTimeUs}, size: ${muxingBuffer.info.size},  flags: ${info.flags}, offset: ${info.offset}")
+                                    // viewModel.updateLog("Muxing audio buffer out #${numMuxedBuffers} of mux queue: ${muxingBuffer.info.presentationTimeUs}, size: ${muxingBuffer.info.size},  flags: ${info.flags}, offset: ${info.offset}")
                                 }
                             }
 
                             // Send the new frame to the muxer
                             muxer?.writeSampleData(audioTrackIndex, outputBuffer, info)
                             numMuxedBuffers++
-                            viewModel.updateLog("Muxed audio buffer #${numMuxedBuffers}: ${info.presentationTimeUs}, size: ${info.size}, flags: ${info.flags}, offset: ${info.offset}")
+                            // viewModel.updateLog("Muxed audio buffer #${numMuxedBuffers}: ${info.presentationTimeUs}, size: ${info.size}, flags: ${info.flags}, offset: ${info.offset}")
                         }
                     }
                 } // when
