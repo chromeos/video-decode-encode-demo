@@ -31,6 +31,7 @@ class AudioBufferManager {
 
     val queue = LinkedBlockingQueue<AudioBuffer>()
     var listener: AudioBufferManagerListener? = null
+    var audioDecodeComplete = false
 
     /**
      * Adds AudioBuffer to the queue. If a callback is registered, trigger it

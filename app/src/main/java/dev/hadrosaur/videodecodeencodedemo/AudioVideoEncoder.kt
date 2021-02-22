@@ -344,19 +344,18 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
      * Muxing happens (or is queued) when onOutputBufferAvailable is called
      */
     inner class AudioEncoderCallback(val viewModel: MainViewModel, var format: MediaFormat): MediaCodec.Callback() {
-        val muxingQueue = LinkedBlockingQueue<MuxingBuffer>()
-        val inputBufferQueue = LinkedBlockingQueue<InputBufferIndex>()
-        var numMuxedBuffers = 0
+        private val muxingQueue = LinkedBlockingQueue<MuxingBuffer>()
+        private val inputBufferQueue = LinkedBlockingQueue<InputBufferIndex>()
+        private var numMuxedBuffers = 0
 
         // Called when there is audio data ready to go. If there are any queued input buffers, use
-        // them up.
+        // them.
         fun onNewAudioData() {
+            // See if there are any input buffers ready to be used
             var inputBufferIndex = inputBufferQueue.peek()
 
             while(inputBufferIndex != null) {
-                // Queued buffer might be larger the codec input buffer, do not remove from queue
-                // yet. encodeAudioData will remove it when all data is processed.
-                val audioBuffer = audioBufferManager.queue.peek()
+                val audioBuffer = audioBufferManager.queue.poll()
 
                 if (audioBuffer != null) {
                     // There is audio data and an input buffer. Encode it.
@@ -365,33 +364,38 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                     // Remove used input buffer index from the queue
                     inputBufferQueue.poll()
                 } else {
-                    // Not any(more) audio data, exit
+                    // No more audio data, exit
                     break
                 }
 
                 // Check if there are anymore input buffers that can be used, don't remove until
-                // it is used.
+                // it is actually used.
                 inputBufferIndex = inputBufferQueue.peek()
             }
         }
 
-        // Encoder is ready buffers to encode
+        // Encoder has input buffers ready to encode
         override fun onInputBufferAvailable(codec: MediaCodec, index: Int) {
-            // Queued buffer might be larger the codec input buffer, do not remove from queue yet
-            val audioBuffer = audioBufferManager.queue.peek()
+            // Most of the time, the encode is "driven" by new data - when onNewAudioData is called,
+            // In this case, just queue the input buffer for the next onNewAudioData call.
+            // After the audio decode is complete, the encode will be driven here instead, when a
+            // new input buffer become available.
+            if (!audioBufferManager.audioDecodeComplete) {
+                inputBufferQueue.add(InputBufferIndex(codec, index)) // Queue for onNewAudioData
 
-            if (audioBuffer != null) {
-                // There is audio data and an input buffer. Encode it.
-                encodeAudioData(codec, index, audioBuffer)
             } else {
-                // No audio data yet, queue this input buffer so it can be used when data is available
-                inputBufferQueue.add(InputBufferIndex(codec, index))
+                val audioBuffer = audioBufferManager.queue.poll()
+                if (audioBuffer != null) {
+                    // There is audio data and an input buffer. Encode it.
+                    encodeAudioData(codec, index, audioBuffer)
+                }
             }
-
         }
 
-        fun encodeAudioData(codec: MediaCodec, bufferIndex: Int, audioBuffer: AudioBuffer) {
-            audioBuffer.let { // The queued audio buffer
+        private fun encodeAudioData(codec: MediaCodec, bufferIndex: Int, audioBuffer: AudioBuffer) {
+            audioBuffer.let { // it == the queued AudioBuffer
+                viewModel.updateLog("I am encoding audio buffer #${audioBuffer.id} @ time ${audioBuffer.presentationTimeUs}")
+
                 // Get the available encoder input buffer
                 val inputBuffer = codec.getInputBuffer(bufferIndex)
                 if (inputBuffer != null) {
@@ -400,10 +404,9 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                     var copyToPosition = it.buffer.position() + bytesToCopy
 
                     // Something is wrong, do not copy anything
-                    // TODO: This case happens sometimes randomly and causes a IllegalArgumentException in setting it.buffer.limit(copyToPosition)
-                    // This check should not be necessary. Figure out why bytesToCopy can exceed it.buffer.remaining()...
-                    if (bytesToCopy < 0 || copyToPosition > it.buffer.capacity()) {
-                        viewModel.updateLog("Something wrong copying audio data to encoder at ${it.presentationTimeUs}us: copy to position: ${copyToPosition}, bytesToCopy = ${bytesToCopy}, pos: ${it.buffer.position()}, cap: ${it.buffer.capacity()}, old limit: ${it.buffer.limit()}, remaining: ${it.buffer.remaining()}. Not copying data.")
+                    // TODO: This should be fixed now, leaving this check in for a bit to be sure
+                    if (bytesToCopy <= 0 || copyToPosition > it.buffer.capacity()) {
+                        viewModel.updateLog("Something is wrong wrong copying audio data to encoder at ${it.presentationTimeUs}us: copy to position: ${copyToPosition}, bytesToCopy = ${bytesToCopy}, pos: ${it.buffer.position()}, cap: ${it.buffer.capacity()}, old limit: ${it.buffer.limit()}, remaining: ${it.buffer.remaining()}. Not copying data.")
                         copyToPosition = it.buffer.position()
                     }
 
@@ -425,13 +428,13 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                     // Send to the encoder
                     codec.queueInputBuffer(bufferIndex, 0, bytesToCopy, it.presentationTimeUs, if(it.isLastBuffer) BUFFER_FLAG_END_OF_STREAM else 0)
 
-                    // If all bytes from the queued buffer have been sent to the encoder, remove from the queue
-                    // Otherwise, advance the presentation time for the next chunk of the queued buffer
-                    if (!it.buffer.hasRemaining()) {
-                        audioBufferManager.queue.poll()
-                    } else {
+                    // If not all bytes from buffer could be sent to the encoder, re-queue remaining
+                    // bytes into the audio buffer manager. Normally this should not happen.
+                    if (it.buffer.hasRemaining()) {
+                        viewModel.updateLog("Audio data did not fit into encoder input buffer, re-queueing remaining data. Remaining: ${it.buffer.remaining()}, limit: ${it.buffer.limit()}, pos: ${it.buffer.position()}")
                         val bufferDurationUs = getBufferDurationUs(bytesToCopy, format)
                         it.presentationTimeUs += bufferDurationUs
+                        audioBufferManager.addData(it)
                     }
                 }
             }
@@ -473,20 +476,21 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                                     val muxingBuffer = muxingQueue.poll()
                                     muxer?.writeSampleData(audioTrackIndex, muxingBuffer.buffer, muxingBuffer.info)
                                     numMuxedBuffers++
-                                    // viewModel.updateLog("Muxing audio buffer out #${numMuxedBuffers} of mux queue: ${muxingBuffer.info.presentationTimeUs}, size: ${muxingBuffer.info.size},  flags: ${info.flags}, offset: ${info.offset}")
+                                     viewModel.updateLog("Muxing audio buffer out #${numMuxedBuffers} of mux queue: ${muxingBuffer.info.presentationTimeUs}, size: ${muxingBuffer.info.size},  flags: ${info.flags}, offset: ${info.offset}")
                                 }
                             }
 
                             // Send the new frame to the muxer
                             muxer?.writeSampleData(audioTrackIndex, outputBuffer, info)
                             numMuxedBuffers++
-                            // viewModel.updateLog("Muxed audio buffer #${numMuxedBuffers}: ${info.presentationTimeUs}, size: ${info.size}, flags: ${info.flags}, offset: ${info.offset}")
+                            viewModel.updateLog("Muxed audio buffer #${numMuxedBuffers}: ${info.presentationTimeUs}, size: ${info.size}, flags: ${info.flags}, offset: ${info.offset}")
                         }
                     }
                 } // when
             }
-            // viewModel.updateLog("I have muxed ${numMuxedBuffers} audio buffers.")
+            // viewModel.updateLog("I have muxed ${numMuxedBuffers} audio buffers. Is audio encode done? ${audioEncodeComplete}")
             codec.releaseOutputBuffer(index, false)
+            checkIfEncodeDone()
         }
 
         override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {

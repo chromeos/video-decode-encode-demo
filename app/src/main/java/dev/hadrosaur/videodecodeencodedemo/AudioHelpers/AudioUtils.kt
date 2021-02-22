@@ -56,6 +56,7 @@ fun cloneByteBuffer(original: ByteBuffer): ByteBuffer {
     // Create a read-only copy of the original so position is not altered while reading
     val readOnlyCopy = original.asReadOnlyBuffer()
 
+    // Note: this does not need to be released manually
     val clone =
         if (readOnlyCopy.isDirect)
             ByteBuffer.allocateDirect(readOnlyCopy.remaining())

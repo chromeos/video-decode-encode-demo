@@ -23,6 +23,7 @@ import java.nio.ByteBuffer
  */
 class AudioBuffer(
     val buffer: ByteBuffer,
+    val id: Int,
     var presentationTimeUs: Long,
     val lengthUs: Long,
     val size: Int,

@@ -139,6 +139,7 @@ class CopyAndPlayAudioSink(
             audioBufferManager.addData(
                 AudioBuffer(
                     soundBuffer,
+                    numBuffersHandled + 1,
                     presentationTimeUs,
                     bufferLengthUs,
                     buffer.remaining()
@@ -222,7 +223,9 @@ class CopyAndPlayAudioSink(
 
             // Stream is ended, include a fake EOS buffer for the audio encoder
             if (audioBufferManager != null) {
-                audioBufferManager.addData(AudioBuffer(ByteBuffer.allocate(1), lastPosition, 0, 0, true))
+                viewModel.updateLog("Adding EOS audio buffer for Stream ${streamNum}. # == ${numBuffersHandled}")
+                audioBufferManager.addData(AudioBuffer(ByteBuffer.allocate(1), numBuffersHandled + 1, lastPosition, 0, 0, true))
+                audioBufferManager.audioDecodeComplete = true
             }
 
             viewModel.updateLog("All audio buffers handled for Stream ${streamNum}. # == ${numBuffersHandled}")
