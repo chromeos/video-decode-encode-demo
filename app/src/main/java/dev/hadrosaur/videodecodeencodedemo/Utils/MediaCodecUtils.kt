@@ -148,8 +148,6 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
 
     // Settings to copy from the original video format
     val intFormatSettings = ArrayList<String>()
-    // intFormatSettings.add(MediaFormat.KEY_LEVEL)
-    // intFormatSettings.add(MediaFormat.KEY_PROFILE)
     intFormatSettings.add(MediaFormat.KEY_PRIORITY)
     intFormatSettings.add(MediaFormat.KEY_WIDTH)
     intFormatSettings.add(MediaFormat.KEY_HEIGHT)

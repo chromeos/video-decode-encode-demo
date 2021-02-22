@@ -429,7 +429,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                     codec.queueInputBuffer(bufferIndex, 0, bytesToCopy, it.presentationTimeUs, if(it.isLastBuffer) BUFFER_FLAG_END_OF_STREAM else 0)
 
                     // If not all bytes from buffer could be sent to the encoder, re-queue remaining
-                    // bytes into the audio buffer manager. Normally this should not happen.
+                    // bytes into the audio buffer manager.
                     if (it.buffer.hasRemaining()) {
                         viewModel.updateLog("Audio data did not fit into encoder input buffer, re-queueing remaining data. Remaining: ${it.buffer.remaining()}, limit: ${it.buffer.limit()}, pos: ${it.buffer.position()}")
                         val bufferDurationUs = getBufferDurationUs(bytesToCopy, format)
