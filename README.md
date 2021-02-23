@@ -13,7 +13,7 @@ The aim of this project is to:
 The demo app decodes 4, 30-second 1080p video streams without frame-dropping via a 
 SurfaceTexture. A simple GL filter (Sepia) is provided as well as sample export/encoding code. 
 
-<img alt="Screenshot of VideoDecodeEncodeDemo" src="https://github.com/chromeos/video-decode-encode-demo/blob/master/VideoDecodeEncodeDemo-Screenshot.png" width="200" />
+<img alt="Screenshot of VideoDecodeEncodeDemo" src="https://github.com/chromeos/video-decode-encode-demo/blob/master/docs/VideoDecodeEncodeDemo-Screenshot.png" width="200" />
 
 ## Details
 ### The "Frame Dropping Problem"
@@ -96,6 +96,7 @@ caveats below.
 in playback during decode).
 
 For detailed architecture notes and diagrams, see [Architecture.md](docs/Architecture.md).
+<img alt="Detailed demo architecture showing main, exoplayer, audio buffers, video frames, preview, and encoding with internal structures including internal data flow." src="https://github.com/chromeos/video-decode-encode-demo/blob/master/docs/VideoDemo-04-Full.png" />
 
 ### Notes/Caveats
  * Because decoding is done to a `SurfaceTexture`, the preview and export renders must take into the
@@ -133,7 +134,7 @@ during the decode/encode
 from the first media stream and re-encode it (with filter effects if selected)
 * Preview rate has no effect on the encoding - all frames will always be encoded
 
-<img alt="Screenshot of VideoDecodeEncodeDemo on a Chromebook" src="https://github.com/chromeos/video-decode-encode-demo/blob/master/VideoDecodeEncodeDemo-Chromebook.png" />
+<img alt="Screenshot of VideoDecodeEncodeDemo on a Chromebook" src="https://github.com/chromeos/video-decode-encode-demo/blob/master/docs/VideoDecodeEncodeDemo-Chromebook.png" />
 
 ## LICENSE
 ***

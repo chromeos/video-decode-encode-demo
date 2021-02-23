@@ -59,4 +59,5 @@ The audio and video data is muxed together and saved using `MediaMuxer`.  If aud
 <img alt="Detailed demo architecture showing places video and audio filters can be inserted." src="https://github.com/chromeos/video-decode-encode-demo/blob/master/docs/VideoDemo-05-Filters.png" />
 This diagram indicates the easiest place in the architecture to insert video and audio effects. This could include providing multiple video decode surfaces to an OpenGL shader that could blend the multiple streams using multiple texture samplers or other OpenGL effects. The demo provides a simple, togglable sepia filter as an example.
 
+
 Raw PCM audio buffers pass through the `CopyAndPlayAudioSink` and audio could be filtered there before playback and being stored in the `AudioBufferManager`. Alternatively, buffers could be filtered in the `AudioBufferManager` prior to playback or encoder which could make more advanced effects possible.
