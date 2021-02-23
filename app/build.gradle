@@ -24,6 +24,7 @@ android {
     compileSdkVersion 29
     buildToolsVersion "29.0.3"
 
+    // TODO: min version could probably be 21 or 24, possibly lower. Verify and lower.
     defaultConfig {
         applicationId "dev.hadrosaur.videodecodeencodedemo"
         minSdkVersion 26
