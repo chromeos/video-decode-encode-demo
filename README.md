@@ -13,8 +13,6 @@ The aim of this project is to:
 The demo app decodes 4, 30-second 1080p video streams without frame-dropping via a 
 SurfaceTexture. A simple GL filter (Sepia) is provided as well as sample export/encoding code. 
 
-In future versions, audio will be included in the export as well as an mp3 audio track.
-
 <img alt="Screenshot of VideoDecodeEncodeDemo" src="https://github.com/chromeos/video-decode-encode-demo/blob/master/VideoDecodeEncodeDemo-Screenshot.png" width="200" />
 
 ## Details
@@ -94,7 +92,10 @@ encoding logic is contained within `VideoEncoder.kt` and is a relatively straigh
 of [MediaMuxer](https://developer.android.com/reference/android/media/MediaMuxer), excepting the
 caveats below.
 
-6. Audio. Not currently implemented. For a future release.
+6. Audio. Audio is decoded and decoded and can optionally be previewed (note there will be glitches
+in playback during decode).
+
+For detailed architecture notes and diagrams, see [Architecture.md](docs/Architecture.md).
 
 ### Notes/Caveats
  * Because decoding is done to a `SurfaceTexture`, the preview and export renders must take into the
@@ -105,7 +106,7 @@ caveats below.
  frame from the decoding step while the frame is being copied and passed from surface to surface -
  which do not intrinsically track this information -
  otherwise the media will be played/encoded at the incorrect rate, with slow-downs and speed-ups.
- Presentation times in the demo are stored in the `FrameLedger`.
+ Presentation times in the demo are stored in the `VideoFrameLedger`.
  * Because the demo decodes as fast as possible, the preview will not take into account variable
  rate media and just show the frames as fast as they are decoded/rendered.
  * Currently, the demo assumes that frames received from the renderer will be fed into and exit the
@@ -137,7 +138,7 @@ from the first media stream and re-encode it (with filter effects if selected)
 ## LICENSE
 ***
 
-Copyright 2020 Google LLC
+Copyright 2021 Google LLC
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

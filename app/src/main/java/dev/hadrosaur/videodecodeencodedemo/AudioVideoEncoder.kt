@@ -33,7 +33,6 @@ import java.nio.ByteBuffer
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicInteger
 
-
 // TODO: there is a memory leak of about 20mb per run. Track it down Seems like 10mb decode and 10-15mb encode
 /**
  * Encode frames sent into the encoderInputSurface
@@ -44,9 +43,9 @@ import java.util.concurrent.atomic.AtomicInteger
 class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFrameLedger, val audioBufferManager: AudioBufferManager) {
     // Video encoding variables
     val videoEncoderInputSurface: Surface
-    var videoDecodeComplete = false
-    var videoEncodeComplete = false
     var numEncodedVideoFrames = AtomicInteger(0)
+    private var videoDecodeComplete = false
+    private var videoEncodeComplete = false
     private val videoEncoder: MediaCodec
     private val videoEncoderCallback: VideoEncoderCallback
     private val encoderVideoFormat: MediaFormat
@@ -94,6 +93,10 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
         videoEncoder.setCallback(videoEncoderCallback)
         videoEncoder.configure(encoderVideoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
 
+        // Get the input surface from the encoder, decoded frames from the decoder should be
+        // placed here.
+        videoEncoderInputSurface = videoEncoder.createInputSurface()
+
         // Audio encoder
         audioEncoderCallback = AudioEncoderCallback(viewModel, encoderAudioFormat)
         audioEncoder.setCallback(audioEncoderCallback)
@@ -109,10 +112,6 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
             }
         }
         audioBufferManager.listener = audioBufferListener
-
-        // Get the input surface from the encoder, decoded frames from the decoder should be
-        // placed here.
-        videoEncoderInputSurface = videoEncoder.createInputSurface()
 
         // Setup Muxer
         val outputFilename = MainActivity.FILE_PREFIX + "-" + generateTimestamp() + ".mp4"
@@ -209,7 +208,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
         }
 
         /**
-         * A video frame is available from the video encoder.
+         * An encoded video frame is available from the video encoder.
          *
          * If not a config frame, send it to the muxer. There are 2 possible queues a frame may be
          * added to:
@@ -222,7 +221,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
         override fun onOutputBufferAvailable(
             codec: MediaCodec,
             index: Int,
-            info: MediaCodec.BufferInfo
+            info: BufferInfo
         ) {
             val outputBuffer = codec.getOutputBuffer(index)
 
@@ -235,8 +234,9 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                     }
 
                     BUFFER_FLAG_END_OF_STREAM -> {
-
+                        // Do nothing
                     }
+
                     // Else, mux this frame
                     else -> {
                         val frameNum = numEncodedVideoFrames.incrementAndGet()
@@ -246,7 +246,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                         // hit the decoder output surface in the same order as they exit the encoder.
                         // If this assumption is not true, frames may be encoded out of order.
                         // If the ledger value is not stored by this point in the code,
-                        // add the frame to the ledger queue to be muxed when we the correct time
+                        // add the frame to the ledger queue to be muxed when we get the correct time
                         if (frameLedger.encodeLedger.containsKey(frameNum)) {
                             info.presentationTimeUs = frameLedger.encodeLedger.get(frameNum)!!
                             // viewModel.updateLog("Video encoder, got frame number ${frameNum}@${info.presentationTimeUs}, last time was ${lastPresentationTime}.")
@@ -255,19 +255,17 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                             // If the muxer hasn't started yet - eg. if the audio stream hasn't been
                             // configured yet - queue the output data for later.
                             if (!isMuxerRunning) {
-                                viewModel.updateLog("Adding buffer to video muxing buffer: ${frameNum}")
+                                // viewModel.updateLog("Adding buffer to video muxing buffer: ${frameNum}")
                                 muxingQueue.add(MuxingBuffer(cloneByteBuffer(outputBuffer), info))
+
                             } else {
                                 // Mux any buffers that were waiting for the muxer to start
                                 if (!muxingQueue.isEmpty()) {
                                     while (muxingQueue.peek() != null) {
                                         val muxingBuffer = muxingQueue.poll()
-                                        viewModel.updateLog("Muxing buffer out of mux queue: ${muxingBuffer.info.presentationTimeUs}")
+                                        // viewModel.updateLog("Muxing buffer out of mux queue: ${muxingBuffer.info.presentationTimeUs}")
                                         muxer?.writeSampleData(
-                                            videoTrackIndex,
-                                            muxingBuffer.buffer,
-                                            muxingBuffer.info
-                                        )
+                                            videoTrackIndex, muxingBuffer.buffer, muxingBuffer.info)
                                         numMuxedVideoFrames++
                                     }
                                 }
@@ -290,7 +288,6 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
 
                         } else {
                             // No ledger info yet for this buffer, add it to the ledger queue to be processed later
-                            viewModel.updateLog("WARNING: Frame number ${frameNum} not found in ledger, adding to ledgerQueue.")
                             ledgerQueue.add(LedgerBuffer(outputBuffer, info, frameNum))
                         }
                     }
@@ -299,7 +296,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
             } // Is output buffer null
             codec.releaseOutputBuffer(index, false)
 
-//            viewModel.updateLog("I have muxed ${numMuxedVideoFrames} video frames.")
+            // viewModel.updateLog("I have muxed ${numMuxedVideoFrames} video frames.")
 
             // If encode is finished, there will be no more output buffers received, check manually
             // if video encode is finished
@@ -315,6 +312,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
         }
 
         // Mux any buffers in the ledger queue, if the ledger entry is present and muxer is running
+        // TODO: generalise this for the muxingQueue
         fun muxLedgerQueue() {
             while (!ledgerQueue.isEmpty()) {
                 val ledgerBuffer = ledgerQueue.peek()
@@ -322,7 +320,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                 if (frameLedger.encodeLedger.containsKey(ledgerBuffer?.frameNum)) {
                     ledgerBuffer?.info?.presentationTimeUs = frameLedger.encodeLedger.get(ledgerBuffer?.frameNum)!!
                     if (isMuxerRunning) {
-                        viewModel.updateLog("Muxing frame ${ledgerBuffer?.frameNum} from ledger queue at ${ledgerBuffer?.info?.presentationTimeUs}")
+                        // viewModel.updateLog("Muxing frame ${ledgerBuffer?.frameNum} from ledger queue at ${ledgerBuffer?.info?.presentationTimeUs}")
                         muxer?.writeSampleData(videoTrackIndex, ledgerBuffer.buffer, ledgerBuffer.info)
                         numMuxedVideoFrames++
                         ledgerQueue.poll()
@@ -338,10 +336,9 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
      * The callback functions for Audio encoding
      *
      * Encoding can be "driven" in 2 ways.
-     *   1 - onInputBufferAvailable is called. If there is audio data waiting, process it.
-     *   2 - onNewAudioData is (manually) called. If there are queued input buffers, use them.
-     *
-     * Muxing happens (or is queued) when onOutputBufferAvailable is called
+     *   1 - onNewAudioData is called. If there are queued input buffers, use them.
+     *   2 - onInputBufferAvailable is called, if decode is not fully done, queue the buffer. If
+     *   decode is done and these is audio data waiting, process it.
      */
     inner class AudioEncoderCallback(val viewModel: MainViewModel, var format: MediaFormat): MediaCodec.Callback() {
         private val muxingQueue = LinkedBlockingQueue<MuxingBuffer>()
@@ -385,6 +382,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                 inputBufferQueue.add(InputBufferIndex(codec, index)) // Queue for onNewAudioData
 
             } else {
+                // Audio decode is complete so encode is driven here with available input buffers
                 val audioBuffer = audioBufferManager.pollData()
                 if (audioBuffer != null) {
                     // There is audio data and an input buffer. Encode it.
@@ -405,7 +403,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                     var copyToPosition = it.buffer.position() + bytesToCopy
 
                     // Something is wrong, do not copy anything
-                    // TODO: This should be fixed now, leaving this check in for a bit to be sure
+                    // TODO: Remove this check after testing
                     if (bytesToCopy <= 0 || copyToPosition > it.buffer.capacity()) {
                         viewModel.updateLog("Something is wrong wrong copying audio data to encoder at ${it.presentationTimeUs}us: copy to position: ${copyToPosition}, bytesToCopy = ${bytesToCopy}, pos: ${it.buffer.position()}, cap: ${it.buffer.capacity()}, old limit: ${it.buffer.limit()}, remaining: ${it.buffer.remaining()}. Not copying data.")
                         copyToPosition = it.buffer.position()
@@ -433,7 +431,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                     // bytes into the audio buffer manager.
                     // TODO: This does not handle interleaving correctly. For example, if encoder
                     // input buffers are 4096 but decoder output buffers are 8192, with L and then R,
-                    // this will copy things in incorrectly re presentation time.
+                    // this will copy things in incorrectly re: presentation time/ L and R channels.
                     if (it.buffer.hasRemaining()) {
                         // viewModel.updateLog("Audio data did not fit into encoder input buffer (time: ${it.presentationTimeUs}, cap: ${inputBuffer.capacity()}, re-queueing remaining data. Remaining: ${it.buffer.remaining()}, limit: ${it.buffer.limit()}, pos: ${it.buffer.position()}")
                         // viewModel.updateLog("Buffer duration for re-queue: ${bufferDurationUs}")
@@ -448,7 +446,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
         override fun onOutputBufferAvailable(
             codec: MediaCodec,
             index: Int,
-            info: MediaCodec.BufferInfo
+            info: BufferInfo
         ) {
             val outputBuffer = codec.getOutputBuffer(index)
 
@@ -462,7 +460,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                     }
 
                     BUFFER_FLAG_END_OF_STREAM -> {
-                        // Fake audio buffer constructed in AudioSink to indicate EOS. Don't mux.
+                        // This is a fake audio buffer constructed in AudioSink to indicate EOS. Don't mux.
                         audioEncodeComplete = true
                     }
 
@@ -475,8 +473,6 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                             muxingQueue.add(MuxingBuffer(cloneByteBuffer(outputBuffer), info))
 
                         } else {
-                            // TODO: Mux in fake AAC frames
-
                             // Mux any waiting data
                             if (!muxingQueue.isEmpty()) {
                                 while(muxingQueue.peek() != null) {
@@ -487,6 +483,8 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                                     // with the same presentation time (left and right channels).
                                     // Very occasionally this can drift by a few micro-seconds.
                                     // Force it to be no earlier than the present mux position.
+                                    // TODO: this should not be necessary and probably indicates a bug
+                                    // in audio encoding logic
                                     if (muxingBuffer.info.presentationTimeUs < lastMuxedAudioPresentationTimeUs) {
                                         viewModel.updateLog("Presentation time muxed buffer ${muxingBuffer.info.presentationTimeUs} is in the past, adjusting to ${lastMuxedAudioPresentationTimeUs} to prevent muxing errors.")
                                         muxingBuffer.info.presentationTimeUs = lastMuxedAudioPresentationTimeUs
@@ -504,6 +502,8 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                             // with the same presentation time (left and right channels).
                             // Very occasionally this can drift by a few micro-seconds.
                             // Force it to be no earlier than the present mux position.
+                            // TODO: this should not be necessary and probably indicates a bug
+                            // in audio encoding logic
                             if (info.presentationTimeUs < lastMuxedAudioPresentationTimeUs) {
                                 viewModel.updateLog("Presentation time muxed buffer ${info.presentationTimeUs} is in the past, adjusting to ${lastMuxedAudioPresentationTimeUs} to prevent muxing errors.")
                                 info.presentationTimeUs = lastMuxedAudioPresentationTimeUs
@@ -533,6 +533,6 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
     }
 
     inner class InputBufferIndex(val codec: MediaCodec, val index: Int)
-    inner class MuxingBuffer(val buffer: ByteBuffer, val info: MediaCodec.BufferInfo)
-    inner class LedgerBuffer(val buffer: ByteBuffer, val info: MediaCodec.BufferInfo, val frameNum: Int)
+    inner class MuxingBuffer(val buffer: ByteBuffer, val info: BufferInfo)
+    inner class LedgerBuffer(val buffer: ByteBuffer, val info: BufferInfo, val frameNum: Int)
 }

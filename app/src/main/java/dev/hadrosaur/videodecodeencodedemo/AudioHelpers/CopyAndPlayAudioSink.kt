@@ -59,10 +59,6 @@ class CopyAndPlayAudioSink(
     var numBuffersHandled = 0
     var lastPosition = 0L
 
-    private var initialBufferSent = false
-    private var initialBuffer = AudioBuffer(ByteBuffer.allocate(1), -1, 0L, 0L, 0)
-    private var initialBufferLengthUs: Long = 0L
-
     val audioTrack: AudioTrack
 
     init {
@@ -126,11 +122,6 @@ class CopyAndPlayAudioSink(
             inputFormat.sampleRate
         )
 
-        // TODO: Debugging for hunting down missing buffer #2
-        // if (presentationTimeUs < 100000L) {
-        //  logAudioBufferValues(mainActivity, soundBuffer, presentationTimeUs)
-        // }
-
         val expecting = (lastPosition / 1000).toInt()
         val got = (presentationTimeUs / 1000).toInt()
         val missing = got - expecting
@@ -139,16 +130,11 @@ class CopyAndPlayAudioSink(
 
         // If buffer is needed for encoding, copy it out
         if (audioBufferManager != null) {
-//            if (!initialBufferSent) {
-//                initialBufferSent = true
-//                audioBufferManager.addData(initialBuffer)
-//            }
-
             audioBufferManager.addData(
                 AudioBuffer(
                     soundBuffer,
                     numBuffersHandled + 1,
-                    presentationTimeUs + initialBufferLengthUs,
+                    presentationTimeUs,
                     bufferLengthUs,
                     buffer.remaining()
                 )
@@ -186,7 +172,7 @@ class CopyAndPlayAudioSink(
         }
 
         // Update last position
-        lastPosition = presentationTimeUs + bufferLengthUs + initialBufferLengthUs
+        lastPosition = presentationTimeUs + bufferLengthUs
 
         // Advance buffer position to the end to indicate the whole buffer was handled
         buffer.position(buffer.limit())
@@ -211,13 +197,6 @@ class CopyAndPlayAudioSink(
         // viewModel.updateLog("AudioSink format: ${inputFormat}")
         this.inputFormat = inputFormat
         isSinkInitialized = true
-
-        //val paddingLengthPerChannelBytes = 512 * 3
-        //val paddingBytes = paddingLengthPerChannelBytes * inputFormat.channelCount
-        //val paddingLengthUs = getBufferDurationUs(paddingBytes, inputFormat)
-        //initialBuffer = AudioBuffer(ByteBuffer.allocate(paddingBytes), 0, 0L, paddingLengthUs, paddingBytes)
-        //initialBufferLengthUs = paddingLengthUs
-        initialBufferLengthUs = 0L
     }
 
     override fun play() {

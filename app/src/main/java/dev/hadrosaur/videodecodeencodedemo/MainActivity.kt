@@ -56,15 +56,6 @@ class MainActivity : AppCompatActivity() {
 
     var videoSurfaceManagersToDelete = ArrayList<VideoSurfaceManager>()
 
-    //lateinit var videoSurfaceManagerOne: VideoSurfaceManager
-    //lateinit var videoSurfaceManagerTwo: VideoSurfaceManager
-    //lateinit var videoSurfaceManagerThree: VideoSurfaceManager
-    //lateinit var videoSurfaceManagerFour: VideoSurfaceManager
-    //var videoSurfaceManagerOneToDelete: VideoSurfaceManager? = null
-    //var videoSurfaceManagerTwoToDelete: VideoSurfaceManager? = null
-    //var videoSurfaceManagerThreeToDelete: VideoSurfaceManager? = null
-    //var videoSurfaceManagerFourToDelete: VideoSurfaceManager? = null
-
     // The GlManager manages the eglcontext for all renders and filters
     val glManager = GlManager()
 
