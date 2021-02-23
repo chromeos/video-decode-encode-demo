@@ -289,11 +289,11 @@ class MainActivity : AppCompatActivity() {
                     initializeEncoders()
 
                     // Decode and Encode
-                    beginVideoDecode(R.raw.paris_09_1080p, videoSurfaceManagers[0], 1,
+                    beginVideoDecode(R.raw.paris_01_1080p, videoSurfaceManagers[0], 1,
                         audioVideoEncoders[0], audioBufferManagers[0])
                 } else {
                     // Decode only
-                    beginVideoDecode(R.raw.paris_09_1080p, videoSurfaceManagers[0], 1)
+                    beginVideoDecode(R.raw.paris_01_1080p, videoSurfaceManagers[0], 1)
                 }
             }
             if (viewModel.getDecodeStream2Val()) {

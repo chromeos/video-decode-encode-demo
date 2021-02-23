@@ -421,7 +421,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                     // Restore queued buffer's limit
                     it.buffer.limit(oldQueuedBufferLimit)
 
-                    //val bufferDurationUs = getBufferDurationUs(bytesToCopy, format)
+                    // val bufferDurationUs = getBufferDurationUs(bytesToCopy, format)
                     // viewModel.updateLog("Audio Encode audio buf verification: ${it.presentationTimeUs / 1000}, length: ${bufferDurationUs / 1000}, size: ${it.size}, remaining: ${it.buffer.remaining()}")
                     // viewModel.updateLog("Audio Encode audio buf verification: size: ${inputBuffer.capacity()}, bytes to copy: ${bytesToCopy}")
                     // viewModel.updateLog("Audio Encode input buf verification: ${it.presentationTimeUs / 1000}, length: ${bufferDurationUs / 1000}, size: ${bytesToCopy}")
@@ -431,9 +431,11 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
 
                     // If not all bytes from buffer could be sent to the encoder, re-queue remaining
                     // bytes into the audio buffer manager.
-                    // TODO: this seems to work correctly, but creates pure static on the right channel for HTC 10 which has a smaller input buffer.
+                    // TODO: This does not handle interleaving correctly. For example, if encoder
+                    // input buffers are 4096 but decoder output buffers are 8192, with L and then R,
+                    // this will copy things in incorrectly re presentation time.
                     if (it.buffer.hasRemaining()) {
-                        // viewModel.updateLog("Audio data did not fit into encoder input buffer, re-queueing remaining data. Remaining: ${it.buffer.remaining()}, limit: ${it.buffer.limit()}, pos: ${it.buffer.position()}")
+                        // viewModel.updateLog("Audio data did not fit into encoder input buffer (time: ${it.presentationTimeUs}, cap: ${inputBuffer.capacity()}, re-queueing remaining data. Remaining: ${it.buffer.remaining()}, limit: ${it.buffer.limit()}, pos: ${it.buffer.position()}")
                         // viewModel.updateLog("Buffer duration for re-queue: ${bufferDurationUs}")
                         val bufferDurationUs = getBufferDurationUs(bytesToCopy, format)
                         it.presentationTimeUs += bufferDurationUs
@@ -473,6 +475,8 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                             muxingQueue.add(MuxingBuffer(cloneByteBuffer(outputBuffer), info))
 
                         } else {
+                            // TODO: Mux in fake AAC frames
+
                             // Mux any waiting data
                             if (!muxingQueue.isEmpty()) {
                                 while(muxingQueue.peek() != null) {
