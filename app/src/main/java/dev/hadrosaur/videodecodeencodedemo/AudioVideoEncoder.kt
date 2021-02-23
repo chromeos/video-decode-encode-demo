@@ -171,7 +171,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
      * manually check if the encode is complete.
      */
     fun checkIfEncodeDone() {
-        if ((videoDecodeComplete && audioEncodeComplete && (numEncodedVideoFrames.get() == frameLedger.frames_rendered.get()))) {
+        if ((videoDecodeComplete && audioEncodeComplete && (numEncodedVideoFrames.get() == frameLedger.framesRendered.get()))) {
             endTime = System.currentTimeMillis()
             val totalTime = (endTime - startTime) / 1000.0
             val totalFPS = numEncodedVideoFrames.get() / totalTime

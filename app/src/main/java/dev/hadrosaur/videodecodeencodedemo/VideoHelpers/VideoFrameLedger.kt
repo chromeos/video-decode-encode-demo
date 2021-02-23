@@ -41,28 +41,25 @@ import java.util.concurrent.atomic.AtomicInteger
 class VideoFrameLedger : VideoFrameMetadataListener {
     val decodeLedger = ConcurrentHashMap<Long, Long>()
     val encodeLedger = ConcurrentHashMap<Int, Long>()
-    var frames_entered = AtomicInteger(0)
-    var frames_rendered = AtomicInteger(0)
-    var encodingCounter = AtomicInteger(0)
+    private var framesEntered = AtomicInteger(0)
+    var framesRendered = AtomicInteger(0)
+    private var encodingCounter = AtomicInteger(0)
 
     // Atomic lock to block the pipeline to prevent frame drops
-    var eglBlockRenderer = AtomicBoolean(false)
-
-    var haveSkippedFirst = false
-
+    private var eglLockRenderer = AtomicBoolean(false)
     var lastVideoBufferPresentationTimeUs = 0L
 
-    // Check if the block render flag is engaged.
-    fun shouldBlockRender() : Boolean {
-        return eglBlockRenderer.get()
+    // Check if the lock render flag is engaged.
+    fun isRenderLocked() : Boolean {
+        return eglLockRenderer.get()
     }
 
-    fun engageRenderBlock() {
-        eglBlockRenderer.set(true)
+    fun engageRenderLock() {
+        eglLockRenderer.set(true)
     }
 
-    fun releaseRenderBlock() {
-        eglBlockRenderer.set(false)
+    fun releaseRenderLock() {
+        eglLockRenderer.set(false)
     }
 
     // The encode ledger just counts frames (1 -> last frame) and records proper presentation time
@@ -82,12 +79,12 @@ class VideoFrameLedger : VideoFrameMetadataListener {
         presentationTimeUs: Long, releaseTimeNs: Long, format: Format, mediaFormat: MediaFormat?) {
 
         // Block pipeline until updateTexSurface has been called
-        engageRenderBlock()
+        engageRenderLock()
         decodeLedger.put(releaseTimeNs, presentationTimeUs)
 
         // Record frame presentation time in the encode ledger
         addEncodePresentationTime(presentationTimeUs)
 
-        frames_entered.incrementAndGet()
+        framesEntered.incrementAndGet()
     }
 }

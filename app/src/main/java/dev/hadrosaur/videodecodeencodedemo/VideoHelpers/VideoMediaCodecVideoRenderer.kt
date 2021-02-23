@@ -121,7 +121,7 @@ class VideoMediaCodecVideoRenderer(
     ): Boolean {
 
         // Check the atomic lock to see if a frame can be rendered. If not, return false and wait
-        if (videoSurfaceManager.renderer.frameLedger.shouldBlockRender()) {
+        if (videoSurfaceManager.renderer.frameLedger.isRenderLocked()) {
             // viewModel.updateLog("I am in processOutputBuffer: The renderer is blocked.")
             return false
         }

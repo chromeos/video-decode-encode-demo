@@ -321,7 +321,8 @@ fun getBestAudioEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
     }
 
     // The input format has a CSD-0 buffer and other information that can causes glitches in the
-    // encoder. Just provide the basic needed info
+    // encoder. Just provide the basic needed info.
+    // Passing in a CSD-0 buffer will cause errors in the audio stream
     val outputAudioFormat = MediaFormat.createAudioFormat(mimeType,
         inputAudioFormat.getInteger(KEY_SAMPLE_RATE),
         inputAudioFormat.getInteger(KEY_CHANNEL_COUNT))

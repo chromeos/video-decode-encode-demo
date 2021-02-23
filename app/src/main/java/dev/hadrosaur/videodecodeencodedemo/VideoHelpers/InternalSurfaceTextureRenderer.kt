@@ -19,9 +19,7 @@ package dev.hadrosaur.videodecodeencodedemo.VideoHelpers
 import android.os.Handler
 import android.view.Surface
 import android.view.SurfaceView
-import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
 import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager
-import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 
 /**
@@ -67,13 +65,13 @@ class InternalSurfaceTextureRenderer(val viewModel: MainViewModel, glManager: Gl
 
         // updateTexImage has just been called by the renderer, release the render pipeline lock
         // that was set in the FrameLedger's onVideoFrameAboutToBeRendered callback
-        frameLedger.releaseRenderBlock()
+        frameLedger.releaseRenderLock()
 
         if (surfaceTimestamp != 0L) {
             // Check if this frame was decoded and sent to the rendered
             if (frameLedger.decodeLedger.containsKey(surfaceTimestamp)) {
                 // Frame matched, increment the frames rendered counter
-                val framesRendered = frameLedger.frames_rendered.incrementAndGet()
+                val framesRendered = frameLedger.framesRendered.incrementAndGet()
 
                 // If this frame matches the requested draw frequency, or the frequency is set to
                 // draw every frame, draw the frame to the preview surface
@@ -93,7 +91,7 @@ class InternalSurfaceTextureRenderer(val viewModel: MainViewModel, glManager: Gl
             }
         } else {
             // Surface timestamp 0 - This frame not really rendered, but add to keep the ledger even
-            frameLedger.frames_rendered.incrementAndGet()
+            frameLedger.framesRendered.incrementAndGet()
         }
 
         // Log the current state to make sure no frames have been dropped
