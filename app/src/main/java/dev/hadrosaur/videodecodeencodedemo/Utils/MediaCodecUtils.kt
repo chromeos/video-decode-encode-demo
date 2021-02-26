@@ -65,7 +65,7 @@ fun getVideoTrackMimeType(videoFd: AssetFileDescriptor) : String {
     // Find the video track format from the raw video file
     for (i in 0 until extractor.trackCount) {
         val trackFormat = extractor.getTrackFormat(i)
-        mimeType = trackFormat.getString(MediaFormat.KEY_MIME) ?: ""
+        mimeType = trackFormat.getString(KEY_MIME) ?: ""
         if (mimeType.startsWith("video/")) {
             // viewModel.updateLog("Video MIME type: ${mimeType}")
             break
@@ -88,7 +88,7 @@ fun getAudioTrackMimeType(videoFd: AssetFileDescriptor) : String {
     // Find the video track format from the raw video file
     for (i in 0 until extractor.trackCount) {
         val trackFormat = extractor.getTrackFormat(i)
-        mimeType = trackFormat.getString(MediaFormat.KEY_MIME) ?: ""
+        mimeType = trackFormat.getString(KEY_MIME) ?: ""
         if (mimeType.startsWith("audio/")) {
             // viewModel.updateLog("Audio MIME type: ${mimeType}")
             break
@@ -117,7 +117,7 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
     // Find the video track format from the raw video file
     for (i in 0 until extractor.trackCount) {
         val trackFormat = extractor.getTrackFormat(i)
-        mimeType = trackFormat.getString(MediaFormat.KEY_MIME) ?: ""
+        mimeType = trackFormat.getString(KEY_MIME) ?: ""
         if (mimeType.startsWith("video/")) {
             // viewModel.updateLog("Video MIME type: ${mimeType}")
             inputMediaFormat = trackFormat
@@ -137,7 +137,7 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
     var encoderHeight = inputMediaFormat.getInteger(KEY_HEIGHT)
 
     // Configure encoder with the same format as the source media
-    val encoderFormat = MediaFormat.createVideoFormat(
+    val encoderFormat = createVideoFormat(
         mimeType,
         encoderWidth,
         encoderHeight
@@ -169,7 +169,7 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
     intFormatSettings.add("crop-right")
 
     val stringFormatSettings = ArrayList<String>()
-    stringFormatSettings.add(MediaFormat.KEY_MIME)
+    stringFormatSettings.add(KEY_MIME)
 
     // Copy int settings from input video format to encoder format
     for (setting in intFormatSettings) {
@@ -210,10 +210,10 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
 
     // Bitrate, Framerate, and I Frame are required, try to choose sensible defaults
     if (!encoderFormat.containsKey(KEY_BIT_RATE)) {
-        encoderFormat.setInteger(KEY_BIT_RATE, DEFAULT_BITRATE);
+        encoderFormat.setInteger(KEY_BIT_RATE, DEFAULT_BITRATE)
     }
     if (!encoderFormat.containsKey(KEY_FRAME_RATE)) {
-        encoderFormat.setFloat(KEY_FRAME_RATE, 33F);
+        encoderFormat.setFloat(KEY_FRAME_RATE, 33F)
     }
     if (!encoderFormat.containsKey(KEY_I_FRAME_INTERVAL)) {
         encoderFormat.setInteger(KEY_I_FRAME_INTERVAL, 30)
@@ -236,13 +236,13 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
         if (!inputMediaFormat.containsKey(KEY_FRAME_RATE)) {
             val supportedFrameRates = videoCapabilities.getSupportedFrameRatesFor(encoderWidth, encoderHeight)
             if (supportedFrameRates.contains(33.0)) {
-                encoderFormat.setFloat(KEY_FRAME_RATE, 33F);
+                encoderFormat.setFloat(KEY_FRAME_RATE, 33F)
             } else if (supportedFrameRates.contains(30.0)) {
-                encoderFormat.setFloat(KEY_FRAME_RATE, 30F);
+                encoderFormat.setFloat(KEY_FRAME_RATE, 30F)
             } else if (supportedFrameRates.contains(25.0)) {
-                encoderFormat.setFloat(KEY_FRAME_RATE, 25F);
+                encoderFormat.setFloat(KEY_FRAME_RATE, 25F)
             } else {
-                encoderFormat.setFloat(KEY_FRAME_RATE, supportedFrameRates.upper.toFloat());
+                encoderFormat.setFloat(KEY_FRAME_RATE, supportedFrameRates.upper.toFloat())
             }
         }
 
@@ -256,9 +256,9 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
             } else {
                 val bitrateRange = videoCapabilities.getBitrateRange()
                 if (bitrateRange.contains(DEFAULT_BITRATE)) {
-                    encoderFormat.setInteger(KEY_BIT_RATE, DEFAULT_BITRATE);
+                    encoderFormat.setInteger(KEY_BIT_RATE, DEFAULT_BITRATE)
                 } else {
-                    encoderFormat.setInteger(KEY_BIT_RATE, bitrateRange.upper);
+                    encoderFormat.setInteger(KEY_BIT_RATE, bitrateRange.upper)
                 }
             }
         }
@@ -293,8 +293,8 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
         }
     }
 
-    encoderFormat.setInteger(MediaFormat.KEY_WIDTH, encoderWidth)
-    encoderFormat.setInteger(MediaFormat.KEY_HEIGHT, encoderHeight)
+    encoderFormat.setInteger(KEY_WIDTH, encoderWidth)
+    encoderFormat.setInteger(KEY_HEIGHT, encoderHeight)
 
     extractor.release()
     return encoderFormat
@@ -312,7 +312,7 @@ fun getBestAudioEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
     // Find the audio track format from the raw video file
     for (i in 0 until extractor.trackCount) {
         val trackFormat = extractor.getTrackFormat(i)
-        mimeType = trackFormat.getString(MediaFormat.KEY_MIME) ?: ""
+        mimeType = trackFormat.getString(KEY_MIME) ?: ""
         if (mimeType.startsWith("audio/")) {
             // viewModel.updateLog("Audio MIME type: ${mimeType}")
             inputAudioFormat = trackFormat
@@ -323,7 +323,7 @@ fun getBestAudioEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
     // The input format has a CSD-0 buffer and other information that can causes glitches in the
     // encoder. Just provide the basic needed info.
     // Passing in a CSD-0 buffer will cause errors in the audio stream
-    val outputAudioFormat = MediaFormat.createAudioFormat(mimeType,
+    val outputAudioFormat = createAudioFormat(mimeType,
         inputAudioFormat.getInteger(KEY_SAMPLE_RATE),
         inputAudioFormat.getInteger(KEY_CHANNEL_COUNT))
     outputAudioFormat.setInteger(KEY_BIT_RATE, inputAudioFormat.getInteger(KEY_BIT_RATE))

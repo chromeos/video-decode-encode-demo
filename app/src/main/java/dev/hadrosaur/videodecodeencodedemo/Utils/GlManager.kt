@@ -33,7 +33,7 @@ class GlManager {
     val eglConfig: EGLConfig
 
     /** A runtime exception to be thrown if some EGL operations failed.  */
-    class GlException public constructor(msg: String) : RuntimeException(msg)
+    class GlException constructor(msg: String) : RuntimeException(msg)
 
     init {
         eglDisplay = defaultDisplay
@@ -100,7 +100,7 @@ class GlManager {
         private const val EGL_SURFACE_WIDTH = 1
         private const val EGL_SURFACE_HEIGHT = 1
 
-        fun createEGLSurface(display: EGLDisplay?, config: EGLConfig?, context: EGLContext?): EGLSurface? {
+        fun createEGLSurface(display: EGLDisplay?, config: EGLConfig?, context: EGLContext?): EGLSurface {
             val surface: EGLSurface?
             val pbufferAttributes: IntArray
             pbufferAttributes =
@@ -140,9 +140,6 @@ class GlManager {
         /**
          * Returns a new [EGLSurface] wrapping the specified `surface`.
          *
-         * @param eglDisplay to attach the surface to
-         * @param surface to wrap; must be a surface, surface texture or surface holder
-         * @param recordable if the surface will be used to record from
          */
         fun getEglSurface(eglConfig: EGLConfig?, eglDisplay: EGLDisplay?, surface: Any?): EGLSurface? {
             return EGL14.eglCreateWindowSurface(eglDisplay, eglConfig,

@@ -28,4 +28,4 @@ class AudioBuffer(
     val lengthUs: Long,
     val size: Int,
     val isLastBuffer: Boolean = false
-) {}
+)

@@ -267,9 +267,9 @@ object GlUtils {
     }
 
     /**
-     * Deletes a GL texture.
+     * Deletes a GL framebuffer.
      *
-     * @param texId of the texture to delete
+     * @param fboId of the texture to delete
      */
     fun deleteFbo(fboId: Int) {
         val fbos = intArrayOf(fboId)

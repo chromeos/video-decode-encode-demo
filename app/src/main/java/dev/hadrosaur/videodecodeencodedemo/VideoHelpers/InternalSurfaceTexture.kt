@@ -23,8 +23,6 @@ import android.os.Handler
 import android.view.Surface
 import android.view.SurfaceView
 import com.google.android.exoplayer2.util.Assertions
-import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
-import dev.hadrosaur.videodecodeencodedemo.AudioVideoEncoder
 import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager
 import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager.Companion.generateTextureIds
 import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager.Companion.getEglSurface
@@ -65,7 +63,7 @@ class InternalSurfaceTexture @JvmOverloads constructor(
 
     // Render the current frame to the output surface
     // Copying from a surface texture requires a matrix transformation
-    inner class DrawFrameRunner() : Runnable {
+    inner class DrawFrameRunner : Runnable {
         override fun run() {
             val matrix = FloatArray(16)
             texture!!.getTransformMatrix(matrix)
@@ -75,7 +73,7 @@ class InternalSurfaceTexture @JvmOverloads constructor(
 
     // Write the current frame to the encoder
     // Copying from a surface texture requires a matrix transformation
-    inner class EncodeFrameRunner() : Runnable {
+    inner class EncodeFrameRunner : Runnable {
         override fun run() {
             val matrix = FloatArray(16)
             texture!!.getTransformMatrix(matrix)
@@ -84,7 +82,7 @@ class InternalSurfaceTexture @JvmOverloads constructor(
     }
 
     // Called each time a new frame is available on the internal decoding surface
-    inner class UpdateTexImageRunner() : Runnable {
+    inner class UpdateTexImageRunner : Runnable {
         override fun run() {
             if (texture != null) {
                 try {
@@ -117,7 +115,7 @@ class InternalSurfaceTexture @JvmOverloads constructor(
 
         // Set up encoding surfaces
         if (encoderInputSurface != null) {
-            encodeSurfaceEGLSurface = getEglSurface(glManager.eglConfig, glManager.eglDisplay, encoderInputSurface!!)
+            encodeSurfaceEGLSurface = getEglSurface(glManager.eglConfig, glManager.eglDisplay, encoderInputSurface)
             encodeFrameProcessor = DrawFrameProcessor(textureId, glManager.eglContext,
                 glManager.eglDisplay, encodeSurfaceEGLSurface!!, encoderWidth, encoderHeight)
         }

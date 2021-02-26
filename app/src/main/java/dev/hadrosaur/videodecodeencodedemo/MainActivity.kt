@@ -41,6 +41,7 @@ import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
     // Preview surfaces
+    // TODO: Makes these all zero-indexed arrays
     lateinit var previewSurfaceViewOne: SurfaceView
     lateinit var previewSurfaceViewTwo: SurfaceView
     lateinit var previewSurfaceViewThree: SurfaceView
@@ -111,6 +112,7 @@ class MainActivity : AppCompatActivity() {
         previewSurfaceViewFour = SurfaceView(this)
 
         // Setup surface listeners to indicate when surfaces have been created/destroyed
+        // TODO: Make surface numbers 0 indexed
         previewSurfaceViewOne.holder.addCallback(VideoSurfaceViewListener(this, 1))
         previewSurfaceViewTwo.holder.addCallback(VideoSurfaceViewListener(this, 2))
         previewSurfaceViewThree.holder.addCallback(VideoSurfaceViewListener(this, 3))
@@ -477,7 +479,7 @@ class MainActivity : AppCompatActivity() {
                 text_log.append("\n")
 
             text_log.append(message)
-            scroll_log.post(Runnable { scroll_log.fullScroll(View.FOCUS_DOWN) })
+            scroll_log.post({ scroll_log.fullScroll(View.FOCUS_DOWN) })
         }
     }
 }

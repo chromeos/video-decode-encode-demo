@@ -102,5 +102,6 @@ class InternalSurfaceTextureRenderer(val viewModel: MainViewModel, glManager: Gl
 
     fun release() {
         internalSurfaceTexture.release()
+        decoderSurface.release()
     }
 }

@@ -21,9 +21,9 @@ import android.media.MediaFormat.KEY_CHANNEL_COUNT
 import android.media.MediaFormat.KEY_SAMPLE_RATE
 import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.Format
-import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 import java.nio.ByteBuffer
+import kotlin.math.abs
 
 fun getBufferDurationUs(bytes: Int, format: MediaFormat): Long {
     val bytesPerFrame = format.getInteger(KEY_CHANNEL_COUNT) * 2
@@ -66,10 +66,8 @@ fun cloneByteBuffer(original: ByteBuffer): ByteBuffer {
     // Copy from the original.
     clone.put(readOnlyCopy)
 
-    // Copy original attributes
-    clone.position(0)
-    clone.limit(original.limit())
-    clone.order(original.order())
+    // Reset position to start of buffer
+    clone.flip()
 
     return clone
 }
@@ -85,7 +83,7 @@ fun logAudioBufferValues(viewModel: MainViewModel, original: ByteBuffer, present
     while (readOnlyCopy.remaining() > 0) {
         val value = readOnlyCopy.get().toLong()
 
-        if (Math.abs(value) > 50) {
+        if (abs(value) > 50) {
             viewModel.updateLog("@time: ${presentationTimeUs} + sample: ${sampleNum}, Audio value: ${value}")
         }
         sampleNum++

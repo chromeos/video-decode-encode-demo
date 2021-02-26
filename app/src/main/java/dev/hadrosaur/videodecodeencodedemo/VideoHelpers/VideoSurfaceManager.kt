@@ -20,13 +20,8 @@ import android.os.Handler
 import android.view.Surface
 import android.view.SurfaceView
 import com.google.android.exoplayer2.Player
-import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBuffer
-import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
-import dev.hadrosaur.videodecodeencodedemo.AudioVideoEncoder
 import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager
-import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
-import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * Holder for the internal decoding SurfaceTexture. Ties together the ExoPlayer VideoComponent,

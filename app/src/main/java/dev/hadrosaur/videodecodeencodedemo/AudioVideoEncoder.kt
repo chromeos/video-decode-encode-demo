@@ -56,33 +56,33 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
 
     // FPS trackers
     var startTime = 0L
-    var endTime = 0L
+    private var endTime = 0L
     var lastPresentationTime = 0L
 
     // Audio encoding variables
-    val audioEncoder: MediaCodec
     val audioEncoderCallback: AudioEncoderCallback
-    val encoderAudioFormat: MediaFormat
     var audioEncodeComplete = false
+    private val encoderAudioFormat: MediaFormat
+    private val audioEncoder: MediaCodec
 
     // Muxer variables
     var muxer: MediaMuxer? = null
-    var encodedFilename = ""
+    private var encodedFilename = ""
     var isMuxerRunning = false
     var videoTrackIndex: Int = -1
     var audioTrackIndex: Int = -1
 
-    val audioBufferListener : AudioBufferManager.AudioBufferManagerListener
+    private val audioBufferListener : AudioBufferManager.AudioBufferManagerListener
 
     init{
-        videoEncoder = createByCodecName(viewModel.videoEncoderCodecInfo?.getName()!!)
+        videoEncoder = createByCodecName(viewModel.videoEncoderCodecInfo?.name!!)
         encoderVideoFormat = viewModel.encoderVideoFormat
 
         // Save encoder width and height for surfaces that use this encoder
         encoderWidth = encoderVideoFormat.getInteger(KEY_WIDTH)
         encoderHeight = encoderVideoFormat.getInteger(KEY_HEIGHT)
 
-        audioEncoder = createByCodecName(viewModel.audioEncoderCodecInfo?.getName()!!)
+        audioEncoder = createByCodecName(viewModel.audioEncoderCodecInfo?.name!!)
         encoderAudioFormat = viewModel.encoderAudioFormat
 
         // Use asynchronous modes with callbacks - encoding logic contained in the callback classes
@@ -91,7 +91,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
         // Video encoder
         videoEncoderCallback = VideoEncoderCallback(viewModel, encoderVideoFormat)
         videoEncoder.setCallback(videoEncoderCallback)
-        videoEncoder.configure(encoderVideoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+        videoEncoder.configure(encoderVideoFormat, null, null, CONFIGURE_FLAG_ENCODE)
 
         // Get the input surface from the encoder, decoded frames from the decoder should be
         // placed here.
@@ -100,7 +100,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
         // Audio encoder
         audioEncoderCallback = AudioEncoderCallback(viewModel, encoderAudioFormat)
         audioEncoder.setCallback(audioEncoderCallback)
-        audioEncoder.configure(encoderAudioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+        audioEncoder.configure(encoderAudioFormat, null, null, CONFIGURE_FLAG_ENCODE)
         audioEncodeComplete = false
 
         // Register a listener for when the AudioBufferManager gets new data
@@ -129,7 +129,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
         }
     }
 
-    fun finishEncode() {
+    private fun finishEncode() {
         if (isMuxerRunning) {
             muxer?.stop()
             isMuxerRunning = false
@@ -154,14 +154,14 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
         audioEncoder.stop()
         videoEncoder.release()
         audioEncoder.release()
-        videoEncoderInputSurface.release();
+        videoEncoderInputSurface.release()
     }
 
     fun signalDecodingComplete() {
         videoDecodeComplete = true
     }
 
-    fun signalEncodingComplete() {
+    private fun signalEncodingComplete() {
         videoEncodeComplete = true
     }
 
@@ -175,9 +175,9 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
             val totalTime = (endTime - startTime) / 1000.0
             val totalFPS = numEncodedVideoFrames.get() / totalTime
             val timeString = String.format("%.2f", totalTime)
-            val FPSString = String.format("%.2f", totalFPS)
+            val fpsString = String.format("%.2f", totalFPS)
 
-            viewModel.updateLog("Encode done, written to ${encodedFilename}. ${numEncodedVideoFrames.get()} video frames in ${timeString}s (${FPSString}fps).")
+            viewModel.updateLog("Encode done, written to ${encodedFilename}. ${numEncodedVideoFrames.get()} video frames in ${timeString}s (${fpsString}fps).")
             signalEncodingComplete()
             finishEncode()
         }
@@ -197,9 +197,9 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
      * The callback functions for Video encoding
      */
     inner class VideoEncoderCallback(val viewModel: MainViewModel, var format: MediaFormat): MediaCodec.Callback() {
-        val muxingQueue = LinkedBlockingQueue<MuxingBuffer>()
-        val ledgerQueue = LinkedBlockingQueue<LedgerBuffer>()
-        var numMuxedVideoFrames = 0
+        private val muxingQueue = LinkedBlockingQueue<MuxingBuffer>()
+        private val ledgerQueue = LinkedBlockingQueue<LedgerBuffer>()
+        private var numMuxedVideoFrames = 0
 
         // Do not do anything. Incoming frames should
         // be auto-queued into the encoder from the input surface
@@ -248,7 +248,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                         // If the ledger value is not stored by this point in the code,
                         // add the frame to the ledger queue to be muxed when we get the correct time
                         if (frameLedger.encodeLedger.containsKey(frameNum)) {
-                            info.presentationTimeUs = frameLedger.encodeLedger.get(frameNum)!!
+                            info.presentationTimeUs = frameLedger.encodeLedger[frameNum]!!
                             // viewModel.updateLog("Video encoder, got frame number ${frameNum}@${info.presentationTimeUs}, last time was ${lastPresentationTime}.")
                             lastPresentationTime = info.presentationTimeUs
 
@@ -263,6 +263,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                                 if (!muxingQueue.isEmpty()) {
                                     while (muxingQueue.peek() != null) {
                                         val muxingBuffer = muxingQueue.poll()
+
                                         // viewModel.updateLog("Muxing buffer out of mux queue: ${muxingBuffer.info.presentationTimeUs}")
                                         muxer?.writeSampleData(
                                             videoTrackIndex, muxingBuffer.buffer, muxingBuffer.info)
@@ -281,8 +282,8 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                                 if (numEncodedVideoFrames.get() % LOG_VIDEO_EVERY_N_FRAMES == 0) {
                                     val currentFPS =
                                         numEncodedVideoFrames.get() / ((System.currentTimeMillis() - startTime) / 1000.0)
-                                    val FPSString = String.format("%.2f", currentFPS)
-                                    viewModel.updateLog("Encoding video stream at ${FPSString}fps, frame $numEncodedVideoFrames.")
+                                    val fpsString = String.format("%.2f", currentFPS)
+                                    viewModel.updateLog("Encoding video stream at ${fpsString}fps, frame $numEncodedVideoFrames.")
                                 }
                             } // Is muxer running
 
@@ -303,7 +304,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
             checkIfEncodeDone()
         }
 
-        override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {
+        override fun onError(codec: MediaCodec, e: CodecException) {
             viewModel.updateLog("ERROR: something occurred during video encoding: ${e.diagnosticInfo}")
         }
 
@@ -313,12 +314,12 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
 
         // Mux any buffers in the ledger queue, if the ledger entry is present and muxer is running
         // TODO: generalise this for the muxingQueue
-        fun muxLedgerQueue() {
+        private fun muxLedgerQueue() {
             while (!ledgerQueue.isEmpty()) {
                 val ledgerBuffer = ledgerQueue.peek()
                 // If there is still no ledger data for this frame, exit and leave it in the queue
                 if (frameLedger.encodeLedger.containsKey(ledgerBuffer?.frameNum)) {
-                    ledgerBuffer?.info?.presentationTimeUs = frameLedger.encodeLedger.get(ledgerBuffer?.frameNum)!!
+                    ledgerBuffer?.info?.presentationTimeUs = frameLedger.encodeLedger[ledgerBuffer?.frameNum]!!
                     if (isMuxerRunning) {
                         // viewModel.updateLog("Muxing frame ${ledgerBuffer?.frameNum} from ledger queue at ${ledgerBuffer?.info?.presentationTimeUs}")
                         muxer?.writeSampleData(videoTrackIndex, ledgerBuffer.buffer, ledgerBuffer.info)
@@ -523,7 +524,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
             checkIfEncodeDone()
         }
 
-        override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {
+        override fun onError(codec: MediaCodec, e: CodecException) {
             viewModel.updateLog(("AudioEncoder error: ${e.errorCode} + ${e.diagnosticInfo}"))
         }
 

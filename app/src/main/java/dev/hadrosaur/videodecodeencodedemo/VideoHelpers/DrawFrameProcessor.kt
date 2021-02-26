@@ -165,7 +165,7 @@ class DrawFrameProcessor(
             // Apply surface texture transforms
             // This is required as copying out from a surface texture is not 1:1 for some reason
             // See: https://developer.android.com/reference/android/graphics/SurfaceTexture#getTransformMatrix(float%5B%5D)
-            Matrix.setIdentityM(positionMatrix, 0);
+            Matrix.setIdentityM(positionMatrix, 0)
             GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, positionMatrix, 0)
             GLES20.glUniformMatrix4fv(muSTMatrixHandle, 1, false, surfaceTextureMatrix, 0)
 
@@ -192,7 +192,7 @@ class DrawFrameProcessor(
                 renderUniforms[i]!!.bindToTextureSampler()
             }
 
-            // Note: here do not apply surface texture tranform matrix, just use the identity matrix as the
+            // Note: here do not apply surface texture transform matrix, just use the identity matrix as the
             // frame has already been adjusted in the copy step
             GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, positionMatrix, 0)
             GLES20.glUniformMatrix4fv(muSTMatrixHandle, 1, false, renderTransformMatrix, 0)

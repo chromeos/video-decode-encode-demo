@@ -80,8 +80,8 @@ class VideoMediaCodecVideoRenderer(
         // internally (in MediaCodecRenderer). KEY_OPERATING_RATE will be optimised for battery
         // life on some systems. Here we try to burn battery to increase decoding rate
         if (SDK_INT > 23) {
-            mediaFormat.setInteger(MediaFormat.KEY_OPERATING_RATE, Short.MAX_VALUE.toInt());
-            mediaFormat.setInteger(MediaFormat.KEY_PRIORITY, 0);
+            mediaFormat.setInteger(MediaFormat.KEY_OPERATING_RATE, Short.MAX_VALUE.toInt())
+            mediaFormat.setInteger(MediaFormat.KEY_PRIORITY, 0)
         }
 
         // This decoding flag removes the necessity to manually block the render pipeline. It only
@@ -97,7 +97,7 @@ class VideoMediaCodecVideoRenderer(
     /**
      * Use a MediaClock that renders as fast as possible, instead of in real-time
      */
-    override fun getMediaClock(): MediaClock? {
+    override fun getMediaClock(): MediaClock {
         return mediaClock
     }
 
@@ -162,8 +162,8 @@ class VideoMediaCodecVideoRenderer(
         if (decodeCounter % LOG_VIDEO_EVERY_N_FRAMES == 0) {
             val currentFPS =
                 decodeCounter / ((System.currentTimeMillis() - startTime) / 1000.0)
-            val FPSString = String.format("%.2f", currentFPS)
-            viewModel.updateLog("Decoding video stream ${streamNumber}: ${FPSString}fps @frame $decodeCounter.")
+            val fpsString = String.format("%.2f", currentFPS)
+            viewModel.updateLog("Decoding video stream ${streamNumber}: ${fpsString}fps @frame $decodeCounter.")
         }
 
         if (lastPresentTime == presentationTimeUs && lastPresentTime != 0L) {

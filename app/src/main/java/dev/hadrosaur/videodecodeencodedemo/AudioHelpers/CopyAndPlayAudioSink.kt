@@ -122,6 +122,8 @@ class CopyAndPlayAudioSink(
             inputFormat.sampleRate
         )
 
+        // viewModel.updateLog("Buffer info: pos: ${buffer.position()}, limit: ${buffer.position()}, rem: ${buffer.remaining()}, order: ${buffer.order()}")
+
         val expecting = (lastPosition / 1000).toInt()
         val got = (presentationTimeUs / 1000).toInt()
         val missing = got - expecting
@@ -194,7 +196,7 @@ class CopyAndPlayAudioSink(
         specifiedBufferSize: Int,
         outputChannels: IntArray?
     ) {
-        // viewModel.updateLog("AudioSink format: ${inputFormat}")
+        // viewModel.updateLog("AudioSink format: ${inputFormat}, buf size: ${specifiedBufferSize}, output channels: ${outputChannels}")
         this.inputFormat = inputFormat
         isSinkInitialized = true
     }
