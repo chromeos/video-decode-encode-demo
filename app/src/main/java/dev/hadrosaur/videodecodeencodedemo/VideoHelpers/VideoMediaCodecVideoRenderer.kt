@@ -20,6 +20,7 @@ import android.media.MediaCodec
 import android.media.MediaFormat
 import android.os.Build.VERSION.SDK_INT
 import com.google.android.exoplayer2.Format
+import com.google.android.exoplayer2.mediacodec.MediaCodecAdapter
 import com.google.android.exoplayer2.mediacodec.MediaCodecSelector
 import com.google.android.exoplayer2.util.MediaClock
 import com.google.android.exoplayer2.video.MediaCodecVideoRenderer
@@ -53,7 +54,7 @@ class VideoMediaCodecVideoRenderer(
     /**
      * Keep track of dropped frames
      */
-    override fun dropOutputBuffer(codec: MediaCodec, index: Int, presentationTimeUs: Long) {
+    override fun dropOutputBuffer(codec: MediaCodecAdapter, index: Int, presentationTimeUs: Long) {
         droppedFrames++
         viewModel.updateLog("Dropped frame in surface ${index}. Total dropped: ${droppedFrames}")
         super.dropOutputBuffer(codec, index, presentationTimeUs)
@@ -109,7 +110,7 @@ class VideoMediaCodecVideoRenderer(
      override fun processOutputBuffer(
         positionUs: Long,
         elapsedRealtimeUs: Long,
-        codec: MediaCodec?,
+        codec: MediaCodecAdapter?,
         buffer: ByteBuffer?,
         bufferIndex: Int,
         bufferFlags: Int,
@@ -163,7 +164,7 @@ class VideoMediaCodecVideoRenderer(
             val currentFPS =
                 decodeCounter / ((System.currentTimeMillis() - startTime) / 1000.0)
             val fpsString = String.format("%.2f", currentFPS)
-            viewModel.updateLog("Decoding video stream ${streamNumber}: ${fpsString}fps @frame $decodeCounter.")
+            viewModel.updateLog("Decoding video stream ${streamNumber + 1}: ${fpsString}fps @frame $decodeCounter.")
         }
 
         if (lastPresentTime == presentationTimeUs && lastPresentTime != 0L) {

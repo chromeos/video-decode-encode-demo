@@ -35,7 +35,7 @@ class InternalSurfaceTextureRenderer(val viewModel: MainViewModel, glManager: Gl
     var doEncode = false
 
     // The internal Surface from the SurfaceTexture to be decoded to, used by ExoPlayer
-    lateinit var decoderSurface: Surface
+    var decoderSurface: Surface? = null
 
     fun initialize(encoderInputSurface: Surface? = null, encoderWidth: Int = 0, encoderHeight: Int = 0) {
         // Initialize decoding surfaces only
@@ -102,6 +102,6 @@ class InternalSurfaceTextureRenderer(val viewModel: MainViewModel, glManager: Gl
 
     fun release() {
         internalSurfaceTexture.release()
-        decoderSurface.release()
+        decoderSurface = null
     }
 }

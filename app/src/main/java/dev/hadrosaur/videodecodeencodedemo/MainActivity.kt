@@ -39,17 +39,14 @@ import dev.hadrosaur.videodecodeencodedemo.Utils.*
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoSurfaceManager
 import kotlinx.android.synthetic.main.activity_main.*
 
+const val NUMBER_OF_STREAMS = 4
+
 class MainActivity : AppCompatActivity() {
     // Preview surfaces
+
     // TODO: Makes these all zero-indexed arrays
-    lateinit var previewSurfaceViewOne: SurfaceView
-    lateinit var previewSurfaceViewTwo: SurfaceView
-    lateinit var previewSurfaceViewThree: SurfaceView
-    lateinit var previewSurfaceViewFour: SurfaceView
-    var previewSurfaceViewOneToDelete: SurfaceView? = null
-    var previewSurfaceViewTwoToDelete: SurfaceView? = null
-    var previewSurfaceViewThreeToDelete: SurfaceView? = null
-    var previewSurfaceViewFourToDelete: SurfaceView? = null
+    var previewSurfaceViews = ArrayList<SurfaceView>()
+    var previewSurfaceViewsToDelete = ArrayList<SurfaceView>()
 
     var videoSurfaceManagers = ArrayList<VideoSurfaceManager>()
     var audioBufferManagers = ArrayList<AudioBufferManager>()
@@ -61,7 +58,6 @@ class MainActivity : AppCompatActivity() {
     val glManager = GlManager()
 
     // Counter to track if all surfaces are ready
-    val NUMBER_OF_PREVIEW_SURFACES = 4
     var numberOfReadySurfaces = 0
     var activeDecodes = 0
     var activeEncodes = 0
@@ -106,26 +102,23 @@ class MainActivity : AppCompatActivity() {
         numberOfReadySurfaces = 0
 
         // Create the preview surfaces
-        previewSurfaceViewOne = SurfaceView(this)
-        previewSurfaceViewTwo = SurfaceView(this)
-        previewSurfaceViewThree = SurfaceView(this)
-        previewSurfaceViewFour = SurfaceView(this)
+        for (n in 0..NUMBER_OF_STREAMS) {
+            previewSurfaceViews.add(SurfaceView(this))
+        }
 
         // Setup surface listeners to indicate when surfaces have been created/destroyed
-        // TODO: Make surface numbers 0 indexed
-        previewSurfaceViewOne.holder.addCallback(VideoSurfaceViewListener(this, 1))
-        previewSurfaceViewTwo.holder.addCallback(VideoSurfaceViewListener(this, 2))
-        previewSurfaceViewThree.holder.addCallback(VideoSurfaceViewListener(this, 3))
-        previewSurfaceViewFour.holder.addCallback(VideoSurfaceViewListener(this, 4))
+        for (n in 0..NUMBER_OF_STREAMS) {
+            previewSurfaceViews[n].holder.addCallback(VideoSurfaceViewListener(this))
+        }
 
         // Create the internal SurfaceTextures that will be used for decoding
         initializeInternalSurfaces()
 
         // Add the preview surfaces to the UI
-        frame_one.addView(previewSurfaceViewOne)
-        frame_two.addView(previewSurfaceViewTwo)
-        frame_three.addView(previewSurfaceViewThree)
-        frame_four.addView(previewSurfaceViewFour)
+        frame_one.addView(previewSurfaceViews[0])
+        frame_two.addView(previewSurfaceViews[1])
+        frame_three.addView(previewSurfaceViews[2])
+        frame_four.addView(previewSurfaceViews[3])
     }
 
     // Create the internal SurfaceTextures that will be used for decoding
@@ -136,17 +129,9 @@ class MainActivity : AppCompatActivity() {
         // Empty and free current arrays of surface managers
         videoSurfaceManagers.clear()
 
-        // Stream 1 - decoding needs video surface manager, encoding needs audio manager and encoder
-        videoSurfaceManagers.add(VideoSurfaceManager(viewModel, glManager, previewSurfaceViewOne))
-
-        // Stream 2
-        videoSurfaceManagers.add(VideoSurfaceManager(viewModel, glManager, previewSurfaceViewTwo))
-
-        // Stream 3
-        videoSurfaceManagers.add(VideoSurfaceManager(viewModel, glManager, previewSurfaceViewThree))
-
-        // Stream 4
-        videoSurfaceManagers.add(VideoSurfaceManager(viewModel, glManager, previewSurfaceViewFour))
+        for (n in 0..NUMBER_OF_STREAMS) {
+            videoSurfaceManagers.add(VideoSurfaceManager(viewModel, glManager, previewSurfaceViews[n]))
+        }
     }
 
     /**
@@ -154,19 +139,15 @@ class MainActivity : AppCompatActivity() {
      * time "Decode" is pressed.
      */
     fun markSurfacesForDeletion() {
-        previewSurfaceViewOneToDelete = previewSurfaceViewOne
-        previewSurfaceViewTwoToDelete = previewSurfaceViewTwo
-        previewSurfaceViewThreeToDelete = previewSurfaceViewThree
-        previewSurfaceViewFourToDelete = previewSurfaceViewFour
-
+        previewSurfaceViewsToDelete = previewSurfaceViews
         videoSurfaceManagersToDelete = videoSurfaceManagers
+        previewSurfaceViews = ArrayList()
+        videoSurfaceManagers = ArrayList()
     }
 
     fun releaseSurfacesMarkedForDeletion() {
-        previewSurfaceViewOneToDelete = null
-        previewSurfaceViewTwoToDelete = null
-        previewSurfaceViewThreeToDelete = null
-        previewSurfaceViewFourToDelete = null
+        previewSurfaceViewsToDelete.clear()
+        previewSurfaceViewsToDelete = ArrayList()
 
         for (manager in videoSurfaceManagersToDelete) {
             manager.release()
@@ -282,21 +263,21 @@ class MainActivity : AppCompatActivity() {
                     initializeEncoders()
 
                     // Decode and Encode
-                    beginVideoDecode(R.raw.paris_01_1080p, videoSurfaceManagers[0], 1,
+                    beginVideoDecode(R.raw.paris_01_1080p, videoSurfaceManagers[0], 0,
                         audioVideoEncoders[0], audioBufferManagers[0])
                 } else {
                     // Decode only
-                    beginVideoDecode(R.raw.paris_01_1080p, videoSurfaceManagers[0], 1)
+                    beginVideoDecode(R.raw.paris_01_1080p, videoSurfaceManagers[0], 0)
                 }
             }
             if (viewModel.getDecodeStream2Val()) {
-                beginVideoDecode(R.raw.paris_02_1080p, videoSurfaceManagers[1], 2)
+                beginVideoDecode(R.raw.paris_02_1080p, videoSurfaceManagers[1], 1)
             }
             if (viewModel.getDecodeStream3Val()) {
-                beginVideoDecode(R.raw.paris_03_1080p, videoSurfaceManagers[2], 3)
+                beginVideoDecode(R.raw.paris_03_1080p, videoSurfaceManagers[2], 2)
             }
             if (viewModel.getDecodeStream4Val()) {
-                beginVideoDecode(R.raw.paris_04_1080p, videoSurfaceManagers[3], 4)
+                beginVideoDecode(R.raw.paris_04_1080p, videoSurfaceManagers[3], 3)
             }
         }
     }
@@ -392,7 +373,7 @@ class MainActivity : AppCompatActivity() {
     fun surfaceAvailable() {
         numberOfReadySurfaces++
 
-        if (numberOfReadySurfaces >= NUMBER_OF_PREVIEW_SURFACES) {
+        if (numberOfReadySurfaces >= NUMBER_OF_STREAMS) {
             runOnUiThread {
                 button_start_decode.isEnabled = true
             }
@@ -403,7 +384,7 @@ class MainActivity : AppCompatActivity() {
     fun surfaceReleased() {
         numberOfReadySurfaces--
 
-        if (numberOfReadySurfaces < NUMBER_OF_PREVIEW_SURFACES) {
+        if (numberOfReadySurfaces < NUMBER_OF_STREAMS) {
             runOnUiThread {
                 button_start_decode.isEnabled = false
             }

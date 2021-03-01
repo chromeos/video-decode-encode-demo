@@ -18,15 +18,15 @@ package dev.hadrosaur.videodecodeencodedemo
 
 import android.view.SurfaceHolder
 
-class VideoSurfaceViewListener(val mainActivity: MainActivity, val surfaceNumber: Int) : SurfaceHolder.Callback {
-    override fun surfaceChanged(holder: SurfaceHolder?, format: Int, width: Int, height: Int) {
+class VideoSurfaceViewListener(val mainActivity: MainActivity) : SurfaceHolder.Callback {
+    override fun surfaceChanged(p0: SurfaceHolder, format: Int, width: Int, height: Int) {
     }
 
-    override fun surfaceDestroyed(holder: SurfaceHolder?) {
+    override fun surfaceDestroyed(p0: SurfaceHolder) {
         mainActivity.surfaceReleased()
     }
 
-    override fun surfaceCreated(holder: SurfaceHolder?) {
+    override fun surfaceCreated(p0: SurfaceHolder) {
         mainActivity.surfaceAvailable()
     }
 }

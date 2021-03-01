@@ -37,29 +37,28 @@ import java.nio.ByteBuffer
  */
 class CopyAndPlayAudioSink(
     val viewModel: MainViewModel,
-    val streamNum: Int,
+    private val streamNum: Int,
     val audioBufferManager: AudioBufferManager? = null
 ): AudioSink {
 
-    var isSinkInitialized = false
-    var handledEndOfStream = false
+    private var isSinkInitialized = false
+    private var handledEndOfStream = false
 
-    var pbParameters = PlaybackParameters.DEFAULT
-    var shouldSkipSilence = false
-    var sinkAudioAttributes = AudioAttributes.DEFAULT
-    var sinkAudioSessionId = -1
-    var sinkTunnelingAudioSessionId = -1
-    var sinkAuxEffectInfo = AuxEffectInfo(AuxEffectInfo.NO_AUX_EFFECT_ID, 0F)
+    private var pbParameters = PlaybackParameters.DEFAULT
+    private var shouldSkipSilence = false
+    private var sinkAudioAttributes = AudioAttributes.DEFAULT
+    private var sinkAudioSessionId = -1
+    private var sinkAuxEffectInfo = AuxEffectInfo(AuxEffectInfo.NO_AUX_EFFECT_ID, 0F)
 
-    var inputFormat: Format = Format.Builder().build()
-    var sinkVolume = 100F
+    private var inputFormat: Format = Format.Builder().build()
+    private var sinkVolume = 100F
 
     val enableFloatOutput = false // Make this configurable if desired
 
-    var numBuffersHandled = 0
-    var lastPosition = 0L
+    private var numBuffersHandled = 0
+    private var lastPosition = 0L
 
-    val audioTrack: AudioTrack
+    private val audioTrack: AudioTrack
 
     init {
         // Set up audio track for playback
@@ -153,8 +152,7 @@ class CopyAndPlayAudioSink(
             // The AudioTrack may have a smaller buffer size than the bytes to play out. Play out one
             // chunk at a time.
             while (playBuffer.remaining() > 0) {
-                bytesToPlay = Math.min(playBuffer.remaining(), audioTrackBufferSize)
-                playBuffer.limit(playBuffer.position() + bytesToPlay)
+                bytesToPlay = playBuffer.remaining().coerceAtMost(audioTrackBufferSize) // Same as Math.min
 
                 // Write sound and auto-advance position
                 val bytesPlayed = audioTrack.write(playBuffer, bytesToPlay, AudioTrack.WRITE_BLOCKING)
@@ -206,6 +204,7 @@ class CopyAndPlayAudioSink(
     }
 
     override fun handleDiscontinuity() {
+        viewModel.updateLog("HELLO DISCONTINUITY!!!!")
         // No-op
     }
 
@@ -274,12 +273,11 @@ class CopyAndPlayAudioSink(
         sinkAuxEffectInfo = auxEffectInfo
     }
 
-    override fun enableTunnelingV21(tunnelingAudioSessionId: Int) {
-        sinkTunnelingAudioSessionId = tunnelingAudioSessionId
+    override fun enableTunnelingV21() {
+        // No-op
     }
 
     override fun disableTunneling() {
-        sinkTunnelingAudioSessionId = -1
     }
 
     override fun setVolume(volume: Float) {

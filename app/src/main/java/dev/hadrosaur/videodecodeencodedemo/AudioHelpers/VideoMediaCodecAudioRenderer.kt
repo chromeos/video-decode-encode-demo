@@ -19,6 +19,7 @@ package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 import android.media.MediaCodec
 import com.google.android.exoplayer2.Format
 import com.google.android.exoplayer2.audio.MediaCodecAudioRenderer
+import com.google.android.exoplayer2.mediacodec.MediaCodecAdapter
 import com.google.android.exoplayer2.mediacodec.MediaCodecSelector
 import com.google.android.exoplayer2.util.MediaClock
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
@@ -49,7 +50,7 @@ class VideoMediaCodecAudioRenderer (
     override fun processOutputBuffer(
         positionUs: Long,
         elapsedRealtimeUs: Long,
-        codec: MediaCodec?,
+        codec: MediaCodecAdapter?,
         buffer: ByteBuffer?,
         bufferIndex: Int,
         bufferFlags: Int,
@@ -89,7 +90,7 @@ class VideoMediaCodecAudioRenderer (
             val currentBPS =
                 decodeCounter / ((System.currentTimeMillis() - startTime) / 1000.0)
             val bpsString = String.format("%.2f", currentBPS)
-            viewModel.updateLog("Decoding audio Stream ${streamNumber}: ${bpsString}bps @buffer $decodeCounter.")
+            viewModel.updateLog("Decoding audio Stream ${streamNumber + 1}: ${bpsString}bps @buffer $decodeCounter.")
         }
 
         if (lastPresentTime == presentationTimeUs && lastPresentTime != 0L) {
