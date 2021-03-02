@@ -64,8 +64,8 @@ class DrawFrameProcessor(
     // Variables to handle texture shader coordinate matrices
     val positionMatrix = FloatArray(16)
     val renderTransformMatrix = FloatArray(16)
-    var muMVPMatrixHandle = -1
-    var muSTMatrixHandle = -1
+    var shaderPositionMatrixHandle = -1
+    var shaderSurfaceTexTransformMatrixHandle = -1
 
     val drawFrameHandler: DrawFrameHandler
 
@@ -95,8 +95,8 @@ class DrawFrameProcessor(
             }
         }
 
-        muMVPMatrixHandle = GLES20.glGetUniformLocation(copyExternalProgram, GlUtils.POS_MATRIX_UNIFORM_NAME)
-        muSTMatrixHandle = GLES20.glGetUniformLocation(copyExternalProgram, GlUtils.ST_MATRIX_UNIFORM_NAME)
+        shaderPositionMatrixHandle = GLES20.glGetUniformLocation(copyExternalProgram, GlUtils.POS_MATRIX_UNIFORM_NAME)
+        shaderSurfaceTexTransformMatrixHandle = GLES20.glGetUniformLocation(copyExternalProgram, GlUtils.ST_MATRIX_UNIFORM_NAME)
         Matrix.setIdentityM(positionMatrix, 0)
         Matrix.setIdentityM(renderTransformMatrix, 0)
 
@@ -166,8 +166,8 @@ class DrawFrameProcessor(
             // This is required as copying out from a surface texture is not 1:1 for some reason
             // See: https://developer.android.com/reference/android/graphics/SurfaceTexture#getTransformMatrix(float%5B%5D)
             Matrix.setIdentityM(positionMatrix, 0)
-            GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, positionMatrix, 0)
-            GLES20.glUniformMatrix4fv(muSTMatrixHandle, 1, false, surfaceTextureMatrix, 0)
+            GLES20.glUniformMatrix4fv(shaderPositionMatrixHandle, 1, false, positionMatrix, 0)
+            GLES20.glUniformMatrix4fv(shaderSurfaceTexTransformMatrixHandle, 1, false, surfaceTextureMatrix, 0)
 
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
 
@@ -194,8 +194,8 @@ class DrawFrameProcessor(
 
             // Note: here do not apply surface texture transform matrix, just use the identity matrix as the
             // frame has already been adjusted in the copy step
-            GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, positionMatrix, 0)
-            GLES20.glUniformMatrix4fv(muSTMatrixHandle, 1, false, renderTransformMatrix, 0)
+            GLES20.glUniformMatrix4fv(shaderPositionMatrixHandle, 1, false, positionMatrix, 0)
+            GLES20.glUniformMatrix4fv(shaderSurfaceTexTransformMatrixHandle, 1, false, renderTransformMatrix, 0)
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
 
             // Display the frame (note already focused from last render)

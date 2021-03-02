@@ -28,8 +28,8 @@ import java.util.*
 object GlUtils {
     const val POSITION_ATTRIBUTE_NAME = "a_position"
     const val TEXCOORD_ATTRIBUTE_NAME = "a_texcoord"
-    const val POS_MATRIX_UNIFORM_NAME = "uMVPMatrix"
-    const val ST_MATRIX_UNIFORM_NAME = "uSTMatrix"
+    const val POS_MATRIX_UNIFORM_NAME = "u_pos_matrix"
+    const val ST_MATRIX_UNIFORM_NAME = "u_surface_tex_transform_matrix"
 
     const val TEX_SAMPLER_NAME = "tex_sampler_0"
     const val TEX_COORDINATE_NAME = "v_texcoord"

@@ -145,7 +145,7 @@ class CopyAndPlayAudioSink(
         // Play audio buffer through speakers
         // This will be chunky and crackly with no buffering
         if (viewModel.getPlayAudioVal()) {
-            val playBuffer = buffer.slice()
+            val playBuffer = buffer.asReadOnlyBuffer()
             val audioTrackBufferSize = audioTrack.bufferSizeInFrames
             var bytesToPlay = 0
 
@@ -160,6 +160,7 @@ class CopyAndPlayAudioSink(
                 // If AudioTrack.write did not succeed, playBuffer.position will not be auto-advanced
                 // and this loop can get stuck. This can happen if a malformed buffer arrives. To
                 // prevent and endless loop, just exit.
+                // If correct playback is required, do something more intelligent here
                 if (bytesPlayed <= 0) {
                     break
                 }
@@ -178,8 +179,7 @@ class CopyAndPlayAudioSink(
         buffer.position(buffer.limit())
         numBuffersHandled++
 
-        //viewModel.updateLog("Audio Sink copying out buffer #${numBuffersHandled} @ ${presentationTimeUs}, endtime: ${lastPosition}")
-
+        // Tell ExoPlayer the entire buffer was handled
         return true
     }
 
@@ -204,8 +204,7 @@ class CopyAndPlayAudioSink(
     }
 
     override fun handleDiscontinuity() {
-        viewModel.updateLog("HELLO DISCONTINUITY!!!!")
-        // No-op
+        viewModel.updateLog("CopyAndPlayAudioSink: audio buffer discontinuity received, not processing.")
     }
 
 
