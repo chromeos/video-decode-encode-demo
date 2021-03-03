@@ -19,6 +19,7 @@ package dev.hadrosaur.videodecodeencodedemo.Utils
 import android.content.res.AssetFileDescriptor
 import android.media.*
 import android.media.MediaFormat.*
+import com.google.android.exoplayer2.C
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 
@@ -327,6 +328,10 @@ fun getBestAudioEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
         inputAudioFormat.getInteger(KEY_SAMPLE_RATE),
         inputAudioFormat.getInteger(KEY_CHANNEL_COUNT))
     outputAudioFormat.setInteger(KEY_BIT_RATE, inputAudioFormat.getInteger(KEY_BIT_RATE))
+
+    // Default encoder audio format is PCM_16BIT. Explicit reference here. If PCM_FLOAT or another
+    // encoding is used without the correct key here, audio will be glitchy in the output file.
+    // outputAudioFormat.setInteger(KEY_PCM_ENCODING, C.ENCODING_PCM_16BIT)
 
     extractor.release()
     return outputAudioFormat

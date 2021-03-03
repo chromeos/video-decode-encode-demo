@@ -43,34 +43,36 @@ const val NUMBER_OF_STREAMS = 4
 
 class MainActivity : AppCompatActivity() {
     // Preview surfaces
-
-    // TODO: Makes these all zero-indexed arrays
     var previewSurfaceViews = ArrayList<SurfaceView>()
     var previewSurfaceViewsToDelete = ArrayList<SurfaceView>()
-
-    var videoSurfaceManagers = ArrayList<VideoSurfaceManager>()
-    var audioBufferManagers = ArrayList<AudioBufferManager>()
-    var audioVideoEncoders = ArrayList<AudioVideoEncoder>()
-
-    var videoSurfaceManagersToDelete = ArrayList<VideoSurfaceManager>()
-
-    // The GlManager manages the eglcontext for all renders and filters
-    val glManager = GlManager()
 
     // Counter to track if all surfaces are ready
     var numberOfReadySurfaces = 0
     var activeDecodes = 0
     var activeEncodes = 0
 
+    // Managers for internal surfaces
+    var videoSurfaceManagers = ArrayList<VideoSurfaceManager>()
+    var videoSurfaceManagersToDelete = ArrayList<VideoSurfaceManager>()
+
+    // Managers for audio buffers used for encoding
+    var audioBufferManagers = ArrayList<AudioBufferManager>()
+
+    // Audio / Video encoders
+    var audioVideoEncoders = ArrayList<AudioVideoEncoder>()
+
+    // The GlManager manages the eglcontext for all renders and filters
+    val glManager = GlManager()
+
     val viewModel: MainViewModel by viewModels()
 
     companion object {
-        const val LOG_VIDEO_EVERY_N_FRAMES = 200 // Log dropped frames and fps every N frames
+        const val LOG_VIDEO_EVERY_N_FRAMES = 300 // Log dropped frames and fps every N frames
         const val LOG_AUDIO_EVERY_N_FRAMES = 500 // Log dropped frames and fps every N frames
-        val MIN_DECODE_BUFFER_MS = 68 // Roughly 2 frames at 30fps.
-        val LOG_TAG = "VideoDemo"
-        val FILE_PREFIX = "VideoDemo"
-        var CAN_WRITE_FILES = false
+        const val MIN_DECODE_BUFFER_MS = 68 // Roughly 2 frames at 30fps.
+        const val LOG_TAG = "VideoDemo"
+        const val FILE_PREFIX = "VideoDemo"
+        var CAN_WRITE_FILES = false // Used to check if file write permissions have been granted
 
         // Convenience logging function
         fun logd(message: String) {
@@ -78,13 +80,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun initializeEncoders() {
+    private fun initializeEncoders() {
         // Free up old encoders and audio buffer managers
         releaseEncoders()
 
         // Stream 1
         audioBufferManagers.add(AudioBufferManager())
         audioVideoEncoders.add(AudioVideoEncoder(viewModel, videoSurfaceManagers[0].renderer.frameLedger, audioBufferManagers[0]))
+
+        // Stream 2 - 4 not currently permitted to encode
 
         // Stream 2
         // audioBufferManagers.add(AudioBufferManager())
@@ -98,7 +102,8 @@ class MainActivity : AppCompatActivity() {
         // audioBufferManagers.add(AudioBufferManager())
         // audioVideoEncoders.add(AudioVideoEncoder(viewModel, videoSurfaceManagers[3].renderer.frameLedger, audioBufferManagers[3]))
     }
-    fun initializeSurfaces() {
+
+    private fun initializeSurfaces() {
         numberOfReadySurfaces = 0
 
         // Create the preview surfaces
@@ -122,7 +127,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // Create the internal SurfaceTextures that will be used for decoding
-    fun initializeInternalSurfaces() {
+    private fun initializeInternalSurfaces() {
         // Clean-up any surfaces that need deletion
         releaseSurfacesMarkedForDeletion()
 
@@ -135,17 +140,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * To start a new test, fresh surfaces are need but do not garbage collect until the next
+     * To start a new test, fresh surfaces are needed but do not garbage collect them until the next
      * time "Decode" is pressed.
      */
-    fun markSurfacesForDeletion() {
+    private fun markSurfacesForDeletion() {
+        // Point deletion handles to the old arrays of managers/views
         previewSurfaceViewsToDelete = previewSurfaceViews
         videoSurfaceManagersToDelete = videoSurfaceManagers
+
+        // Set up new arrays for the fresh managers/views
         previewSurfaceViews = ArrayList()
         videoSurfaceManagers = ArrayList()
     }
 
-    fun releaseSurfacesMarkedForDeletion() {
+    /**
+     * Clear any surfaces/managers marked for deletion
+     */
+    private fun releaseSurfacesMarkedForDeletion() {
         previewSurfaceViewsToDelete.clear()
         previewSurfaceViewsToDelete = ArrayList()
 
@@ -156,8 +167,8 @@ class MainActivity : AppCompatActivity() {
         videoSurfaceManagersToDelete = ArrayList()
     }
 
-    fun releaseEncoders() {
-        // Empty and free current arrays encoders and audio managers
+    // Empty and free current arrays encoders and audio managers
+    private fun releaseEncoders() {
         audioBufferManagers.clear()
         for (encoder in audioVideoEncoders) {
             encoder.release()
@@ -165,7 +176,7 @@ class MainActivity : AppCompatActivity() {
         audioVideoEncoders.clear()
     }
 
-    fun release() {
+    private fun release() {
         releaseSurfacesMarkedForDeletion()
         releaseEncoders()
     }
@@ -176,9 +187,11 @@ class MainActivity : AppCompatActivity() {
 
         // Set up encoder default formats
         setDefaultEncoderFormats(this, viewModel)
+
         // Set up output directory for muxer
         viewModel.encodeOutputDir = getAppSpecificVideoStorageDir(this, viewModel, FILE_PREFIX)
 
+        // Set up preview surfaces as well as internal, non-visible decoding surfaces
         initializeSurfaces()
 
         // Request file read/write permissions need to save encodes.
@@ -188,7 +201,7 @@ class MainActivity : AppCompatActivity() {
             updateLog("File permissions not granted. Encoding will not save to file.")
         }
 
-        // Set up seekbar
+        // Set up preview frame frequency seekbar
         seek_framedelay.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 viewModel.setPreviewFrameFrequency(progress)
@@ -230,7 +243,7 @@ class MainActivity : AppCompatActivity() {
         viewModel.getDecodeStream4().observe(this, Observer<Boolean> {
                 isChecked -> checkbox_decode_stream4.isSelected = isChecked })
 
-        // Set up toggle switches to track the ViewModel
+        // Set up toggle switches for encode, audio, filters, etc.
         switch_filter.setOnCheckedChangeListener {
                 _, isChecked -> viewModel.setApplyGlFilter(isChecked) }
         viewModel.getApplyGlFilter().observe(this, Observer<Boolean> {
@@ -247,8 +260,11 @@ class MainActivity : AppCompatActivity() {
         // Set up decode button
         button_start_decode.setOnClickListener {
             button_start_decode.isEnabled = false
+
+            // Release any old surfaces marked for deletion
             releaseSurfacesMarkedForDeletion()
 
+            // Stream 1
             if (viewModel.getDecodeStream1Val()) {
                 // Are we encoding this run?
                 if (viewModel.getEncodeStream1Val()) {
@@ -270,16 +286,26 @@ class MainActivity : AppCompatActivity() {
                     beginVideoDecode(R.raw.paris_01_1080p, videoSurfaceManagers[0], 0)
                 }
             }
+
+            // Stream 2
             if (viewModel.getDecodeStream2Val()) {
                 beginVideoDecode(R.raw.paris_02_1080p, videoSurfaceManagers[1], 1)
             }
+
+            // Stream 3
             if (viewModel.getDecodeStream3Val()) {
                 beginVideoDecode(R.raw.paris_03_1080p, videoSurfaceManagers[2], 2)
             }
+
+            // Stream 4
             if (viewModel.getDecodeStream4Val()) {
                 beginVideoDecode(R.raw.paris_04_1080p, videoSurfaceManagers[3], 3)
             }
         }
+
+        // TODO: Add menu option to delete all previous encodes
+        // TODO: Add option to swap out input video files
+        // TODO: Add checkboxes to allow encodes for all streams
     }
 
     override fun onStop() {
@@ -292,13 +318,18 @@ class MainActivity : AppCompatActivity() {
      */
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
         when (keyCode) {
+            // 1 - 4 : Toggle decode checkboxes
             KEYCODE_1 -> { checkbox_decode_stream1.isChecked = ! checkbox_decode_stream1.isChecked; checkbox_decode_stream1.clearFocus(); return true }
             KEYCODE_2 -> { checkbox_decode_stream2.isChecked = ! checkbox_decode_stream2.isChecked; checkbox_decode_stream2.clearFocus(); return true }
             KEYCODE_3 -> { checkbox_decode_stream3.isChecked = ! checkbox_decode_stream3.isChecked; checkbox_decode_stream3.clearFocus(); return true }
             KEYCODE_4 -> { checkbox_decode_stream4.isChecked = ! checkbox_decode_stream4.isChecked; checkbox_decode_stream4.clearFocus(); return true }
+
+            // E, F, A : Toggle switches
             KEYCODE_E -> { switch_encode.isChecked = ! switch_encode.isChecked; switch_encode.clearFocus(); return true }
             KEYCODE_F -> { switch_filter.isChecked = ! switch_filter.isChecked; switch_filter.clearFocus(); return true }
             KEYCODE_A -> { switch_audio.isChecked = ! switch_audio.isChecked; switch_audio.clearFocus(); return true }
+
+            // D : Start decode
             KEYCODE_D -> {
                 if (button_start_decode.isEnabled) {
                     button_start_decode.performClick()
@@ -306,25 +337,43 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
+        // Pass up any unused keystrokes
         return super.onKeyUp(keyCode, event)
     }
 
-    // Set up an Exoplayer decode for the given video file and InternalSurfaceTextureComponent,
-    // Note: the InternalSurfaceTextureComponent knows it's own preview SurfaceView
+    /**
+     * Set up ExoPlayer and begin a decode/encode run
+     *
+     * @param inputVideoRawId The raw resource ID for the video file to decode
+     * @param videoSurfaceManager The VideoSurfaceManger to use
+     * internal decoding surfaces
+     * @param streamNumber Stream number (0 - 3)
+     * @param audioVideoEncoder Optional AudioVideoEncoder (if encoding is desired)
+     * @param audioBufferManager Optional AudioBufferManager (if encoding is desired)
+     */
+    // ,
     // TODO: clean up line wrapping
-    fun beginVideoDecode(inputVideoRawId: Int,
+    private fun beginVideoDecode(inputVideoRawId: Int,
                          videoSurfaceManager: VideoSurfaceManager,
                          streamNumber: Int,
                          audioVideoEncoder: AudioVideoEncoder? = null,
                          audioBufferManager: AudioBufferManager? = null) {
+        // Keep track of active decodes to know when to re-enable decode button/clean up surfaces
         activeDecodes++
 
         // Setup custom video and audio renderers
-        val renderersFactory = CustomExoRenderersFactory(this@MainActivity, viewModel, videoSurfaceManager, streamNumber, audioBufferManager)
+        val renderersFactory = CustomExoRenderersFactory(this@MainActivity, viewModel,
+            videoSurfaceManager, streamNumber, audioBufferManager)
 
-        // Reduce default buffering to MIN_DECODE_BUFFER_MS to prevent over allocation when processing multiple large streams
-        val loadControl = DefaultLoadControl.Builder().setBufferDurationsMs(MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS * 2, MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS).createDefaultLoadControl()
-        val player: SimpleExoPlayer = SimpleExoPlayer.Builder(this@MainActivity, renderersFactory).setLoadControl(loadControl).build()
+        // Reduce default buffering to MIN_DECODE_BUFFER_MS to prevent over allocation
+        // when processing multiple large streams
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS * 2, MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS)
+            .createDefaultLoadControl()
+        val player: SimpleExoPlayer = SimpleExoPlayer.Builder(this@MainActivity, renderersFactory)
+            .setLoadControl(loadControl)
+            .build()
 
         if (player.videoComponent != null) {
             if (audioVideoEncoder != null) {
@@ -341,7 +390,7 @@ class MainActivity : AppCompatActivity() {
                 videoSurfaceManager.initialize(player.videoComponent as Player.VideoComponent)
             }
         } else {
-            updateLog("Player video component is NULL, this will not work")
+            updateLog("Player video component is NULL for stream ${streamNumber + 1}, aborting.")
             return
         }
 
@@ -360,6 +409,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
+        // Set up video source and start the player
         val videoSource = buildExoMediaSource(this, inputVideoRawId)
         if (null != videoSource) {
             player.prepare(videoSource)
@@ -368,8 +418,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // Indicate one more preview surface is available
-    // This is a primitive way to attempt to prevent a decode stream beginning when preview surfaces
-    // are not yet ready
+    // This is used to only enable the decode button only after all the decode surfaces are ready
     fun surfaceAvailable() {
         numberOfReadySurfaces++
 
@@ -391,22 +440,21 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Called for each completed decode. When there are no more on-going decodes, re-enable the
-    // decode button.
-    fun decodeFinished() {
+    // Called for each completed decode. When there are no more on-going decodes or encodes, mark
+    // old surfaces for deletion and set-up fresh ones.
+    private fun decodeFinished() {
         activeDecodes--
-
-        if (activeDecodes == 0 && activeEncodes == 0) {
+        if (activeDecodes <= 0 && activeEncodes <= 0) {
             runOnUiThread {
-                if (activeEncodes <= 0) {
-                    markSurfacesForDeletion()
-                    initializeSurfaces()
-                }
+                markSurfacesForDeletion()
+                initializeSurfaces()
             }
         }
     }
 
-    fun encodeFinished() {
+    // Called for each completed encode. When there are no more on-going decodes or encodes, mark
+    // old surfaces for deletion and set-up fresh ones.
+    private fun encodeFinished() {
         activeEncodes--
         viewModel.getEncodingInProgress().removeObservers(this)
         if (activeDecodes == 0 && activeEncodes == 0) {
@@ -439,7 +487,7 @@ class MainActivity : AppCompatActivity() {
     /**
      * Check for required app permissions and request them from user if necessary
      */
-    fun checkPermissions(): Boolean {
+    private fun checkPermissions(): Boolean {
         if (ContextCompat.checkSelfPermission(this,
             Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                 // Launch the permission request for WRITE_EXTERNAL_STORAGE

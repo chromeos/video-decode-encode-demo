@@ -26,7 +26,7 @@ android {
     // TODO: min version could probably be 21 or 24, possibly lower. Verify and lower.
     defaultConfig {
         applicationId "dev.hadrosaur.videodecodeencodedemo"
-        minSdkVersion 23
+        minSdkVersion 24
         targetSdkVersion 30
         versionCode 1
         versionName "1.0"

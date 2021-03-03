@@ -16,7 +16,6 @@
 
 package dev.hadrosaur.videodecodeencodedemo.VideoHelpers
 
-import android.media.MediaCodec
 import android.media.MediaFormat
 import android.os.Build.VERSION.SDK_INT
 import com.google.android.exoplayer2.Format

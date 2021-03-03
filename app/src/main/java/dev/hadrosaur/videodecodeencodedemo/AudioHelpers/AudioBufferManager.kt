@@ -16,6 +16,8 @@
 
 package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 
+import com.google.android.exoplayer2.C
+import com.google.android.exoplayer2.C.ENCODING_PCM_16BIT
 import java.util.concurrent.LinkedBlockingDeque
 
 class AudioBufferManager {
@@ -30,6 +32,7 @@ class AudioBufferManager {
     private val queue = LinkedBlockingDeque<AudioBuffer>()
     var listener: AudioBufferManagerListener? = null
     var audioDecodeComplete = false
+    var pcmEncoding = ENCODING_PCM_16BIT
 
     /**
      * Adds AudioBuffer to the queue. If a callback is registered, trigger it

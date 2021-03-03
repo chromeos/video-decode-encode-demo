@@ -16,7 +16,10 @@
 
 package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 
+import android.media.AudioFormat
 import android.media.AudioTrack
+import com.google.android.exoplayer2.C.ENCODING_PCM_16BIT
+import com.google.android.exoplayer2.C.ENCODING_PCM_FLOAT
 import com.google.android.exoplayer2.Format
 import com.google.android.exoplayer2.PlaybackParameters
 import com.google.android.exoplayer2.audio.AudioAttributes
@@ -27,18 +30,18 @@ import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 import java.nio.ByteBuffer
 
 /**
- * And AudioSink for ExoPlayer that copies out audio buffers to a concurrent queue and can play
- * back audio as buffers are received.
+ * An AudioSink for ExoPlayer that copies out audio buffers to an encode queue and optionally plays
+ * back audio buffers as they are received.
  *
- * If audioBufferManager is null, do not encode
- *
- * Note: for this simple demo, playback control from the GUI is passed through the MainActivity's
- * view model.
+ * @param viewModel Main view model for logging and UI variables - including audio playback toggle
+ * @param streamNum Stream number, used for logging only
+ * @param audioBufferManager If not null, audio buffers will be copied out to this
+ * AudioBufferManager for encode. If null, do not encode.
  */
 class CopyAndPlayAudioSink(
-    val viewModel: MainViewModel,
-    private val streamNum: Int,
-    val audioBufferManager: AudioBufferManager? = null
+    private val viewModel: MainViewModel,
+    private val streamNum: Int = 0,
+    private val audioBufferManager: AudioBufferManager? = null
 ): AudioSink {
 
     private var isSinkInitialized = false
@@ -52,48 +55,30 @@ class CopyAndPlayAudioSink(
 
     private var inputFormat: Format = Format.Builder().build()
     private var sinkVolume = 100F
-
-    val enableFloatOutput = false // Make this configurable if desired
-
+    
     private var numBuffersHandled = 0
     private var lastPosition = 0L
 
-    private val audioTrack: AudioTrack
-
-    init {
-        // Set up audio track for playback
-        audioTrack = AudioTrack.Builder()
-            .setAudioAttributes(
-                android.media.AudioAttributes.Builder()
-                    .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
-                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MOVIE)
-                    .build()
-            )
-            .setAudioFormat(
-                android.media.AudioFormat.Builder()
-                    .setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT)
-                    .setSampleRate(48000)
-                    .setChannelMask(android.media.AudioFormat.CHANNEL_OUT_STEREO)
-                    .build()
-            )
-            .setTransferMode(AudioTrack.MODE_STREAM)
-            .build()
-    }
+    private var audioTrack: AudioTrack? = null
 
     override fun setListener(listener: AudioSink.Listener) {
         // No listener needed
     }
 
-    // This is used by MediaCodecAudioRenderer to determine if it needs to decode
-    // audio before sending it to this AudioSink. This sink only excepts raw PCM data and requires
-    // everything else to be decoded first. Return false if not raw PCM.
+    // This is used by MediaCodecAudioRenderer to determine if ExoPlayer needs to decode
+    // audio before sending it to this AudioSink. This sink only excepts PCM 16-bit data
+    // and requires everything else to be decoded first. Return false if not raw 16-bit PCM.
+    // Note: on devices where PCM_FLOAT is supported, it *could* be supported here, but would require
+    // the encoder to be configured correctly. For simplicity, this demo just requires 16-bit PCM.
     override fun supportsFormat(format: Format): Boolean {
         return MimeTypes.AUDIO_RAW.equals(format.sampleMimeType)
+                && format.pcmEncoding == ENCODING_PCM_16BIT
     }
 
-    // The only audio input this sink supports directly is raw 16-bit PCM
+    // The only audio input this sink supports directly is raw 16-bit PCM, see supportsFormat
     override fun getFormatSupport(format: Format): Int {
-        if (MimeTypes.AUDIO_RAW.equals(format.sampleMimeType)) {
+        if (MimeTypes.AUDIO_RAW.equals(format.sampleMimeType)
+            && format.pcmEncoding == ENCODING_PCM_16BIT) {
             return AudioSink.SINK_FORMAT_SUPPORTED_DIRECTLY
         } else {
             return AudioSink.SINK_FORMAT_UNSUPPORTED
@@ -114,7 +99,7 @@ class CopyAndPlayAudioSink(
         // buffer will be freed after this call so a deep copy is needed for encode
         val soundBuffer = cloneByteBuffer(buffer)
 
-        // Calculate clock time duration of processed buffer
+        // Calculate clock time duration of the buffer
         val bufferLengthUs = getBufferDurationUs(
             buffer.remaining(),
             inputFormat.channelCount * 2, // 2 bytes per frame for 16-bit PCM,
@@ -143,10 +128,10 @@ class CopyAndPlayAudioSink(
         }
 
         // Play audio buffer through speakers
-        // This will be chunky and crackly with no buffering
-        if (viewModel.getPlayAudioVal()) {
+        // This will be chunky and crackly without proper buffering - ok for demo purposes
+        if (viewModel.getPlayAudioVal() && audioTrack != null) {
             val playBuffer = buffer.asReadOnlyBuffer()
-            val audioTrackBufferSize = audioTrack.bufferSizeInFrames
+            val audioTrackBufferSize = audioTrack!!.bufferSizeInFrames
             var bytesToPlay = 0
 
             // The AudioTrack may have a smaller buffer size than the bytes to play out. Play out one
@@ -155,20 +140,21 @@ class CopyAndPlayAudioSink(
                 bytesToPlay = playBuffer.remaining().coerceAtMost(audioTrackBufferSize) // Same as Math.min
 
                 // Write sound and auto-advance position
-                val bytesPlayed = audioTrack.write(playBuffer, bytesToPlay, AudioTrack.WRITE_BLOCKING)
+                val bytesPlayed = audioTrack!!.write(playBuffer, bytesToPlay, AudioTrack.WRITE_BLOCKING)
 
                 // If AudioTrack.write did not succeed, playBuffer.position will not be auto-advanced
                 // and this loop can get stuck. This can happen if a malformed buffer arrives. To
-                // prevent and endless loop, just exit.
+                // prevent an endless loop, just exit.
                 // If correct playback is required, do something more intelligent here
                 if (bytesPlayed <= 0) {
+                    viewModel.updateLog("CopyAndPlayAudioSink: 0 bytes played when playing audio: there is a problem! ${playBuffer.remaining()}")
                     break
                 }
             }
 
             // If the AudioTrack is not playing, begin playback
-            if (audioTrack.playState != AudioTrack.PLAYSTATE_PLAYING) {
-                audioTrack.play()
+            if (audioTrack!!.playState != AudioTrack.PLAYSTATE_PLAYING) {
+                audioTrack!!.play()
             }
         }
 
@@ -194,6 +180,24 @@ class CopyAndPlayAudioSink(
         specifiedBufferSize: Int,
         outputChannels: IntArray?
     ) {
+        // Set up audio track for playback
+        audioTrack = AudioTrack.Builder()
+            .setAudioAttributes(
+                android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MOVIE)
+                    .build()
+            )
+            .setAudioFormat(
+                AudioFormat.Builder()
+                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT) // Note: forcing 16-bit here
+                    .setSampleRate(inputFormat.sampleRate)
+                    .setChannelMask(inputFormat.channelCount)
+                    .build()
+            )
+            .setTransferMode(AudioTrack.MODE_STREAM)
+            .build()
+
         // viewModel.updateLog("AudioSink format: ${inputFormat}, buf size: ${specifiedBufferSize}, output channels: ${outputChannels}")
         this.inputFormat = inputFormat
         isSinkInitialized = true
@@ -209,19 +213,20 @@ class CopyAndPlayAudioSink(
 
 
     // If an internal buffer is implemented, make sure to drain internal buffers.
-    // Currently no internal buffers
+    // Currently there are no internal buffers. However, leverage this call to insert a fake
+    // audio buffer for the encoder to know when the end of stream (EOS) is
     override fun playToEndOfStream() {
         if (!handledEndOfStream && isSinkInitialized && drainToEndOfStream()) {
             handledEndOfStream = true
             playPendingData()
 
-            // Stream is ended, include a fake EOS buffer for the audio encoder
+            // Stream is ended, include a fake EOS buffer as a flag for the audio encoder
             if (audioBufferManager != null) {
                 audioBufferManager.addData(AudioBuffer(ByteBuffer.allocate(1), numBuffersHandled + 1, lastPosition, 0, 0, true))
                 audioBufferManager.audioDecodeComplete = true
             }
 
-            viewModel.updateLog("All audio buffers handled for Stream ${streamNum}. # == ${numBuffersHandled}")
+            viewModel.updateLog("All audio buffers handled for Stream ${streamNum + 1}. # == ${numBuffersHandled}")
         }
     }
 
@@ -245,6 +250,7 @@ class CopyAndPlayAudioSink(
     }
 
     override fun setPlaybackParameters(playbackParameters: PlaybackParameters) {
+        // viewModel.updateLog("setPlaybackParameters called on audio sink. Params: ${playbackParameters}")
         pbParameters = playbackParameters
     }
 
@@ -261,6 +267,7 @@ class CopyAndPlayAudioSink(
     }
 
     override fun setAudioAttributes(audioAttributes: AudioAttributes) {
+        // viewModel.updateLog("setAudioAttributes called on audio sink. Attributes: ${audioAttributes}")
         sinkAudioAttributes = audioAttributes
     }
 
@@ -269,6 +276,7 @@ class CopyAndPlayAudioSink(
     }
 
     override fun setAuxEffectInfo(auxEffectInfo: AuxEffectInfo) {
+        // viewModel.updateLog("setAuxEffectInfo called on audio sink. Effect info: ${auxEffectInfo}")
         sinkAuxEffectInfo = auxEffectInfo
     }
 

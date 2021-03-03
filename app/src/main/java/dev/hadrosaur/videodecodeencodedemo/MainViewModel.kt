@@ -32,9 +32,9 @@ class MainViewModel : ViewModel() {
 
     // Stream decode switches
     private val decodeStream1 = SmartMutableLiveData<Boolean>(true)
-    private val decodeStream2 = SmartMutableLiveData<Boolean>(true)
-    private val decodeStream3 = SmartMutableLiveData<Boolean>(true)
-    private val decodeStream4 = SmartMutableLiveData<Boolean>(true)
+    private val decodeStream2 = SmartMutableLiveData<Boolean>(false)
+    private val decodeStream3 = SmartMutableLiveData<Boolean>(false)
+    private val decodeStream4 = SmartMutableLiveData<Boolean>(false)
 
     // Log text window
     private val logText = SmartMutableLiveData<String>("")
@@ -68,9 +68,9 @@ class MainViewModel : ViewModel() {
     fun getEncodeStream1Val(): Boolean = encodeStream1.value ?: false
     fun getPlayAudioVal(): Boolean = playAudio.value ?: false
     fun getDecodeStream1Val(): Boolean = decodeStream1.value ?: true
-    fun getDecodeStream2Val(): Boolean = decodeStream2.value ?: true
-    fun getDecodeStream3Val(): Boolean = decodeStream3.value ?: true
-    fun getDecodeStream4Val(): Boolean = decodeStream4.value ?: true
+    fun getDecodeStream2Val(): Boolean = decodeStream2.value ?: false
+    fun getDecodeStream3Val(): Boolean = decodeStream3.value ?: false
+    fun getDecodeStream4Val(): Boolean = decodeStream4.value ?: false
     fun getLogTextVal(): String = logText.value ?: ""
     fun getEncodingInProgressVal(): Boolean = encodingInProgress.value ?: false
 
