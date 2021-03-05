@@ -20,10 +20,8 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
-import android.view.KeyEvent
+import android.view.*
 import android.view.KeyEvent.*
-import android.view.SurfaceView
-import android.view.View
 import android.widget.SeekBar
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.activity.viewModels
@@ -303,7 +301,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // TODO: Add menu option to delete all previous encodes
         // TODO: Add option to swap out input video files
         // TODO: Add checkboxes to allow encodes for all streams
     }
@@ -513,6 +510,32 @@ class MainActivity : AppCompatActivity() {
 
             text_log.append(message)
             scroll_log.post { scroll_log.fullScroll(View.FOCUS_DOWN) }
+        }
+    }
+
+    /**
+     * Set up options menu to allow debug logging and clearing cache'd data
+     */
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        val inflater: MenuInflater = menuInflater
+        inflater.inflate(R.menu.menu_main, menu)
+        return true
+    }
+
+    /**
+     * Handle menu presses
+     */
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.menu_delete_exports -> {
+                deleteEncodes(this, viewModel, FILE_PREFIX)
+                true
+            }
+            //R.id.menu_delete_logs -> {
+            //    deleteLogs(this)
+            //    true
+            //}
+            else -> super.onOptionsItemSelected(item)
         }
     }
 }
