@@ -25,7 +25,7 @@ import com.google.android.exoplayer2.util.MediaClock
 // include the next frame. Too far is ok in this case.
 class SpeedyMediaClock: MediaClock {
     val MIN_FPS: Int = 1
-    var internalPlaybackParameters = PlaybackParameters(1f)
+    private var internalPlaybackParameters = PlaybackParameters(1f)
     var lastProcessedFrameUs = 0L
 
     fun updateLastProcessedFrame(frameProcessedUs: Long) {

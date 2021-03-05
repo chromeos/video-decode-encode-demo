@@ -17,9 +17,12 @@
 package dev.hadrosaur.videodecodeencodedemo.Utils
 
 import android.content.res.AssetFileDescriptor
-import android.media.*
+import android.media.MediaCodecInfo
+import android.media.MediaCodecList
+import android.media.MediaExtractor
+import android.media.MediaFormat
 import android.media.MediaFormat.*
-import com.google.android.exoplayer2.C
+import android.os.Build.VERSION.SDK_INT
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 
@@ -45,10 +48,10 @@ fun selectEncoder(mimeType: String): MediaCodecInfo? {
     }
 
     // Default to returning the first codec
-    if (validCodecs.size > 0) {
-        return validCodecs.get(0)
+    return if (validCodecs.size > 0) {
+        validCodecs[0]
     } else {
-        return null
+        null
     }
 }
 
@@ -150,16 +153,21 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
 
     // Settings to copy from the original video format
     val intFormatSettings = ArrayList<String>()
-    intFormatSettings.add(KEY_PRIORITY)
     intFormatSettings.add(KEY_WIDTH)
     intFormatSettings.add(KEY_HEIGHT)
-    intFormatSettings.add(KEY_LEVEL)
-    intFormatSettings.add(KEY_COLOR_STANDARD)
-    intFormatSettings.add(KEY_COLOR_RANGE)
-    intFormatSettings.add(KEY_COLOR_TRANSFER)
     intFormatSettings.add(KEY_BIT_RATE)
     intFormatSettings.add(KEY_FRAME_RATE)
     intFormatSettings.add(KEY_I_FRAME_INTERVAL)
+
+    if (SDK_INT >= 23) {
+        intFormatSettings.add(KEY_PRIORITY)
+        intFormatSettings.add(KEY_LEVEL)
+    }
+    if (SDK_INT >= 24) {
+        intFormatSettings.add(KEY_COLOR_STANDARD)
+        intFormatSettings.add(KEY_COLOR_RANGE)
+        intFormatSettings.add(KEY_COLOR_TRANSFER)
+    }
 
     // Crop values are essential as some media decodes to larger width/height than the actual
     // video. For example, 1920x1080 will decode to 1920x1088, with 8px crop offset.
@@ -183,17 +191,17 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
             // Get the real width and height
             // See: https://developer.android.com/reference/android/media/MediaCodec#accessing-raw-video-bytebuffers-on-older-devices
             if (setting == KEY_WIDTH) {
-                if (inputMediaFormat.containsKey("crop-left") && inputMediaFormat.containsKey("crop-right")) {
-                    encoderWidth = inputMediaFormat.getInteger("crop-right") + 1 - inputMediaFormat.getInteger("crop-left")
+                encoderWidth = if (inputMediaFormat.containsKey("crop-left") && inputMediaFormat.containsKey("crop-right")) {
+                    inputMediaFormat.getInteger("crop-right") + 1 - inputMediaFormat.getInteger("crop-left")
                 } else {
-                    encoderWidth = inputMediaFormat.getInteger(setting)
+                    inputMediaFormat.getInteger(setting)
                 }
             }
             if (setting == KEY_HEIGHT) {
-                if (inputMediaFormat.containsKey("crop-top") && inputMediaFormat.containsKey("crop-bottom")) {
-                    encoderHeight = inputMediaFormat.getInteger("crop-bottom") + 1 - inputMediaFormat.getInteger("crop-top")
+                encoderHeight = if (inputMediaFormat.containsKey("crop-top") && inputMediaFormat.containsKey("crop-bottom")) {
+                    inputMediaFormat.getInteger("crop-bottom") + 1 - inputMediaFormat.getInteger("crop-top")
                 } else {
-                    encoderHeight = inputMediaFormat.getInteger(setting)
+                    inputMediaFormat.getInteger(setting)
                 }
             }
         }
@@ -236,14 +244,19 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
         // Framerate. If decoder does not tell us the frame rate, choose 33, 30, 25, or whatever.
         if (!inputMediaFormat.containsKey(KEY_FRAME_RATE)) {
             val supportedFrameRates = videoCapabilities.getSupportedFrameRatesFor(encoderWidth, encoderHeight)
-            if (supportedFrameRates.contains(33.0)) {
-                encoderFormat.setFloat(KEY_FRAME_RATE, 33F)
-            } else if (supportedFrameRates.contains(30.0)) {
-                encoderFormat.setFloat(KEY_FRAME_RATE, 30F)
-            } else if (supportedFrameRates.contains(25.0)) {
-                encoderFormat.setFloat(KEY_FRAME_RATE, 25F)
-            } else {
-                encoderFormat.setFloat(KEY_FRAME_RATE, supportedFrameRates.upper.toFloat())
+            when {
+                supportedFrameRates.contains(33.0) -> {
+                    encoderFormat.setFloat(KEY_FRAME_RATE, 33F)
+                }
+                supportedFrameRates.contains(30.0) -> {
+                    encoderFormat.setFloat(KEY_FRAME_RATE, 30F)
+                }
+                supportedFrameRates.contains(25.0) -> {
+                    encoderFormat.setFloat(KEY_FRAME_RATE, 25F)
+                }
+                else -> {
+                    encoderFormat.setFloat(KEY_FRAME_RATE, supportedFrameRates.upper.toFloat())
+                }
             }
         }
 
@@ -255,7 +268,7 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
                     MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR
                 )
             } else {
-                val bitrateRange = videoCapabilities.getBitrateRange()
+                val bitrateRange = videoCapabilities.bitrateRange
                 if (bitrateRange.contains(DEFAULT_BITRATE)) {
                     encoderFormat.setInteger(KEY_BIT_RATE, DEFAULT_BITRATE)
                 } else {
@@ -265,32 +278,35 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
         }
 
         // Profile level
-        val profileLevels = capabilities.profileLevels
-        var containsProfile = false
-        for (profileLevel in profileLevels) {
-            if (profileLevel.profile == inputMediaFormat.getInteger(KEY_PROFILE)
-                && profileLevel.level == inputMediaFormat.getInteger(KEY_LEVEL)) {
+        if (SDK_INT >= 24) {
+            val profileLevels = capabilities.profileLevels
+            var containsProfile = false
+            for (profileLevel in profileLevels) {
+                if (profileLevel.profile == inputMediaFormat.getInteger(KEY_PROFILE)
+                    && profileLevel.level == inputMediaFormat.getInteger(KEY_LEVEL)
+                ) {
                     // This encoder supports the input media profile/level, use it for the encoder
                     encoderFormat.setInteger(KEY_PROFILE, inputMediaFormat.getInteger(KEY_PROFILE))
                     encoderFormat.setInteger(KEY_LEVEL, inputMediaFormat.getInteger(KEY_LEVEL))
                     containsProfile = true
+                }
             }
-        }
 
-        // If this encoder cannot encode with this level and profile, choose something basic
-        // TODO: Seems to be better just to let the device default. Some Samsung phones don't support Main Profile 4
-        if (!containsProfile) {
-            /*
-                // Basically everything should support this
-                encoderFormat.setInteger(
-                    MediaFormat.KEY_PROFILE,
-                    MediaCodecInfo.CodecProfileLevel.AVCProfileMain
-                )
-                encoderFormat.setInteger(
-                    MediaFormat.KEY_PROFILE,
-                    MediaCodecInfo.CodecProfileLevel.AVCLevel4
-                )
-            */
+            // If this encoder cannot encode with this level and profile, choose something basic
+            // TODO: Seems to be better just to let the device default. E.g. some Samsung phones don't support Main Profile 4
+            if (!containsProfile) {
+                /*
+                    // Basically everything should support this
+                    encoderFormat.setInteger(
+                        MediaFormat.KEY_PROFILE,
+                        MediaCodecInfo.CodecProfileLevel.AVCProfileMain
+                    )
+                    encoderFormat.setInteger(
+                        MediaFormat.KEY_PROFILE,
+                        MediaCodecInfo.CodecProfileLevel.AVCLevel4
+                    )
+                */
+            }
         }
     }
 
@@ -327,7 +343,12 @@ fun getBestAudioEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
     val outputAudioFormat = createAudioFormat(mimeType,
         inputAudioFormat.getInteger(KEY_SAMPLE_RATE),
         inputAudioFormat.getInteger(KEY_CHANNEL_COUNT))
-    outputAudioFormat.setInteger(KEY_BIT_RATE, inputAudioFormat.getInteger(KEY_BIT_RATE))
+
+    if (inputAudioFormat.containsKey(KEY_BIT_RATE)) {
+        outputAudioFormat.setInteger(KEY_BIT_RATE, inputAudioFormat.getInteger(KEY_BIT_RATE))
+    } else {
+        outputAudioFormat.setInteger(KEY_BIT_RATE, 48000)
+    }
 
     // Default encoder audio format is PCM_16BIT. Explicit reference here. If PCM_FLOAT or another
     // encoding is used without the correct key here, audio will be glitchy in the output file.
@@ -338,7 +359,7 @@ fun getBestAudioEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
 }
 
 /**
- * For convenience, set up the encoder to use the same video/audio format as the originial file
+ * For convenience, set up the encoder to use the same video/audio format as the original file
  *
  * This method should be run to save these variables in the view model for later use
  */

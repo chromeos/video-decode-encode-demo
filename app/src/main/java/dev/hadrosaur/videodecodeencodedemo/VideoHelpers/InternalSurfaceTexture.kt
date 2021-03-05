@@ -18,15 +18,16 @@ package dev.hadrosaur.videodecodeencodedemo.VideoHelpers
 
 import android.graphics.SurfaceTexture
 import android.graphics.SurfaceTexture.OnFrameAvailableListener
-import android.opengl.*
+import android.opengl.EGLSurface
 import android.os.Handler
 import android.view.Surface
 import android.view.SurfaceView
 import com.google.android.exoplayer2.util.Assertions
+import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager.Companion.deleteTexture
 import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager.Companion.generateTextureIds
 import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager.Companion.getEglSurface
-import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 
 /**
  * The underlying SurfaceTexture used for decoding. Calls back to the InternalSurfaceTexturerRenderer
@@ -36,8 +37,8 @@ import dev.hadrosaur.videodecodeencodedemo.MainViewModel
  */
 class InternalSurfaceTexture @JvmOverloads constructor(
     val viewModel: MainViewModel,
-    val glManager: GlManager,
-    val outputSurface: SurfaceView,
+    private val glManager: GlManager,
+    private val outputSurface: SurfaceView,
     private val handler: Handler,
     private val callback: TextureImageListener? =  /* callback= */null)
     : OnFrameAvailableListener {
@@ -47,14 +48,14 @@ class InternalSurfaceTexture @JvmOverloads constructor(
     private var outputSurfaceEGLSurface: EGLSurface? = null
     private var encodeSurfaceEGLSurface: EGLSurface? = null
     private var texture: SurfaceTexture? = null
-    var textureId: Int = 0
+    private var textureId: Int = 0
 
     // Runners and gl frame drawers for rendering to screen or video encoder
-    val drawFrameRunner = DrawFrameRunner()
+    private val drawFrameRunner = DrawFrameRunner()
     lateinit var drawFrameProcessor: DrawFrameProcessor
-    val encodeFrameRunner = EncodeFrameRunner()
+    private val encodeFrameRunner = EncodeFrameRunner()
     lateinit var encodeFrameProcessor: DrawFrameProcessor
-    val updateTexRunner = UpdateTexImageRunner()
+    private val updateTexRunner = UpdateTexImageRunner()
 
     // Call back to InternalSurfaceTextureRenderer after updateTexImage has been called for a new frame
     interface TextureImageListener {
@@ -127,7 +128,7 @@ class InternalSurfaceTexture @JvmOverloads constructor(
         try {
             if (texture != null) {
                 texture!!.release()
-                GLES20.glDeleteTextures(1, IntArray(1) {textureId}, 0)
+                deleteTexture(textureId)
             }
         } finally {
         }

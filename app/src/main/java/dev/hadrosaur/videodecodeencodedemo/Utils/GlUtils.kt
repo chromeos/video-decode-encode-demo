@@ -24,6 +24,8 @@ import java.util.*
 
 /**
  * Utility functions for using EGL.
+ *
+ * TODO: Make the relationship with GLManager clearer (or merge these two)
  */
 object GlUtils {
     const val POSITION_ATTRIBUTE_NAME = "a_position"
@@ -32,7 +34,7 @@ object GlUtils {
     const val ST_MATRIX_UNIFORM_NAME = "u_surface_tex_transform_matrix"
 
     const val TEX_SAMPLER_NAME = "tex_sampler_0"
-    const val TEX_COORDINATE_NAME = "v_texcoord"
+    private const val TEX_COORDINATE_NAME = "v_texcoord"
 
     const val NO_FBO = 0
 
@@ -109,44 +111,6 @@ object GlUtils {
     }
 
     /**
-     * Returns a new GL context for the specified `eglDisplay`.
-     *
-     * @throws UnsupportedEglVersionException if the device does not support EGL version 2.
-     * `eglDisplay` is terminated before the exception is thrown in this case.
-     */
-    @Throws(UnsupportedEglVersionException::class)
-    fun createEglContext(eglDisplay: EGLDisplay, recordable: Boolean): EGLContext {
-        val contextAttributes =
-            intArrayOf(EGL14.EGL_CONTEXT_CLIENT_VERSION, 2, EGL14.EGL_NONE)
-        val eglContext = EGL14.eglCreateContext(eglDisplay,
-            getEglConfig(eglDisplay, recordable), EGL14.EGL_NO_CONTEXT, contextAttributes, 0)
-        if (eglContext == null) {
-            EGL14.eglTerminate(eglDisplay)
-            throw UnsupportedEglVersionException()
-        }
-        checkGlError()
-        return eglContext
-    }
-
-    /**
-     * Returns a new [EGLSurface] wrapping the specified `surface`.
-     *
-     * @param eglDisplay to attach the surface to
-     * @param surface to wrap; must be a surface, surface texture or surface holder
-     * @param recordable if the surface will be used to record from
-     */
-    fun getEglSurface(
-        eglDisplay: EGLDisplay, surface: Any?, recordable: Boolean
-    ): EGLSurface {
-        return EGL14.eglCreateWindowSurface(
-            eglDisplay,
-            getEglConfig(eglDisplay, recordable),
-            surface, intArrayOf(EGL14.EGL_NONE),
-            0
-        )
-    }
-
-    /**
      * Returns the texture identifier for a newly-allocated surface with the specified dimensions.
      *
      * @param width of the new texture in pixels
@@ -197,49 +161,11 @@ object GlUtils {
         GLES20.glViewport(0, 0, width, height)
     }
 
-    /**
-     * Destroys the GL context identifier by `eglDisplay` and `eglContext`.
-     */
-    fun destroyEglContext(
-        eglDisplay: EGLDisplay?,
-        eglContext: EGLContext?
-    ) {
-        if (eglDisplay == null) {
-            return
-        }
-        EGL14.eglMakeCurrent(
-            eglDisplay,
-            EGL14.EGL_NO_SURFACE,
-            EGL14.EGL_NO_SURFACE,
-            EGL14.EGL_NO_CONTEXT
-        )
-        var error = EGL14.eglGetError()
-        if (error != EGL14.EGL_SUCCESS) {
-            throw RuntimeException("error releasing context: $error")
-        }
-        if (eglContext != null) {
-            EGL14.eglDestroyContext(eglDisplay, eglContext)
-            error = EGL14.eglGetError()
-            if (error != EGL14.EGL_SUCCESS) {
-                throw RuntimeException("error destroying context: $error")
-            }
-        }
-        EGL14.eglReleaseThread()
-        error = EGL14.eglGetError()
-        if (error != EGL14.EGL_SUCCESS) {
-            throw RuntimeException("error releasing thread: $error")
-        }
-        EGL14.eglTerminate(eglDisplay)
-        error = EGL14.eglGetError()
-        if (error != EGL14.EGL_SUCCESS) {
-            throw RuntimeException("error terminating display: $error")
-        }
-    }
 
     /**
      * Returns a new GL texture identifier.
      */
-    fun generateTexture(): Int {
+    private fun generateTexture(): Int {
         val textures = IntArray(1)
         GLES20.glGenTextures(1, textures, 0)
         checkGlError()
@@ -249,7 +175,7 @@ object GlUtils {
     /**
      * Returns a new framebuffer identifier.
      */
-    fun generateFbo(): Int {
+    private fun generateFbo(): Int {
         val fbos = IntArray(1)
         GLES20.glGenFramebuffers(1, fbos, 0)
         checkGlError()
@@ -348,57 +274,6 @@ object GlUtils {
                 compileShader(GLES20.GL_FRAGMENT_SHADER, SEPIA_FRAGMENT_SHADER)
             return linkProgram(vertexShader, fragmentShader)
         }
-
-    private fun getEglConfig(
-        eglDisplay: EGLDisplay,
-        recordable: Boolean
-    ): EGLConfig? {
-        // Get an EGLConfig.
-        val EGL_OPENGL_ES2_BIT = 4
-        val RED_SIZE = 8
-        val GREEN_SIZE = 8
-        val BLUE_SIZE = 8
-        val ALPHA_SIZE = 8
-        val DEPTH_SIZE = 0
-        val STENCIL_SIZE = 0
-        val EGL_RECORDABLE_ANDROID = 0x3142
-        val RECORDABLE_CONFIGURATION = intArrayOf(
-            EGL14.EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-            EGL14.EGL_RED_SIZE, RED_SIZE,
-            EGL14.EGL_GREEN_SIZE, GREEN_SIZE,
-            EGL14.EGL_BLUE_SIZE, BLUE_SIZE,
-            EGL14.EGL_ALPHA_SIZE, ALPHA_SIZE,
-            EGL14.EGL_DEPTH_SIZE, DEPTH_SIZE,
-            EGL14.EGL_STENCIL_SIZE, STENCIL_SIZE,
-            EGL_RECORDABLE_ANDROID, 1,
-            EGL14.EGL_NONE
-        )
-        val DEFAULT_CONFIGURATION = intArrayOf(
-            EGL14.EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-            EGL14.EGL_RED_SIZE, RED_SIZE,
-            EGL14.EGL_GREEN_SIZE, GREEN_SIZE,
-            EGL14.EGL_BLUE_SIZE, BLUE_SIZE,
-            EGL14.EGL_ALPHA_SIZE, ALPHA_SIZE,
-            EGL14.EGL_DEPTH_SIZE, DEPTH_SIZE,
-            EGL14.EGL_STENCIL_SIZE, STENCIL_SIZE,
-            EGL14.EGL_NONE
-        )
-        val configsCount = IntArray(1)
-        val eglConfigs =
-            arrayOfNulls<EGLConfig>(1)
-        if (!EGL14.eglChooseConfig(
-                eglDisplay,
-                if (recordable) RECORDABLE_CONFIGURATION else DEFAULT_CONFIGURATION,
-                0, eglConfigs, 0, 1, configsCount, 0
-            )
-        ) {
-            throw RuntimeException("eglChooseConfig failed")
-        }
-        return eglConfigs[0]
-    }
-
-
-
 
     private fun compileShader(type: Int, source: String): Int {
         val shader = GLES20.glCreateShader(type)
@@ -541,10 +416,10 @@ object GlUtils {
      */
     class Uniform(program: Int, index: Int) {
         val mName: String
-        val mLocation: Int
-        val mType: Int
-        var mTexId = 0
-        var mUnit = 0
+        private val mLocation: Int
+        private val mType: Int
+        private var mTexId = 0
+        private var mUnit = 0
 
         /**
          * Configures [.bind] to use the specified `texId` for this sampler uniform.
@@ -565,12 +440,16 @@ object GlUtils {
         fun bindToTextureSampler() {
             check(mTexId != 0) { "call setSamplerTexId before bind" }
             GLES20.glActiveTexture(GLES20.GL_TEXTURE0 + mUnit)
-            if (mType == GLES11Ext.GL_SAMPLER_EXTERNAL_OES) {
-                GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, mTexId)
-            } else if (mType == GLES20.GL_SAMPLER_2D) {
-                GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTexId)
-            } else {
-                throw IllegalStateException("unexpected uniform type: $mType")
+            when (mType) {
+                GLES11Ext.GL_SAMPLER_EXTERNAL_OES -> {
+                    GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, mTexId)
+                }
+                GLES20.GL_SAMPLER_2D -> {
+                    GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTexId)
+                }
+                else -> {
+                    throw IllegalStateException("unexpected uniform type: $mType")
+                }
             }
             GLES20.glUniform1i(mLocation, mUnit)
             GLES20.glTexParameteri(

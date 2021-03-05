@@ -16,19 +16,22 @@
 
 package dev.hadrosaur.videodecodeencodedemo
 
-import android.media.*
+import android.media.MediaCodec
 import android.media.MediaCodec.*
-import android.media.MediaFormat.*
+import android.media.MediaFormat
+import android.media.MediaFormat.KEY_HEIGHT
+import android.media.MediaFormat.KEY_WIDTH
+import android.media.MediaMuxer
+import android.os.Build.VERSION.SDK_INT
 import android.view.Surface
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBuffer
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.cloneByteBuffer
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.getBufferDurationUs
 import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.LOG_VIDEO_EVERY_N_FRAMES
-import dev.hadrosaur.videodecodeencodedemo.Utils.*
+import dev.hadrosaur.videodecodeencodedemo.Utils.generateTimestamp
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoFrameLedger
-import java.io.*
-import java.lang.IllegalStateException
+import java.io.File
 import java.nio.ByteBuffer
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicInteger
@@ -265,8 +268,10 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                                         val muxingBuffer = muxingQueue.poll()
 
                                         // viewModel.updateLog("Muxing buffer out of mux queue: ${muxingBuffer.info.presentationTimeUs}")
-                                        muxer?.writeSampleData(
-                                            videoTrackIndex, muxingBuffer.buffer, muxingBuffer.info)
+                                        if (muxingBuffer != null) {
+                                            muxer?.writeSampleData(
+                                                videoTrackIndex, muxingBuffer.buffer, muxingBuffer.info)
+                                        }
                                         numMuxedVideoFrames++
                                     }
                                 }
@@ -322,8 +327,14 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                     ledgerBuffer?.info?.presentationTimeUs = frameLedger.encodeLedger[ledgerBuffer?.frameNum]!!
                     if (isMuxerRunning) {
                         // viewModel.updateLog("Muxing frame ${ledgerBuffer?.frameNum} from ledger queue at ${ledgerBuffer?.info?.presentationTimeUs}")
-                        muxer?.writeSampleData(videoTrackIndex, ledgerBuffer.buffer, ledgerBuffer.info)
-                        numMuxedVideoFrames++
+                        if (ledgerBuffer != null) {
+                            muxer?.writeSampleData(
+                                videoTrackIndex,
+                                ledgerBuffer.buffer,
+                                ledgerBuffer.info
+                            )
+                            numMuxedVideoFrames++
+                        }
                         ledgerQueue.poll()
                     }
                 } else {
@@ -486,15 +497,23 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                                     // Force it to be no earlier than the present mux position.
                                     // TODO: this should not be necessary and probably indicates a bug
                                     // in audio encoding logic
-                                    if (muxingBuffer.info.presentationTimeUs < lastMuxedAudioPresentationTimeUs) {
-                                        viewModel.updateLog("Presentation time muxed buffer ${muxingBuffer.info.presentationTimeUs} is in the past, adjusting to ${lastMuxedAudioPresentationTimeUs} to prevent muxing errors.")
-                                        muxingBuffer.info.presentationTimeUs = lastMuxedAudioPresentationTimeUs
-                                    }
+                                    if (muxingBuffer != null) {
+                                        if (muxingBuffer.info.presentationTimeUs < lastMuxedAudioPresentationTimeUs) {
+                                            viewModel.updateLog("Presentation time muxed buffer ${muxingBuffer.info.presentationTimeUs} is in the past, adjusting to ${lastMuxedAudioPresentationTimeUs} to prevent muxing errors.")
+                                            muxingBuffer.info.presentationTimeUs =
+                                                lastMuxedAudioPresentationTimeUs
+                                        }
 
-                                    muxer?.writeSampleData(audioTrackIndex, muxingBuffer.buffer, muxingBuffer.info)
-                                    lastMuxedAudioPresentationTimeUs = muxingBuffer.info.presentationTimeUs
-                                    numMuxedBuffers++
-                                    // viewModel.updateLog("Muxing audio buffer out #${numMuxedBuffers} of mux queue: ${muxingBuffer.info.presentationTimeUs}, size: ${muxingBuffer.info.size},  flags: ${info.flags}, offset: ${info.offset}")
+                                        muxer?.writeSampleData(
+                                            audioTrackIndex,
+                                            muxingBuffer.buffer,
+                                            muxingBuffer.info
+                                        )
+                                        lastMuxedAudioPresentationTimeUs =
+                                            muxingBuffer.info.presentationTimeUs
+                                        numMuxedBuffers++
+                                        // viewModel.updateLog("Muxing audio buffer out #${numMuxedBuffers} of mux queue: ${muxingBuffer.info.presentationTimeUs}, size: ${muxingBuffer.info.size},  flags: ${info.flags}, offset: ${info.offset}")
+                                    }
                                 }
                             }
 
@@ -525,7 +544,11 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
         }
 
         override fun onError(codec: MediaCodec, e: CodecException) {
-            viewModel.updateLog(("AudioEncoder error: ${e.errorCode} + ${e.diagnosticInfo}"))
+            if (SDK_INT >= 23) {
+                viewModel.updateLog(("AudioEncoder error: ${e.errorCode} + ${e.diagnosticInfo}"))
+            } else {
+                viewModel.updateLog(("AudioEncoder error: ${e.message} + ${e.diagnosticInfo}"))
+            }
         }
 
         override fun onOutputFormatChanged(codec: MediaCodec, format: MediaFormat) {

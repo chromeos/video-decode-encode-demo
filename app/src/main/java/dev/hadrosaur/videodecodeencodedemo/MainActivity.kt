@@ -29,7 +29,6 @@ import androidx.activity.result.contract.ActivityResultContracts.RequestPermissi
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Observer
 import com.google.android.exoplayer2.DefaultLoadControl
 import com.google.android.exoplayer2.PlaybackParameters
 import com.google.android.exoplayer2.Player
@@ -43,26 +42,27 @@ const val NUMBER_OF_STREAMS = 4
 
 class MainActivity : AppCompatActivity() {
     // Preview surfaces
-    var previewSurfaceViews = ArrayList<SurfaceView>()
-    var previewSurfaceViewsToDelete = ArrayList<SurfaceView>()
+    // TODO: Revisit the "To Delete" logic and make sure it is still necessary. Possibly remove it.
+    private var previewSurfaceViews = ArrayList<SurfaceView>()
+    private var previewSurfaceViewsToDelete = ArrayList<SurfaceView>()
 
     // Counter to track if all surfaces are ready
-    var numberOfReadySurfaces = 0
-    var activeDecodes = 0
-    var activeEncodes = 0
+    private var numberOfReadySurfaces = 0
+    private var activeDecodes = 0
+    private var activeEncodes = 0
 
     // Managers for internal surfaces
-    var videoSurfaceManagers = ArrayList<VideoSurfaceManager>()
-    var videoSurfaceManagersToDelete = ArrayList<VideoSurfaceManager>()
+    private var videoSurfaceManagers = ArrayList<VideoSurfaceManager>()
+    private var videoSurfaceManagersToDelete = ArrayList<VideoSurfaceManager>()
 
     // Managers for audio buffers used for encoding
-    var audioBufferManagers = ArrayList<AudioBufferManager>()
+    private var audioBufferManagers = ArrayList<AudioBufferManager>()
 
     // Audio / Video encoders
     var audioVideoEncoders = ArrayList<AudioVideoEncoder>()
 
     // The GlManager manages the eglcontext for all renders and filters
-    val glManager = GlManager()
+    private val glManager = GlManager()
 
     val viewModel: MainViewModel by viewModels()
 
@@ -206,7 +206,7 @@ class MainActivity : AppCompatActivity() {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 viewModel.setPreviewFrameFrequency(progress)
                 runOnUiThread {
-                    text_frame_delay.setText("Preview every ${progress} frames")
+                    text_frame_delay.text = "Preview every ${progress} frames"
                 }
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {
@@ -214,12 +214,12 @@ class MainActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
             }
         })
-        viewModel.getPreviewFrameFrequency().observe(this, Observer<Int>{ frameFrequency ->
+        viewModel.getPreviewFrameFrequency().observe(this, { frameFrequency ->
             seek_framedelay.progress = frameFrequency
         })
 
         // Set up on-screen log
-        viewModel.getLogText().observe(this, Observer<String> { logText ->
+        viewModel.getLogText().observe(this, { logText ->
             runOnUiThread {
                 updateLog(logText)
             }
@@ -228,33 +228,33 @@ class MainActivity : AppCompatActivity() {
         // Set up decode checkboxes
         checkbox_decode_stream1.setOnCheckedChangeListener{
                 _, isChecked -> viewModel.setDecodeStream1(isChecked) }
-        viewModel.getDecodeStream1().observe(this, Observer<Boolean> {
+        viewModel.getDecodeStream1().observe(this, {
                 isChecked -> checkbox_decode_stream1.isSelected = isChecked })
         checkbox_decode_stream2.setOnCheckedChangeListener{
                 _, isChecked -> viewModel.setDecodeStream2(isChecked) }
-        viewModel.getDecodeStream2().observe(this, Observer<Boolean> {
+        viewModel.getDecodeStream2().observe(this, {
                 isChecked -> checkbox_decode_stream2.isSelected = isChecked })
         checkbox_decode_stream3.setOnCheckedChangeListener{
                 _, isChecked -> viewModel.setDecodeStream3(isChecked) }
-        viewModel.getDecodeStream3().observe(this, Observer<Boolean> {
+        viewModel.getDecodeStream3().observe(this, {
                 isChecked -> checkbox_decode_stream3.isSelected = isChecked })
         checkbox_decode_stream4.setOnCheckedChangeListener{
                 _, isChecked -> viewModel.setDecodeStream4(isChecked) }
-        viewModel.getDecodeStream4().observe(this, Observer<Boolean> {
+        viewModel.getDecodeStream4().observe(this, {
                 isChecked -> checkbox_decode_stream4.isSelected = isChecked })
 
         // Set up toggle switches for encode, audio, filters, etc.
         switch_filter.setOnCheckedChangeListener {
                 _, isChecked -> viewModel.setApplyGlFilter(isChecked) }
-        viewModel.getApplyGlFilter().observe(this, Observer<Boolean> {
+        viewModel.getApplyGlFilter().observe(this, {
                 applyFilter -> switch_filter.isSelected = applyFilter })
         switch_encode.setOnCheckedChangeListener {
                 _, isChecked -> viewModel.setEncodeStream1(isChecked) }
-        viewModel.getEncodeStream1().observe(this, Observer<Boolean> {
+        viewModel.getEncodeStream1().observe(this, {
                 encodeStream -> switch_encode.isSelected = encodeStream })
         switch_audio.setOnCheckedChangeListener {
                 _, isChecked -> viewModel.setPlayAudio(isChecked) }
-        viewModel.getPlayAudio().observe(this, Observer<Boolean> {
+        viewModel.getPlayAudio().observe(this, {
                 playAudio -> switch_audio.isSelected = playAudio })
 
         // Set up decode button
@@ -271,7 +271,7 @@ class MainActivity : AppCompatActivity() {
                     // Set-up an observer so the AudioVideoEncoder can signal the encode is complete
                     // through the view model
                     viewModel.getEncodingInProgress().value = true // Set this directly (not post) so the observer doesn't trigger immediately
-                    viewModel.getEncodingInProgress().observe(this, Observer<Boolean> {
+                    viewModel.getEncodingInProgress().observe(this, {
                             inProgress -> if(inProgress == false) encodeFinished() })
                     activeEncodes++
 
@@ -311,6 +311,11 @@ class MainActivity : AppCompatActivity() {
     override fun onStop() {
         release()
         super.onStop()
+    }
+
+    override fun onDestroy() {
+        glManager.release()
+        super.onDestroy()
     }
 
     /**
@@ -411,10 +416,9 @@ class MainActivity : AppCompatActivity() {
 
         // Set up video source and start the player
         val videoSource = buildExoMediaSource(this, inputVideoRawId)
-        if (null != videoSource) {
-            player.prepare(videoSource)
-            player.playWhenReady = true
-        }
+        player.setMediaSource(videoSource)
+        player.prepare()
+        player.playWhenReady = true
     }
 
     // Indicate one more preview surface is available
@@ -508,7 +512,7 @@ class MainActivity : AppCompatActivity() {
                 text_log.append("\n")
 
             text_log.append(message)
-            scroll_log.post({ scroll_log.fullScroll(View.FOCUS_DOWN) })
+            scroll_log.post { scroll_log.fullScroll(View.FOCUS_DOWN) }
         }
     }
 }

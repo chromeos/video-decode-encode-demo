@@ -20,21 +20,19 @@ import android.os.Handler
 import android.view.Surface
 import android.view.SurfaceView
 import com.google.android.exoplayer2.Player
-import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager
 
 /**
  * Holder for the internal decoding SurfaceTexture. Ties together the ExoPlayer VideoComponent,
  * and the custom SurfaceTexture and Renderer
  */
 class VideoSurfaceManager(val viewModel: MainViewModel, glManager: GlManager, displaySurface: SurfaceView) {
-    val handler: Handler = Handler()
-    var renderer: InternalSurfaceTextureRenderer
-    lateinit var videoComponent: Player.VideoComponent
+    private val handler: Handler = Handler()
+    var renderer: InternalSurfaceTextureRenderer =
+        InternalSurfaceTextureRenderer(viewModel, glManager, displaySurface, handler)
 
-    init {
-        renderer = InternalSurfaceTextureRenderer(viewModel, glManager, displaySurface, handler)
-    }
+    private lateinit var videoComponent: Player.VideoComponent
 
     // Set up the internal surfaces
     // If encoding is desired, ensure setupEncodeSurfaces has been called

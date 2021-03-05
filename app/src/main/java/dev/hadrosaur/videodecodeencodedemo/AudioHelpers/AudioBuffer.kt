@@ -20,6 +20,13 @@ import java.nio.ByteBuffer
 
 /**
  * Holds an audio buffer and meta-data for encoding
+ *
+ * @param buffer The ByteBuffer containing audio data
+ * @param id ID int used for debugging and logging purposes
+ * @param presentationTimeUs presentation time of the buffer
+ * @param lengthUs length of audio sample in uS
+ * @param size size of sample in bytes
+ * @param isLastBuffer flag to indicate this is the last audio sample in a stream
  */
 class AudioBuffer(
     val buffer: ByteBuffer,

@@ -45,7 +45,7 @@ class SmartMutableLiveData<T>(defaultValue: T? = null) : MutableLiveData<T>() {
      * This is either called directly or from a previous postValue call
      */
     override fun setValue(value: T) {
-        // Remove if previously queue as it will be requeued
+        // Remove if previously queue as it will be re-queued
         queue.remove(value)
 
         // Add value back to then end of the queue

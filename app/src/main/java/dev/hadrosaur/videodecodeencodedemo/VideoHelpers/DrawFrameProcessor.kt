@@ -39,89 +39,100 @@ import dev.hadrosaur.videodecodeencodedemo.Utils.GlUtils.sepiaShaderProgram
  * Note: this can be used for both display and for encode.
  */
 class DrawFrameProcessor(
-    val inputTextureId: Int,
-    val eglContext: EGLContext,
-    val eglDisplay: EGLDisplay,
-    val outputEglSurface: EGLSurface,
+    private val inputTextureId: Int,
+    private val eglContext: EGLContext,
+    private val eglDisplay: EGLDisplay,
+    private val outputEglSurface: EGLSurface,
     val width: Int,
     val height: Int
 ) {
-    val TAG = "DrawFrameProcessor"
+    private val TAG = "DrawFrameProcessor"
 
     // Create a program that copies from an external texture to a framebuffer
     val copyExternalProgram = copyExternalShaderProgram
-    val copyAttributes = getAttributes(copyExternalProgram)
-    val copyUniforms = getUniforms(copyExternalProgram)
+    private val copyAttributes = getAttributes(copyExternalProgram)
+    private val copyUniforms = getUniforms(copyExternalProgram)
 
     // Create a program that renders the final output.
-    val renderProgram = passthroughShaderProgram
-    val renderAttributes = getAttributes(renderProgram)
-    val renderUniforms = getUniforms(renderProgram)
+    private val renderProgram = passthroughShaderProgram
+    private val renderAttributes = getAttributes(renderProgram)
+    private val renderUniforms = getUniforms(renderProgram)
 
     // The sepiaProgram can use the attributes and uniforms of the pass-through renderProgram
-    val sepiaProgram = sepiaShaderProgram
+    private val sepiaProgram = sepiaShaderProgram
 
     // Variables to handle texture shader coordinate matrices
-    val positionMatrix = FloatArray(16)
-    val renderTransformMatrix = FloatArray(16)
-    var shaderPositionMatrixHandle = -1
-    var shaderSurfaceTexTransformMatrixHandle = -1
+    private val positionMatrix = FloatArray(16)
+    private val renderTransformMatrix = FloatArray(16)
+    private var shaderPositionMatrixHandle = -1
+    private var shaderSurfaceTexTransformMatrixHandle = -1
 
-    val drawFrameHandler: DrawFrameHandler
+    private val drawFrameHandler: DrawFrameHandler
 
     init {
         // The copy program flips the input texture.
         for (i in copyAttributes.indices) {
-            if (copyAttributes[i]!!.name == GlUtils.POSITION_ATTRIBUTE_NAME) {
-                copyAttributes[i]!!.setBuffer(
-                    floatArrayOf(
-                        -1.0f, -1.0f, 0.0f, 1.0f,
-                        1.0f, -1.0f, 0.0f, 1.0f,
-                        -1.0f, 1.0f, 0.0f, 1.0f,
-                        1.0f, 1.0f, 0.0f, 1.0f
-                    ), 4
-                )
-            } else if (copyAttributes[i]!!.name == GlUtils.TEXCOORD_ATTRIBUTE_NAME) {
-                copyAttributes[i]!!.setBuffer(
-                    floatArrayOf(
-                        0.0f, 0.0f, 1.0f, 1.0f,
-                        1.0f, 0.0f, 1.0f, 1.0f,
-                        0.0f, 1.0f, 1.0f, 1.0f,
-                        1.0f, 1.0f, 1.0f, 1.0f
-                    ), 4
-                )
-            } else {
-                throw IllegalStateException("unexpected attribute name")
+            when (copyAttributes[i]!!.name) {
+                GlUtils.POSITION_ATTRIBUTE_NAME -> {
+                    copyAttributes[i]!!.setBuffer(
+                        floatArrayOf(
+                            -1.0f, -1.0f, 0.0f, 1.0f,
+                            1.0f, -1.0f, 0.0f, 1.0f,
+                            -1.0f, 1.0f, 0.0f, 1.0f,
+                            1.0f, 1.0f, 0.0f, 1.0f
+                        ), 4
+                    )
+                }
+                GlUtils.TEXCOORD_ATTRIBUTE_NAME -> {
+                    copyAttributes[i]!!.setBuffer(
+                        floatArrayOf(
+                            0.0f, 0.0f, 1.0f, 1.0f,
+                            1.0f, 0.0f, 1.0f, 1.0f,
+                            0.0f, 1.0f, 1.0f, 1.0f,
+                            1.0f, 1.0f, 1.0f, 1.0f
+                        ), 4
+                    )
+                }
+                else -> {
+                    throw IllegalStateException("unexpected attribute name")
+                }
             }
         }
 
-        shaderPositionMatrixHandle = GLES20.glGetUniformLocation(copyExternalProgram, GlUtils.POS_MATRIX_UNIFORM_NAME)
-        shaderSurfaceTexTransformMatrixHandle = GLES20.glGetUniformLocation(copyExternalProgram, GlUtils.ST_MATRIX_UNIFORM_NAME)
+        shaderPositionMatrixHandle =
+            GLES20.glGetUniformLocation(copyExternalProgram, GlUtils.POS_MATRIX_UNIFORM_NAME)
+        shaderSurfaceTexTransformMatrixHandle =
+            GLES20.glGetUniformLocation(copyExternalProgram, GlUtils.ST_MATRIX_UNIFORM_NAME)
+
         Matrix.setIdentityM(positionMatrix, 0)
         Matrix.setIdentityM(renderTransformMatrix, 0)
 
         // The render program blits the input vertices without any transformations.
         for (i in renderAttributes.indices) {
-            if (renderAttributes[i]!!.name == GlUtils.POSITION_ATTRIBUTE_NAME) {
-                renderAttributes[i]!!.setBuffer(
-                    floatArrayOf(
-                        -1.0f, -1.0f, 0.0f, 1.0f,
-                        1.0f, -1.0f, 0.0f, 1.0f,
-                        -1.0f, 1.0f, 0.0f, 1.0f,
-                        1.0f, 1.0f, 0.0f, 1.0f
-                    ), 4
-                )
-            } else if (renderAttributes[i]!!.name == GlUtils.TEXCOORD_ATTRIBUTE_NAME) {
-                renderAttributes[i]!!.setBuffer(
-                    floatArrayOf(
-                        0.0f, 0.0f, 1.0f, 1.0f,
-                        1.0f, 0.0f, 1.0f, 1.0f,
-                        0.0f, 1.0f, 1.0f, 1.0f,
-                        1.0f, 1.0f, 1.0f, 1.0f
-                    ), 4
-                )
-            } else {
-                throw IllegalStateException("unexpected attribute name")
+            when (renderAttributes[i]!!.name) {
+                GlUtils.POSITION_ATTRIBUTE_NAME -> {
+                    renderAttributes[i]!!.setBuffer(
+                        floatArrayOf(
+                            -1.0f, -1.0f, 0.0f, 1.0f,
+                            1.0f, -1.0f, 0.0f, 1.0f,
+                            -1.0f, 1.0f, 0.0f, 1.0f,
+                            1.0f, 1.0f, 0.0f, 1.0f
+                        ), 4
+                    )
+                }
+                GlUtils.TEXCOORD_ATTRIBUTE_NAME -> {
+                    renderAttributes[i]!!.setBuffer(
+                        floatArrayOf(
+                            0.0f, 0.0f, 1.0f, 1.0f,
+                            1.0f, 0.0f, 1.0f, 1.0f,
+                            0.0f, 1.0f, 1.0f, 1.0f,
+                            1.0f, 1.0f, 1.0f, 1.0f
+                        ), 4
+                    )
+                }
+                else -> {
+                    throw IllegalStateException("unexpected attribute name")
+                }
             }
         }
         drawFrameHandler = DrawFrameHandler()

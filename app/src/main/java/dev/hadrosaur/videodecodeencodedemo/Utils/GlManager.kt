@@ -45,7 +45,7 @@ class GlManager {
         // For protected content, currently unused
         const val EGL_PROTECTED_CONTENT_EXT = 0x32C0
 
-        val EGL_CONFIG_ATTRIBUTES = intArrayOf(
+        private val EGL_CONFIG_ATTRIBUTES = intArrayOf(
             EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
             EGL14.EGL_RED_SIZE, 8,
             EGL14.EGL_GREEN_SIZE, 8,
@@ -57,7 +57,6 @@ class GlManager {
             EGL14.EGL_NONE
         )
 
-        /* majorOffset= */  /* minorOffset= */
         val defaultDisplay: EGLDisplay = createEglDisplay()
 
         fun chooseEGLConfig(display: EGLDisplay?): EGLConfig {
@@ -89,8 +88,7 @@ class GlManager {
         }
 
         fun createEGLContext(display: EGLDisplay?, config: EGLConfig?): EGLContext {
-            val glAttributes: IntArray
-            glAttributes = intArrayOf(EGL14.EGL_CONTEXT_CLIENT_VERSION, 2, EGL14.EGL_NONE)
+            val glAttributes = intArrayOf(EGL14.EGL_CONTEXT_CLIENT_VERSION, 2, EGL14.EGL_NONE)
 
             return EGL14.eglCreateContext(display, config, EGL14.EGL_NO_CONTEXT, glAttributes, 0)
                 ?: throw GlException("eglCreateContext failed")
@@ -102,9 +100,7 @@ class GlManager {
 
         fun createEGLSurface(display: EGLDisplay?, config: EGLConfig?, context: EGLContext?): EGLSurface {
             val surface: EGLSurface?
-            val pbufferAttributes: IntArray
-            pbufferAttributes =
-                intArrayOf(
+            val pbufferAttributes = intArrayOf(
                     EGL14.EGL_WIDTH,
                     EGL_SURFACE_WIDTH,
                     EGL14.EGL_HEIGHT,
@@ -157,5 +153,50 @@ class GlManager {
             val textures = intArrayOf(texId)
             GLES20.glDeleteTextures(1, textures, 0)
         }
+
+        /**
+         * Destroys the GL context identifier by `eglDisplay` and `eglContext`.
+         */
+        fun destroyEglContext(
+            eglDisplay: EGLDisplay?,
+            eglContext: EGLContext?
+        ) {
+            if (eglDisplay == null) {
+                return
+            }
+            EGL14.eglMakeCurrent(
+                eglDisplay,
+                EGL14.EGL_NO_SURFACE,
+                EGL14.EGL_NO_SURFACE,
+                EGL14.EGL_NO_CONTEXT
+            )
+            var error = EGL14.eglGetError()
+            if (error != EGL14.EGL_SUCCESS) {
+                throw RuntimeException("error releasing context: $error")
+            }
+            if (eglContext != null) {
+                EGL14.eglDestroyContext(eglDisplay, eglContext)
+                error = EGL14.eglGetError()
+                if (error != EGL14.EGL_SUCCESS) {
+                    throw RuntimeException("error destroying context: $error")
+                }
+            }
+            EGL14.eglReleaseThread()
+            error = EGL14.eglGetError()
+            if (error != EGL14.EGL_SUCCESS) {
+                throw RuntimeException("error releasing thread: $error")
+            }
+            EGL14.eglTerminate(eglDisplay)
+            error = EGL14.eglGetError()
+            if (error != EGL14.EGL_SUCCESS) {
+                throw RuntimeException("error terminating display: $error")
+            }
+        }
+
+    }
+
+    fun release() {
+        destroyEglContext(eglDisplay, eglContext)
+
     }
 }

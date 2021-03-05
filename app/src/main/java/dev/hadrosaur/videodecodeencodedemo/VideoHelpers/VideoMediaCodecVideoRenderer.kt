@@ -32,10 +32,10 @@ import java.nio.ByteBuffer
 class VideoMediaCodecVideoRenderer(
     val mainActivity: MainActivity,
     val viewModel: MainViewModel,
-    val videoSurfaceManager: VideoSurfaceManager,
+    private val videoSurfaceManager: VideoSurfaceManager,
     enableDecoderFallback: Boolean,
-    val streamNumber: Int,
-    val mediaClock: SpeedyMediaClock
+    private val streamNumber: Int,
+    private val mediaClock: SpeedyMediaClock
 ) :
     MediaCodecVideoRenderer(
         mainActivity,
@@ -46,9 +46,10 @@ class VideoMediaCodecVideoRenderer(
         null,
         -1
     )  {
-    var decodeCounter = 0
-    var startTime = 0L
-    var droppedFrames = 0
+    private var decodeCounter = 0
+    private var startTime = 0L
+    private var droppedFrames = 0
+    private var lastPresentTime = 0L
 
     /**
      * Keep track of dropped frames
@@ -101,7 +102,6 @@ class VideoMediaCodecVideoRenderer(
         return mediaClock
     }
 
-    var lastProcessSuccess = 0L
     /**
      * If the render pipeline is free, returns true here. If a frame is already in flight, returns
      * false to wait and prevent frame drops.
@@ -147,7 +147,6 @@ class VideoMediaCodecVideoRenderer(
         return processSuccess
     }
 
-    var lastPresentTime = 0L
     /**
      * Adds some logging after each buffer processed to keep track of decode
      */

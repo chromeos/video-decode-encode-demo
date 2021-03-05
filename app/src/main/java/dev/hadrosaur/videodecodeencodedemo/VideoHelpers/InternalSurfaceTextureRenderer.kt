@@ -16,11 +16,12 @@
 
 package dev.hadrosaur.videodecodeencodedemo.VideoHelpers
 
+import android.annotation.SuppressLint
 import android.os.Handler
 import android.view.Surface
 import android.view.SurfaceView
-import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
+import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager
 
 /**
  * The custom SurfaceTexture Renderer. Manages the underlying SurfaceTexture and keeps track of
@@ -30,13 +31,14 @@ import dev.hadrosaur.videodecodeencodedemo.MainViewModel
  */
 class InternalSurfaceTextureRenderer(val viewModel: MainViewModel, glManager: GlManager, displaySurface: SurfaceView, handler: Handler) : InternalSurfaceTexture.TextureImageListener {
     val frameLedger = VideoFrameLedger()
-    val internalSurfaceTexture: InternalSurfaceTexture = InternalSurfaceTexture(viewModel, glManager, displaySurface, handler, this)
-    var onFrameAvailableCounter = 0
-    var doEncode = false
+    private val internalSurfaceTexture: InternalSurfaceTexture = InternalSurfaceTexture(viewModel, glManager, displaySurface, handler, this)
+    private var onFrameAvailableCounter = 0
+    private var doEncode = false
 
     // The internal Surface from the SurfaceTexture to be decoded to, used by ExoPlayer
     var decoderSurface: Surface? = null
 
+    @SuppressLint("Recycle")
     fun initialize(encoderInputSurface: Surface? = null, encoderWidth: Int = 0, encoderHeight: Int = 0) {
         // Initialize decoding surfaces only
         if (encoderInputSurface == null) {
@@ -48,7 +50,7 @@ class InternalSurfaceTextureRenderer(val viewModel: MainViewModel, glManager: Gl
             doEncode = true
         }
 
-        decoderSurface = Surface(internalSurfaceTexture.surfaceTexture)
+        decoderSurface = Surface(internalSurfaceTexture.surfaceTexture) // Weak reference
     }
 
     /** Called when a new frame is available on the SurfaceTexture from it's image producer.
@@ -87,7 +89,7 @@ class InternalSurfaceTextureRenderer(val viewModel: MainViewModel, glManager: Gl
 
             } else {
                 // Frame not found in the ledger. This should not happen.
-                viewModel.updateLog("Frame NOT FOUND! Key: ${surfaceTimestamp}, frame: ${frameLedger.decodeLedger.get(surfaceTimestamp)}")
+                viewModel.updateLog("Frame NOT FOUND! Key: ${surfaceTimestamp}, frame: ${frameLedger.decodeLedger[surfaceTimestamp]}")
             }
         } else {
             // Surface timestamp 0 - This frame not really rendered, but add to keep the ledger even
@@ -102,6 +104,6 @@ class InternalSurfaceTextureRenderer(val viewModel: MainViewModel, glManager: Gl
 
     fun release() {
         internalSurfaceTexture.release()
-        decoderSurface = null
+        decoderSurface = null // Remove weak reference
     }
 }
