@@ -26,7 +26,7 @@ import com.google.android.exoplayer2.util.MediaClock
 class SpeedyMediaClock: MediaClock {
     val MIN_FPS: Int = 1
     private var internalPlaybackParameters = PlaybackParameters(1f)
-    var lastProcessedFrameUs = 0L
+    var lastProcessedFrameUs = -100000L
 
     fun updateLastProcessedFrame(frameProcessedUs: Long) {
         // If a later frame has been processed, advance the clock tick
