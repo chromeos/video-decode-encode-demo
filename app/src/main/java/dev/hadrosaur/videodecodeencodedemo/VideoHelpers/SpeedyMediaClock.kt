@@ -21,12 +21,15 @@ import com.google.android.exoplayer2.util.MediaClock
 
 // MediaClock implementation. Render as fast as possible: use last rendered frame + 1 as current
 // position. See: https://github.com/google/ExoPlayer/issues/3978#issuecomment-372709173
-// Note: no frames should be dropped so minFps just makes sure clock advances far enough to
-// include the next frame. Too far is ok in this case.
 class SpeedyMediaClock: MediaClock {
-    val MIN_FPS: Int = 1
+    // No frames should be dropped so minFps just makes sure clock advances far enough to
+    // include the next frame. Too far is ok in this case as it just indicates to Exo that the next
+    // frame must be rendered.
+    private val MIN_FPS = 1L
+    private val MAX_FRAME_DURATION_US =  100000L / MIN_FPS
+
     private var internalPlaybackParameters = PlaybackParameters(1f)
-    var lastProcessedFrameUs = 0L
+    var lastProcessedFrameUs = -1 * MAX_FRAME_DURATION_US // Initialize at -1 frame
 
     fun updateLastProcessedFrame(frameProcessedUs: Long) {
         // If a later frame has been processed, advance the clock tick
@@ -36,14 +39,14 @@ class SpeedyMediaClock: MediaClock {
     }
 
     override fun getPositionUs(): Long {
-        return lastProcessedFrameUs + ((1 / MIN_FPS) * 100000)
+        return lastProcessedFrameUs + MAX_FRAME_DURATION_US
     }
 
     override fun getPlaybackParameters(): PlaybackParameters {
         return internalPlaybackParameters
     }
 
-    // Note: this implementation actually ignores parameters like speed.
+    // Note: this implementation currently ignores parameters like speed
     override fun setPlaybackParameters(playbackParameters: PlaybackParameters) {
         internalPlaybackParameters = playbackParameters
     }
