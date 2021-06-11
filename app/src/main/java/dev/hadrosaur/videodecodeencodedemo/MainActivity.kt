@@ -38,6 +38,12 @@ import kotlinx.android.synthetic.main.activity_main.*
 
 const val NUMBER_OF_STREAMS = 4
 
+// TODO: replace this with proper file loading
+const val VIDEO_RES_1 = R.raw.paris_01_1080p
+const val VIDEO_RES_2 = R.raw.paris_02_1080p
+const val VIDEO_RES_3 = R.raw.paris_03_1080p
+const val VIDEO_RES_4 = R.raw.paris_04_1080p
+
 class MainActivity : AppCompatActivity() {
     // Preview surfaces
     // TODO: Revisit the "To Delete" logic and make sure it is still necessary. Possibly remove it.
@@ -277,27 +283,27 @@ class MainActivity : AppCompatActivity() {
                     initializeEncoders()
 
                     // Decode and Encode
-                    beginVideoDecode(R.raw.paris_01_1080p, videoSurfaceManagers[0], 0,
+                    beginVideoDecode(VIDEO_RES_1, videoSurfaceManagers[0], 0,
                         audioVideoEncoders[0], audioBufferManagers[0])
                 } else {
                     // Decode only
-                    beginVideoDecode(R.raw.paris_01_1080p, videoSurfaceManagers[0], 0)
+                    beginVideoDecode(VIDEO_RES_1, videoSurfaceManagers[0], 0)
                 }
             }
 
             // Stream 2
             if (viewModel.getDecodeStream2Val()) {
-                beginVideoDecode(R.raw.paris_02_1080p, videoSurfaceManagers[1], 1)
+                beginVideoDecode(VIDEO_RES_2, videoSurfaceManagers[1], 1)
             }
 
             // Stream 3
             if (viewModel.getDecodeStream3Val()) {
-                beginVideoDecode(R.raw.paris_03_1080p, videoSurfaceManagers[2], 2)
+                beginVideoDecode(VIDEO_RES_3, videoSurfaceManagers[2], 2)
             }
 
             // Stream 4
             if (viewModel.getDecodeStream4Val()) {
-                beginVideoDecode(R.raw.paris_04_1080p, videoSurfaceManagers[3], 3)
+                beginVideoDecode(VIDEO_RES_4, videoSurfaceManagers[3], 3)
             }
         }
 

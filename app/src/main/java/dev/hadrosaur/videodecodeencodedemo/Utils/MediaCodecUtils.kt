@@ -282,8 +282,8 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
             val profileLevels = capabilities.profileLevels
             var containsProfile = false
             for (profileLevel in profileLevels) {
-                if (profileLevel.profile == inputMediaFormat.getInteger(KEY_PROFILE)
-                    && profileLevel.level == inputMediaFormat.getInteger(KEY_LEVEL)
+                if (inputMediaFormat.containsKey(KEY_PROFILE) && profileLevel.profile == inputMediaFormat.getInteger(KEY_PROFILE)
+                    && inputMediaFormat.containsKey(KEY_LEVEL) &&  profileLevel.level == inputMediaFormat.getInteger(KEY_LEVEL)
                 ) {
                     // This encoder supports the input media profile/level, use it for the encoder
                     encoderFormat.setInteger(KEY_PROFILE, inputMediaFormat.getInteger(KEY_PROFILE))
@@ -340,9 +340,16 @@ fun getBestAudioEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
     // The input format has a CSD-0 buffer and other information that can causes glitches in the
     // encoder. Just provide the basic needed info.
     // Passing in a CSD-0 buffer will cause errors in the audio stream
-    val outputAudioFormat = createAudioFormat(mimeType,
-        inputAudioFormat.getInteger(KEY_SAMPLE_RATE),
-        inputAudioFormat.getInteger(KEY_CHANNEL_COUNT))
+    // If there is no sample-rate or channel count, this is probably an empty audio stream so
+    // using the input stream is ok
+    val outputAudioFormat =  if (inputAudioFormat.containsKey(KEY_SAMPLE_RATE)
+        && inputAudioFormat.containsKey(KEY_CHANNEL_COUNT)) {
+        createAudioFormat(mimeType,
+            inputAudioFormat.getInteger(KEY_SAMPLE_RATE),
+            inputAudioFormat.getInteger(KEY_CHANNEL_COUNT))
+    } else {
+        inputAudioFormat
+    }
 
     if (inputAudioFormat.containsKey(KEY_BIT_RATE)) {
         outputAudioFormat.setInteger(KEY_BIT_RATE, inputAudioFormat.getInteger(KEY_BIT_RATE))

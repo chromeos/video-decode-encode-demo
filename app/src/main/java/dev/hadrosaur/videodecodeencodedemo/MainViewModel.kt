@@ -43,7 +43,7 @@ class MainViewModel : ViewModel() {
     private val encodingInProgress = SmartMutableLiveData<Boolean>(false)
 
     // Convenience MediaFormats for the encoder
-    var originalRawFileId: Int = R.raw.paris_01_1080p
+    var originalRawFileId: Int = VIDEO_RES_1
     var encodeOutputDir: File? = null
     var videoEncoderCodecInfo: MediaCodecInfo? = null
     var audioEncoderCodecInfo: MediaCodecInfo? = null
