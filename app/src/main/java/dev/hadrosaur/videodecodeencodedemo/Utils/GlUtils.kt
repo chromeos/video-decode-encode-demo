@@ -38,15 +38,18 @@ object GlUtils {
 
     const val NO_FBO = 0
 
+    const val GL_SAMPLER_EXTERNAL_2D_Y2Y_EXT = 35815 // Constant missing from Android libs
+
     /**
      * Vertex shader that renders a quad filling the viewport.
      *
      * Applies provided matrix transformations (needed for SurfaceTextures)
      */
     private val BLIT_VERTEX_SHADER = String.format(Locale.US,
-        "attribute vec4 %1${"$"}s;\n" +
-                "attribute vec4 %2${"$"}s;\n" +
-                "varying vec2 %3${"$"}s;\n" +
+        "#version 300 es\n" +
+                "in vec4 %1${"$"}s;\n" +
+                "in vec4 %2${"$"}s;\n" +
+                "out vec2 %3${"$"}s;\n" +
                 "uniform mat4 %4${"$"}s;\n" +
                 "uniform mat4 %5${"$"}s;\n" +
                 "void main() {\n" +
@@ -60,12 +63,19 @@ object GlUtils {
      * Fragment shader that renders from an external shader to the current target.
      */
     private val COPY_EXTERNAL_FRAGMENT_SHADER = String.format(Locale.US,
-        "#extension GL_OES_EGL_image_external : require\n" +
+
+        "#version 300 es\n" +
+                "#extension GL_OES_EGL_image_external : require\n" +
+                "#extension GL_EXT_YUV_target : require\n" +
                 "precision mediump float;\n" +
-                "uniform samplerExternalOES %1${"$"}s;\n" +
-                "varying vec2 %2${"$"}s;\n" +
+                // "out vec4 fragmentColor;\n" +
+                "uniform __samplerExternal2DY2YEXT %1${"$"}s;\n" +
+                "layout (yuv) out vec4 fragmentColor;\n" +
+                "in vec2 %2${"$"}s;\n" +
                 "void main() {\n" +
-                "  gl_FragColor = texture2D(%1${"$"}s, %2${"$"}s);\n" +
+                "  fragmentColor = texture(%1${"$"}s, %2${"$"}s);\n" +
+                // Manually convert to RGB
+                "  fragmentColor = vec4(yuv_2_rgb(fragmentColor.rgb, itu_601), fragmentColor.a);\n" +
                 "}\n"
         , TEX_SAMPLER_NAME, TEX_COORDINATE_NAME
     )
@@ -74,11 +84,14 @@ object GlUtils {
      * Fragment shader that simply samples the textures with no modifications.
      */
     private val PASSTHROUGH_FRAGMENT_SHADER = String.format(Locale.US,
-    "precision mediump float;\n" +
-            "uniform sampler2D %1${"$"}s;\n" +
-            "varying vec2 %2${"$"}s;\n" +
+        "#version 300 es\n" +
+                "#extension GL_EXT_YUV_target : require\n" +
+            "precision mediump float;\n" +
+                "uniform sampler2D %1${"$"}s;\n" +
+                "layout (yuv) out vec4 fragmentColor;\n" +
+            "in vec2 %2${"$"}s;\n" +
             "void main() {\n" +
-            "  gl_FragColor = texture2D(%1${"$"}s, %2${"$"}s);\n" +
+            "  fragmentColor = texture(%1${"$"}s, %2${"$"}s);\n" +
             "}\n"
         , TEX_SAMPLER_NAME, TEX_COORDINATE_NAME
     )
@@ -87,12 +100,16 @@ object GlUtils {
      * Fragment shader that applies a simple Sepia filter.
      */
     private val SEPIA_FRAGMENT_SHADER = String.format(Locale.US,
-        "precision mediump float;\n" +
+
+        "#version 300 es\n" +
+                "#extension GL_EXT_YUV_target : require\n" +
+                "precision mediump float;\n" +
             "uniform sampler2D %1${"$"}s;\n" +
-            "varying vec2 %2${"$"}s;\n" +
+            "in vec2 %2${"$"}s;\n" +
+            "layout (yuv) out vec4 fragmentColor;\n" +
             "void main() {\n" +
-            "  vec4 sampleColor = texture2D(%1${"$"}s, %2${"$"}s);\n" +
-            "  gl_FragColor = vec4(sampleColor.r * 0.493 + sampleColor. g * 0.769 + sampleColor.b * 0.289, sampleColor.r * 0.449 + sampleColor.g * 0.686 + sampleColor.b * 0.268, sampleColor.r * 0.272 + sampleColor.g * 0.534 + sampleColor.b * 0.131, 1.0);\n" +
+            "  vec4 sampleColor = texture(%1${"$"}s, %2${"$"}s);\n" +
+            "  fragmentColor = vec4(sampleColor.r * 0.493 + sampleColor. g * 0.769 + sampleColor.b * 0.289, sampleColor.r * 0.449 + sampleColor.g * 0.686 + sampleColor.b * 0.268, sampleColor.r * 0.272 + sampleColor.g * 0.534 + sampleColor.b * 0.131, 1.0);\n" +
             "}\n"
         , TEX_SAMPLER_NAME, TEX_COORDINATE_NAME
     )
@@ -118,11 +135,13 @@ object GlUtils {
      */
     fun allocateTexture(width: Int, height: Int): Int {
         val texId = generateTexture()
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texId)
+        GLES31.glBindTexture(GLES31.GL_TEXTURE_2D, texId)
         val byteBuffer = ByteBuffer.allocateDirect(width * height * 4)
-        GLES20.glTexImage2D(
-            GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, width, height, 0,
-            GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, byteBuffer
+        GLES31.glTexImage2D(
+            GLES31.GL_TEXTURE_2D, 0, GLES31.GL_RGBA, width, height, 0,
+            GLES31.GL_RGBA, GLES31.GL_UNSIGNED_BYTE, byteBuffer
+//              GLES31.GL_TEXTURE_2D, 0, GLES31.GL_LUMINANCE, width, height, 0,
+//            GLES31.GL_LUMINANCE, GLES31.GL_UNSIGNED_BYTE, byteBuffer
         )
         checkGlError()
         return texId
@@ -135,10 +154,10 @@ object GlUtils {
      */
     fun getFboForTexture(texId: Int): Int {
         val fbo = generateFbo()
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fbo)
+        GLES31.glBindFramebuffer(GLES31.GL_FRAMEBUFFER, fbo)
         checkGlError()
-        GLES20.glFramebufferTexture2D(
-            GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0, GLES20.GL_TEXTURE_2D, texId, 0
+        GLES31.glFramebufferTexture2D(
+            GLES31.GL_FRAMEBUFFER, GLES31.GL_COLOR_ATTACHMENT0, GLES31.GL_TEXTURE_2D, texId, 0
         )
         checkGlError()
         return fbo
@@ -153,12 +172,12 @@ object GlUtils {
         surface: EGLSurface?, fbo: Int, width: Int, height: Int
     ) {
         val fbos = IntArray(1)
-        GLES20.glGetIntegerv(GLES20.GL_FRAMEBUFFER_BINDING, fbos, 0)
+        GLES31.glGetIntegerv(GLES31.GL_FRAMEBUFFER_BINDING, fbos, 0)
         if (fbos[0] != fbo) {
-            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fbo)
+            GLES31.glBindFramebuffer(GLES31.GL_FRAMEBUFFER, fbo)
         }
         EGL14.eglMakeCurrent(eglDisplay, surface, surface, eglContext)
-        GLES20.glViewport(0, 0, width, height)
+        GLES31.glViewport(0, 0, width, height)
     }
 
 
@@ -167,7 +186,7 @@ object GlUtils {
      */
     private fun generateTexture(): Int {
         val textures = IntArray(1)
-        GLES20.glGenTextures(1, textures, 0)
+        GLES31.glGenTextures(1, textures, 0)
         checkGlError()
         return textures[0]
     }
@@ -177,7 +196,7 @@ object GlUtils {
      */
     private fun generateFbo(): Int {
         val fbos = IntArray(1)
-        GLES20.glGenFramebuffers(1, fbos, 0)
+        GLES31.glGenFramebuffers(1, fbos, 0)
         checkGlError()
         return fbos[0]
     }
@@ -189,7 +208,7 @@ object GlUtils {
      */
     fun deleteTexture(texId: Int) {
         val textures = intArrayOf(texId)
-        GLES20.glDeleteTextures(1, textures, 0)
+        GLES31.glDeleteTextures(1, textures, 0)
     }
 
     /**
@@ -199,7 +218,7 @@ object GlUtils {
      */
     fun deleteFbo(fboId: Int) {
         val fbos = intArrayOf(fboId)
-        GLES20.glDeleteFramebuffers(1, fbos, 0)
+        GLES31.glDeleteFramebuffers(1, fbos, 0)
     }
 
     /**
@@ -207,7 +226,7 @@ object GlUtils {
      */
     fun getAttributes(program: Int): Array<Attribute?> {
         val attributeCount = IntArray(1)
-        GLES20.glGetProgramiv(program, GLES20.GL_ACTIVE_ATTRIBUTES, attributeCount, 0)
+        GLES31.glGetProgramiv(program, GLES31.GL_ACTIVE_ATTRIBUTES, attributeCount, 0)
         check(attributeCount[0] == 2) { "expected two attributes" }
         val attributes =
             arrayOfNulls<Attribute>(attributeCount[0])
@@ -222,7 +241,7 @@ object GlUtils {
      */
     fun getUniforms(program: Int): Array<Uniform?> {
         val uniformCount = IntArray(3)
-        GLES20.glGetProgramiv(program, GLES20.GL_ACTIVE_UNIFORMS, uniformCount, 0)
+        GLES31.glGetProgramiv(program, GLES31.GL_ACTIVE_UNIFORMS, uniformCount, 0)
         val uniforms =
             arrayOfNulls<Uniform>(uniformCount[0])
         for (i in 0 until uniformCount[0]) {
@@ -243,9 +262,9 @@ object GlUtils {
     val copyExternalShaderProgram: Int
         get() {
             val vertexShader =
-                compileShader(GLES20.GL_VERTEX_SHADER, BLIT_VERTEX_SHADER)
+                compileShader(GLES31.GL_VERTEX_SHADER, BLIT_VERTEX_SHADER)
             val fragmentShader =
-                compileShader(GLES20.GL_FRAGMENT_SHADER, COPY_EXTERNAL_FRAGMENT_SHADER)
+                compileShader(GLES31.GL_FRAGMENT_SHADER, COPY_EXTERNAL_FRAGMENT_SHADER)
             return linkProgram(vertexShader, fragmentShader)
         }
 
@@ -260,51 +279,51 @@ object GlUtils {
     val passthroughShaderProgram: Int
         get() {
             val vertexShader =
-                compileShader(GLES20.GL_VERTEX_SHADER, BLIT_VERTEX_SHADER)
+                compileShader(GLES31.GL_VERTEX_SHADER, BLIT_VERTEX_SHADER)
             val fragmentShader =
-                compileShader(GLES20.GL_FRAGMENT_SHADER, PASSTHROUGH_FRAGMENT_SHADER)
+                compileShader(GLES31.GL_FRAGMENT_SHADER, PASSTHROUGH_FRAGMENT_SHADER)
             return linkProgram(vertexShader, fragmentShader)
         }
 
     val sepiaShaderProgram: Int
         get() {
             val vertexShader =
-                compileShader(GLES20.GL_VERTEX_SHADER, BLIT_VERTEX_SHADER)
+                compileShader(GLES31.GL_VERTEX_SHADER, BLIT_VERTEX_SHADER)
             val fragmentShader =
-                compileShader(GLES20.GL_FRAGMENT_SHADER, SEPIA_FRAGMENT_SHADER)
+                compileShader(GLES31.GL_FRAGMENT_SHADER, SEPIA_FRAGMENT_SHADER)
             return linkProgram(vertexShader, fragmentShader)
         }
 
     private fun compileShader(type: Int, source: String): Int {
-        val shader = GLES20.glCreateShader(type)
+        val shader = GLES31.glCreateShader(type)
         if (shader == 0) {
-            throw RuntimeException("could not create shader: " + GLES20.glGetError())
+            throw RuntimeException("could not create shader: " + GLES31.glGetError())
         }
-        GLES20.glShaderSource(shader, source)
-        GLES20.glCompileShader(shader)
+        GLES31.glShaderSource(shader, source)
+        GLES31.glCompileShader(shader)
         val compiled = IntArray(1)
-        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0)
+        GLES31.glGetShaderiv(shader, GLES31.GL_COMPILE_STATUS, compiled, 0)
         if (compiled[0] == 0) {
-            val info = GLES20.glGetShaderInfoLog(shader)
-            GLES20.glDeleteShader(shader)
+            val info = GLES31.glGetShaderInfoLog(shader)
+            GLES31.glDeleteShader(shader)
             throw RuntimeException("could not compile shader $type:$info")
         }
         return shader
     }
 
     private fun linkProgram(vertexShader: Int, fragmentShader: Int): Int {
-        val program = GLES20.glCreateProgram()
+        val program = GLES31.glCreateProgram()
         if (program == 0) {
             throw RuntimeException("could not create shader program")
         }
-        GLES20.glAttachShader(program, vertexShader)
-        GLES20.glAttachShader(program, fragmentShader)
-        GLES20.glLinkProgram(program)
+        GLES31.glAttachShader(program, vertexShader)
+        GLES31.glAttachShader(program, fragmentShader)
+        GLES31.glLinkProgram(program)
         val linked = IntArray(1)
-        GLES20.glGetProgramiv(program, GLES20.GL_LINK_STATUS, linked, 0)
-        if (linked[0] != GLES20.GL_TRUE) {
-            val info = GLES20.glGetProgramInfoLog(program)
-            GLES20.glDeleteProgram(program)
+        GLES31.glGetProgramiv(program, GLES31.GL_LINK_STATUS, linked, 0)
+        if (linked[0] != GLES31.GL_TRUE) {
+            val info = GLES31.glGetProgramInfoLog(program)
+            GLES31.glDeleteProgram(program)
             throw RuntimeException("could not link shader $info")
         }
         return program
@@ -312,7 +331,7 @@ object GlUtils {
 
     /**
      * Returns a [Buffer] containing the specified floats, suitable for passing to
-     * [GLES20.glVertexAttribPointer].
+     * [GLES31.glVertexAttribPointer].
      */
     private fun getVertexBuffer(values: FloatArray): Buffer {
         val FLOAT_SIZE = 4
@@ -336,13 +355,13 @@ object GlUtils {
     }
 
     /**
-     * Checks for a GL error using [GLES20.glGetError].
+     * Checks for a GL error using [GLES31.glGetError].
      *
      * @throws RuntimeException if there is a GL error
      */
     private fun checkGlError() {
         var errorCode: Int
-        if (GLES20.glGetError().also { errorCode = it } != GLES20.GL_NO_ERROR) {
+        if (GLES31.glGetError().also { errorCode = it } != GLES31.GL_NO_ERROR) {
             throw RuntimeException("gl error: " + Integer.toHexString(errorCode))
         }
     }
@@ -381,31 +400,31 @@ object GlUtils {
          */
         fun bind() {
             checkNotNull(mBuffer) { "call setBuffer before bind" }
-            GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0)
-            GLES20.glVertexAttribPointer(
+            GLES31.glBindBuffer(GLES31.GL_ARRAY_BUFFER, 0)
+            GLES31.glVertexAttribPointer(
                 mLocation,
                 mSize,  // count
-                GLES20.GL_FLOAT,  // type
+                GLES31.GL_FLOAT,  // type
                 false,  // normalize
                 0,  // stride
                 mBuffer
             )
-            GLES20.glEnableVertexAttribArray(mIndex)
+            GLES31.glEnableVertexAttribArray(mIndex)
             checkGlError()
         }
 
         init {
             val len = IntArray(1)
-            GLES20.glGetProgramiv(program, GLES20.GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, len, 0)
+            GLES31.glGetProgramiv(program, GLES31.GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, len, 0)
             val type = IntArray(1)
             val size = IntArray(1)
             val nameBytes = ByteArray(len[0])
             val ignore = IntArray(1)
-            GLES20.glGetActiveAttrib(
+            GLES31.glGetActiveAttrib(
                 program, index, len[0], ignore, 0, size, 0, type, 0, nameBytes, 0
             )
             name = String(nameBytes, 0, strlen(nameBytes))
-            mLocation = GLES20.glGetAttribLocation(program, name)
+            mLocation = GLES31.glGetAttribLocation(program, name)
             mIndex = index
         }
     }
@@ -439,46 +458,46 @@ object GlUtils {
          */
         fun bindToTextureSampler() {
             check(mTexId != 0) { "call setSamplerTexId before bind" }
-            GLES20.glActiveTexture(GLES20.GL_TEXTURE0 + mUnit)
+            GLES31.glActiveTexture(GLES31.GL_TEXTURE0 + mUnit)
             when (mType) {
-                GLES11Ext.GL_SAMPLER_EXTERNAL_OES -> {
-                    GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, mTexId)
+                GLES11Ext.GL_SAMPLER_EXTERNAL_OES, GL_SAMPLER_EXTERNAL_2D_Y2Y_EXT -> {
+                    GLES31.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, mTexId)
                 }
-                GLES20.GL_SAMPLER_2D -> {
-                    GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTexId)
+                GLES31.GL_SAMPLER_2D -> {
+                    GLES31.glBindTexture(GLES31.GL_TEXTURE_2D, mTexId)
                 }
                 else -> {
                     throw IllegalStateException("unexpected uniform type: $mType")
                 }
             }
-            GLES20.glUniform1i(mLocation, mUnit)
-            GLES20.glTexParameteri(
-                GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR
+            GLES31.glUniform1i(mLocation, mUnit)
+            GLES31.glTexParameteri(
+                GLES31.GL_TEXTURE_2D, GLES31.GL_TEXTURE_MAG_FILTER, GLES31.GL_LINEAR
             )
-            GLES20.glTexParameteri(
-                GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR
+            GLES31.glTexParameteri(
+                GLES31.GL_TEXTURE_2D, GLES31.GL_TEXTURE_MIN_FILTER, GLES31.GL_LINEAR
             )
-            GLES20.glTexParameteri(
-                GLES20.GL_TEXTURE_2D,
-                GLES20.GL_TEXTURE_WRAP_S,
-                GLES20.GL_CLAMP_TO_EDGE
+            GLES31.glTexParameteri(
+                GLES31.GL_TEXTURE_2D,
+                GLES31.GL_TEXTURE_WRAP_S,
+                GLES31.GL_CLAMP_TO_EDGE
             )
-            GLES20.glTexParameteri(
-                GLES20.GL_TEXTURE_2D,
-                GLES20.GL_TEXTURE_WRAP_T,
-                GLES20.GL_CLAMP_TO_EDGE
+            GLES31.glTexParameteri(
+                GLES31.GL_TEXTURE_2D,
+                GLES31.GL_TEXTURE_WRAP_T,
+                GLES31.GL_CLAMP_TO_EDGE
             )
             checkGlError()
         }
 
         init {
             val len = IntArray(1)
-            GLES20.glGetProgramiv(program, GLES20.GL_ACTIVE_UNIFORM_MAX_LENGTH, len, 0)
+            GLES31.glGetProgramiv(program, GLES31.GL_ACTIVE_UNIFORM_MAX_LENGTH, len, 0)
             val type = IntArray(1)
             val size = IntArray(1)
             val name = ByteArray(len[0])
             val ignore = IntArray(1)
-            GLES20.glGetActiveUniform(
+            GLES31.glGetActiveUniform(
                 program,
                 index,
                 len[0],
@@ -492,7 +511,7 @@ object GlUtils {
                 0
             )
             mName = String(name, 0, strlen(name))
-            mLocation = GLES20.glGetUniformLocation(program, mName)
+            mLocation = GLES31.glGetUniformLocation(program, mName)
             mType = type[0]
         }
     }

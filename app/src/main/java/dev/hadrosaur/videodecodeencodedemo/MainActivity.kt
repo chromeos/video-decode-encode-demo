@@ -23,6 +23,7 @@ import android.util.Log
 import android.view.*
 import android.view.KeyEvent.*
 import android.widget.SeekBar
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -483,7 +484,16 @@ class MainActivity : AppCompatActivity() {
         if (granted) {
             // Permission granted, restart the app
             updateLog("Permissions granted! Encoding will save to file. Restarting app...")
+
+            // Get intent to self for restart
             val intent = this.intent
+
+            // Clean-up surfaces and GL context
+            markSurfacesForDeletion()
+            release()
+            glManager.release()
+
+            // Close and restart
             finish()
             startActivity(intent)
         } else {

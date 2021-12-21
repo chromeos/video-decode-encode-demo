@@ -88,7 +88,7 @@ class GlManager {
         }
 
         fun createEGLContext(display: EGLDisplay?, config: EGLConfig?): EGLContext {
-            val glAttributes = intArrayOf(EGL14.EGL_CONTEXT_CLIENT_VERSION, 2, EGL14.EGL_NONE)
+            val glAttributes = intArrayOf(EGL14.EGL_CONTEXT_CLIENT_VERSION, 3, EGL14.EGL_NONE)
 
             return EGL14.eglCreateContext(display, config, EGL14.EGL_NO_CONTEXT, glAttributes, 0)
                 ?: throw GlException("eglCreateContext failed")
@@ -128,7 +128,7 @@ class GlManager {
 
         fun generateTextureIds() : Int {
             val textureIdHolder = IntArray(1)
-            GLES20.glGenTextures( /* n= */1, textureIdHolder,  /* offset= */0)
+            GLES31.glGenTextures( /* n= */1, textureIdHolder,  /* offset= */0)
             GlUtil.checkGlError()
             return textureIdHolder[0]
         }
@@ -151,7 +151,7 @@ class GlManager {
          */
         fun deleteTexture(texId: Int) {
             val textures = intArrayOf(texId)
-            GLES20.glDeleteTextures(1, textures, 0)
+            GLES31.glDeleteTextures(1, textures, 0)
         }
 
         /**

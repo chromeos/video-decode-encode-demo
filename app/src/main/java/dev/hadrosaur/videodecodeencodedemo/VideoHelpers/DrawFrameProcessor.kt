@@ -100,9 +100,9 @@ class DrawFrameProcessor(
         }
 
         shaderPositionMatrixHandle =
-            GLES20.glGetUniformLocation(copyExternalProgram, GlUtils.POS_MATRIX_UNIFORM_NAME)
+            GLES31.glGetUniformLocation(copyExternalProgram, GlUtils.POS_MATRIX_UNIFORM_NAME)
         shaderSurfaceTexTransformMatrixHandle =
-            GLES20.glGetUniformLocation(copyExternalProgram, GlUtils.ST_MATRIX_UNIFORM_NAME)
+            GLES31.glGetUniformLocation(copyExternalProgram, GlUtils.ST_MATRIX_UNIFORM_NAME)
 
         Matrix.setIdentityM(positionMatrix, 0)
         Matrix.setIdentityM(renderTransformMatrix, 0)
@@ -160,7 +160,7 @@ class DrawFrameProcessor(
 
             // Copy from input texture to framebuffer:
             frameHandler.focusSurface(eglDisplay, eglContext, outputEglSurface, intermediateFbo)
-            GLES20.glUseProgram(copyExternalProgram)
+            GLES31.glUseProgram(copyExternalProgram)
             for (i in copyAttributes.indices) {
                 copyAttributes[i]!!.bind()
             }
@@ -177,19 +177,19 @@ class DrawFrameProcessor(
             // This is required as copying out from a surface texture is not 1:1 for some reason
             // See: https://developer.android.com/reference/android/graphics/SurfaceTexture#getTransformMatrix(float%5B%5D)
             Matrix.setIdentityM(positionMatrix, 0)
-            GLES20.glUniformMatrix4fv(shaderPositionMatrixHandle, 1, false, positionMatrix, 0)
-            GLES20.glUniformMatrix4fv(shaderSurfaceTexTransformMatrixHandle, 1, false, surfaceTextureMatrix, 0)
+            GLES31.glUniformMatrix4fv(shaderPositionMatrixHandle, 1, false, positionMatrix, 0)
+            GLES31.glUniformMatrix4fv(shaderSurfaceTexTransformMatrixHandle, 1, false, surfaceTextureMatrix, 0)
 
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+            GLES31.glDrawArrays(GLES31.GL_TRIANGLE_STRIP, 0, 4)
 
             // Render from framebuffer to output surface
             frameHandler.focusSurface(eglDisplay, eglContext, outputEglSurface, GlUtils.NO_FBO)
 
             // Apply filters if requested (otherwise just pass-through)
             if (applyFilters) {
-                GLES20.glUseProgram(sepiaProgram)
+                GLES31.glUseProgram(sepiaProgram)
             } else {
-                GLES20.glUseProgram(renderProgram)
+                GLES31.glUseProgram(renderProgram)
             }
             for (i in renderAttributes.indices) {
                 renderAttributes[i]!!.bind()
@@ -205,9 +205,9 @@ class DrawFrameProcessor(
 
             // Note: here do not apply surface texture transform matrix, just use the identity matrix as the
             // frame has already been adjusted in the copy step
-            GLES20.glUniformMatrix4fv(shaderPositionMatrixHandle, 1, false, positionMatrix, 0)
-            GLES20.glUniformMatrix4fv(shaderSurfaceTexTransformMatrixHandle, 1, false, renderTransformMatrix, 0)
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+            GLES31.glUniformMatrix4fv(shaderPositionMatrixHandle, 1, false, positionMatrix, 0)
+            GLES31.glUniformMatrix4fv(shaderSurfaceTexTransformMatrixHandle, 1, false, renderTransformMatrix, 0)
+            GLES31.glDrawArrays(GLES31.GL_TRIANGLE_STRIP, 0, 4)
 
             // Display the frame (note already focused from last render)
             frameHandler.present(eglDisplay, outputEglSurface)

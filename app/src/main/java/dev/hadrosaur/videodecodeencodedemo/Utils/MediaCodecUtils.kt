@@ -225,7 +225,7 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
         encoderFormat.setFloat(KEY_FRAME_RATE, 33F)
     }
     if (!encoderFormat.containsKey(KEY_I_FRAME_INTERVAL)) {
-        encoderFormat.setInteger(KEY_I_FRAME_INTERVAL, 30)
+        encoderFormat.setInteger(KEY_I_FRAME_INTERVAL, 1)
     }
 
     // Choose the best settings best on device capabilities
