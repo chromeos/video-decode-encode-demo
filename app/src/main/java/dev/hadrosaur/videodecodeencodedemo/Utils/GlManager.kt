@@ -45,15 +45,66 @@ class GlManager {
         // For protected content, currently unused
         const val EGL_PROTECTED_CONTENT_EXT = 0x32C0
 
+        // The following constants are not exposed in Java and thus have been copied from eglext.h:
+        // https://www.khronos.org/registry/EGL/api/EGL/eglext.h
+        private const val EGL_YUV_BUFFER_EXT = 0x3300
+        private const val EGL_YUV_CSC_STANDARD_EXT = 0x330A
+        private const val EGL_YUV_CSC_STANDARD_601_EXT = 0x330B
+        private const val EGL_YUV_PLANE_BPP_EXT = 0x331A
+        private const val  EGL_YUV_PLANE_BPP_0_EXT = 0x331B
+        private const val  EGL_YUV_PLANE_BPP_8_EXT = 0x331C
+        private const val  EGL_YUV_PLANE_BPP_10_EXT = 0x331D
+        private const val EGL_YUV_ORDER_EXT = 0x3301
+        private const val EGL_YUV_NUMBER_OF_PLANES_EXT = 0x3311
+        private const val EGL_YUV_DEPTH_RANGE_EXT = 0x3317
+        private const val EGL_YUV_DEPTH_RANGE_LIMITED_EXT = 0x3318
+        private const val EGL_YUV_DEPTH_RANGE_FULL_EXT = 0x3319
+        private const val EGL_YUV_SUBSAMPLE_EXT = 0x3312
+        private const val EGL_YUV_SUBSAMPLE_4_2_0_EXT = 0x3313
+        private const val EGL_YUV_SUBSAMPLE_4_2_2_EXT = 0x3314
+        private const val EGL_YUV_SUBSAMPLE_4_4_4_EXT = 0x3315
+        private const val EGL_YUV_ORDER_YUV_EXT = 0x3302
+        private const val EGL_YUV_ORDER_YVU_EXT = 0x3303
+
         private val EGL_CONFIG_ATTRIBUTES = intArrayOf(
-            EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
+            EGL14.EGL_RENDERABLE_TYPE, EGLExt.EGL_OPENGL_ES3_BIT_KHR,
             EGL14.EGL_RED_SIZE, 8,
             EGL14.EGL_GREEN_SIZE, 8,
             EGL14.EGL_BLUE_SIZE, 8,
             EGL14.EGL_ALPHA_SIZE, 8,
+            EGL14.EGL_BUFFER_SIZE, 32,
             EGL14.EGL_DEPTH_SIZE, 0,
             EGL14.EGL_CONFIG_CAVEAT, EGL14.EGL_NONE,
             EGL14.EGL_SURFACE_TYPE,  EGL14.EGL_WINDOW_BIT or EGL14.EGL_PBUFFER_BIT,
+            EGL14.EGL_NONE
+        )
+
+        private val EGL_YUV_CONFIG_ATTRIBUTES = intArrayOf(
+            EGL14.EGL_RENDERABLE_TYPE, EGLExt.EGL_OPENGL_ES3_BIT_KHR,
+            EGL14.EGL_COLOR_BUFFER_TYPE, EGL_YUV_BUFFER_EXT,
+            EGL_YUV_SUBSAMPLE_EXT, EGL_YUV_SUBSAMPLE_4_2_0_EXT,
+            EGL_YUV_NUMBER_OF_PLANES_EXT, 2,
+            EGL_YUV_ORDER_EXT, EGL_YUV_ORDER_YVU_EXT,
+            // EGL_YUV_CSC_STANDARD_EXT, EGL_YUV_CSC_STANDARD_601_EXT,
+            EGL_YUV_PLANE_BPP_EXT, EGL_YUV_PLANE_BPP_8_EXT,
+            EGL14.EGL_DEPTH_SIZE, 0,
+            EGL14.EGL_STENCIL_SIZE, 0,
+            EGL14.EGL_CONFIG_CAVEAT, EGL14.EGL_NONE,
+            EGL14.EGL_SURFACE_TYPE,  EGL14.EGL_WINDOW_BIT or EGL14.EGL_PBUFFER_BIT,
+            EGL14.EGL_NONE
+        )
+
+        // From "Example Configuration for NV12" from eglext.h
+        private val EGL_YUV_CONFIG_ATTRIBUTES2 = intArrayOf(
+            EGL14.EGL_RENDERABLE_TYPE, EGLExt.EGL_OPENGL_ES3_BIT_KHR,
+            EGL14.EGL_SURFACE_TYPE,  EGL14.EGL_WINDOW_BIT,
+            EGL14.EGL_COLOR_BUFFER_TYPE, EGL_YUV_BUFFER_EXT,
+            EGL_YUV_ORDER_EXT,             EGL_YUV_ORDER_YUV_EXT,
+            EGL_YUV_NUMBER_OF_PLANES_EXT,  2,
+            EGL_YUV_SUBSAMPLE_EXT,         EGL_YUV_SUBSAMPLE_4_2_0_EXT,
+            EGL_YUV_DEPTH_RANGE_EXT,       EGL_YUV_DEPTH_RANGE_LIMITED_EXT,
+            EGL_YUV_CSC_STANDARD_EXT,      EGL_YUV_CSC_STANDARD_601_EXT,
+            EGL_YUV_PLANE_BPP_EXT,         EGL_YUV_PLANE_BPP_8_EXT,
             EGL14.EGL_NONE
         )
 

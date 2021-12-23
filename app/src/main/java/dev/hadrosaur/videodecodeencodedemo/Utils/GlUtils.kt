@@ -46,7 +46,7 @@ object GlUtils {
      * Applies provided matrix transformations (needed for SurfaceTextures)
      */
     private val BLIT_VERTEX_SHADER = String.format(Locale.US,
-        "#version 300 es\n" +
+        "#version 310 es\n" +
                 "in vec4 %1${"$"}s;\n" +
                 "in vec4 %2${"$"}s;\n" +
                 "out vec2 %3${"$"}s;\n" +
@@ -64,7 +64,7 @@ object GlUtils {
      */
     private val COPY_EXTERNAL_FRAGMENT_SHADER = String.format(Locale.US,
 
-        "#version 300 es\n" +
+        "#version 310 es\n" +
                 "#extension GL_OES_EGL_image_external : require\n" +
                 "#extension GL_EXT_YUV_target : require\n" +
                 "precision mediump float;\n" +
@@ -74,7 +74,7 @@ object GlUtils {
                 "in vec2 %2${"$"}s;\n" +
                 "void main() {\n" +
                 "  fragmentColor = texture(%1${"$"}s, %2${"$"}s);\n" +
-                // Manually convert to RGB
+                // Manually convert to RGB because I have not figured out how to set up the output surfaces yet
                 "  fragmentColor = vec4(yuv_2_rgb(fragmentColor.rgb, itu_601), fragmentColor.a);\n" +
                 "}\n"
         , TEX_SAMPLER_NAME, TEX_COORDINATE_NAME
@@ -84,7 +84,7 @@ object GlUtils {
      * Fragment shader that simply samples the textures with no modifications.
      */
     private val PASSTHROUGH_FRAGMENT_SHADER = String.format(Locale.US,
-        "#version 300 es\n" +
+        "#version 310 es\n" +
                 "#extension GL_EXT_YUV_target : require\n" +
             "precision mediump float;\n" +
                 "uniform sampler2D %1${"$"}s;\n" +
@@ -101,7 +101,7 @@ object GlUtils {
      */
     private val SEPIA_FRAGMENT_SHADER = String.format(Locale.US,
 
-        "#version 300 es\n" +
+        "#version 310 es\n" +
                 "#extension GL_EXT_YUV_target : require\n" +
                 "precision mediump float;\n" +
             "uniform sampler2D %1${"$"}s;\n" +
@@ -136,6 +136,7 @@ object GlUtils {
     fun allocateTexture(width: Int, height: Int): Int {
         val texId = generateTexture()
         GLES31.glBindTexture(GLES31.GL_TEXTURE_2D, texId)
+        //GLES31.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, texId)
         val byteBuffer = ByteBuffer.allocateDirect(width * height * 4)
         GLES31.glTexImage2D(
             GLES31.GL_TEXTURE_2D, 0, GLES31.GL_RGBA, width, height, 0,
@@ -158,6 +159,7 @@ object GlUtils {
         checkGlError()
         GLES31.glFramebufferTexture2D(
             GLES31.GL_FRAMEBUFFER, GLES31.GL_COLOR_ATTACHMENT0, GLES31.GL_TEXTURE_2D, texId, 0
+//          GLES31.GL_FRAMEBUFFER, GLES31.GL_COLOR_ATTACHMENT0, GLES11Ext.GL_TEXTURE_EXTERNAL_OES, texId, 0
         )
         checkGlError()
         return fbo
@@ -477,7 +479,7 @@ object GlUtils {
             GLES31.glTexParameteri(
                 GLES31.GL_TEXTURE_2D, GLES31.GL_TEXTURE_MIN_FILTER, GLES31.GL_LINEAR
             )
-            GLES31.glTexParameteri(
+/*            GLES31.glTexParameteri(
                 GLES31.GL_TEXTURE_2D,
                 GLES31.GL_TEXTURE_WRAP_S,
                 GLES31.GL_CLAMP_TO_EDGE
@@ -487,7 +489,7 @@ object GlUtils {
                 GLES31.GL_TEXTURE_WRAP_T,
                 GLES31.GL_CLAMP_TO_EDGE
             )
-            checkGlError()
+*/            checkGlError()
         }
 
         init {

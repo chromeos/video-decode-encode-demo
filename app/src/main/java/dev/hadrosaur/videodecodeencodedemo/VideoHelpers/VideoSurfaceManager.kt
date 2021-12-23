@@ -35,7 +35,6 @@ class VideoSurfaceManager(val viewModel: MainViewModel, glManager: GlManager, di
     private lateinit var videoComponent: Player.VideoComponent
 
     // Set up the internal surfaces
-    // If encoding is desired, ensure setupEncodeSurfaces has been called
     fun initialize(videoComponent: Player.VideoComponent, encoderInputSurface: Surface? = null, encoderWidth: Int = 0, encoderHeight: Int = 0) {
         // Initialize decoding surfaces only
         if (encoderInputSurface == null) {
