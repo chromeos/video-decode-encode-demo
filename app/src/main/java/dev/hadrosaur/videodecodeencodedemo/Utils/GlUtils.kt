@@ -137,10 +137,9 @@ object GlUtils {
         val texId = generateTexture()
         GLES31.glBindTexture(GLES31.GL_TEXTURE_2D, texId)
         //GLES31.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, texId)
-        val byteBuffer = ByteBuffer.allocateDirect(width * height * 4)
         GLES31.glTexImage2D(
             GLES31.GL_TEXTURE_2D, 0, GLES31.GL_RGBA, width, height, 0,
-            GLES31.GL_RGBA, GLES31.GL_UNSIGNED_BYTE, byteBuffer
+            GLES31.GL_RGBA, GLES31.GL_UNSIGNED_BYTE, null
 //              GLES31.GL_TEXTURE_2D, 0, GLES31.GL_LUMINANCE, width, height, 0,
 //            GLES31.GL_LUMINANCE, GLES31.GL_UNSIGNED_BYTE, byteBuffer
         )
