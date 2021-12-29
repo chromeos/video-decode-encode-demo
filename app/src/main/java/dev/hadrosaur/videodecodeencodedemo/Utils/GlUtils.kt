@@ -119,9 +119,10 @@ object GlUtils {
     fun allocateTexture(width: Int, height: Int): Int {
         val texId = generateTexture()
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texId)
+        val byteBuffer = ByteBuffer.allocateDirect(width * height * 4)
         GLES20.glTexImage2D(
             GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, width, height, 0,
-            GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null
+            GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, byteBuffer
         )
         checkGlError()
         return texId

@@ -32,9 +32,14 @@ class MainViewModel : ViewModel() {
 
     // Stream decode switches
     private val decodeStream1 = SmartMutableLiveData<Boolean>(true)
-    private val decodeStream2 = SmartMutableLiveData<Boolean>(false)
-    private val decodeStream3 = SmartMutableLiveData<Boolean>(false)
-    private val decodeStream4 = SmartMutableLiveData<Boolean>(false)
+    private val decodeStream2 = SmartMutableLiveData<Boolean>(true)
+    private val decodeStream3 = SmartMutableLiveData<Boolean>(true)
+    private val decodeStream4 = SmartMutableLiveData<Boolean>(true)
+    private val decodeStream5 = SmartMutableLiveData<Boolean>(true)
+    private val decodeStream6 = SmartMutableLiveData<Boolean>(true)
+    private val decodeStream7 = SmartMutableLiveData<Boolean>(true)
+    private val decodeStream8 = SmartMutableLiveData<Boolean>(true)
+    private val decodeStream9 = SmartMutableLiveData<Boolean>(true)
 
     // Log text window
     private val logText = SmartMutableLiveData<String>("")
@@ -59,6 +64,11 @@ class MainViewModel : ViewModel() {
     fun getDecodeStream2(): MutableLiveData<Boolean> = decodeStream2
     fun getDecodeStream3(): MutableLiveData<Boolean> = decodeStream3
     fun getDecodeStream4(): MutableLiveData<Boolean> = decodeStream4
+    fun getDecodeStream5(): MutableLiveData<Boolean> = decodeStream5
+    fun getDecodeStream6(): MutableLiveData<Boolean> = decodeStream6
+    fun getDecodeStream7(): MutableLiveData<Boolean> = decodeStream7
+    fun getDecodeStream8(): MutableLiveData<Boolean> = decodeStream8
+    fun getDecodeStream9(): MutableLiveData<Boolean> = decodeStream9
     fun getLogText(): MutableLiveData<String> = logText
     fun getEncodingInProgress(): MutableLiveData<Boolean> = encodingInProgress
 
@@ -71,6 +81,11 @@ class MainViewModel : ViewModel() {
     fun getDecodeStream2Val(): Boolean = decodeStream2.value ?: false
     fun getDecodeStream3Val(): Boolean = decodeStream3.value ?: false
     fun getDecodeStream4Val(): Boolean = decodeStream4.value ?: false
+    fun getDecodeStream5Val(): Boolean = decodeStream5.value ?: false
+    fun getDecodeStream6Val(): Boolean = decodeStream6.value ?: false
+    fun getDecodeStream7Val(): Boolean = decodeStream7.value ?: false
+    fun getDecodeStream8Val(): Boolean = decodeStream8.value ?: false
+    fun getDecodeStream9Val(): Boolean = decodeStream9.value ?: false
     fun getLogTextVal(): String = logText.value ?: ""
     fun getEncodingInProgressVal(): Boolean = encodingInProgress.value ?: false
 
@@ -98,6 +113,21 @@ class MainViewModel : ViewModel() {
     }
     fun setDecodeStream4(value: Boolean) {
         decodeStream4.setValue(value)
+    }
+    fun setDecodeStream5(value: Boolean) {
+        decodeStream5.setValue(value)
+    }
+    fun setDecodeStream6(value: Boolean) {
+        decodeStream6.setValue(value)
+    }
+    fun setDecodeStream7(value: Boolean) {
+        decodeStream7.setValue(value)
+    }
+    fun setDecodeStream8(value: Boolean) {
+        decodeStream8.setValue(value)
+    }
+    fun setDecodeStream9(value: Boolean) {
+        decodeStream9.setValue(value)
     }
     fun setLogText(value: String) {
         logText.postValue(value)

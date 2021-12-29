@@ -36,13 +36,18 @@ import dev.hadrosaur.videodecodeencodedemo.Utils.*
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoSurfaceManager
 import kotlinx.android.synthetic.main.activity_main.*
 
-const val NUMBER_OF_STREAMS = 4
+const val NUMBER_OF_STREAMS = 9
 
 // TODO: replace this with proper file loading
 const val VIDEO_RES_1 = R.raw.paris_01_1080p
 const val VIDEO_RES_2 = R.raw.paris_02_1080p
 const val VIDEO_RES_3 = R.raw.paris_03_1080p
 const val VIDEO_RES_4 = R.raw.paris_04_1080p
+const val VIDEO_RES_5 = R.raw.paris_05_1080p
+const val VIDEO_RES_6 = R.raw.paris_06_1080p
+const val VIDEO_RES_7 = R.raw.paris_07_1080p
+const val VIDEO_RES_8 = R.raw.paris_08_1080p
+const val VIDEO_RES_9 = R.raw.paris_01_720p
 
 class MainActivity : AppCompatActivity() {
     // Preview surfaces
@@ -128,6 +133,11 @@ class MainActivity : AppCompatActivity() {
         frame_two.addView(previewSurfaceViews[1])
         frame_three.addView(previewSurfaceViews[2])
         frame_four.addView(previewSurfaceViews[3])
+        frame_five.addView(previewSurfaceViews[4])
+        frame_six.addView(previewSurfaceViews[5])
+        frame_seven.addView(previewSurfaceViews[6])
+        frame_eight.addView(previewSurfaceViews[7])
+        frame_nine.addView(previewSurfaceViews[8])
     }
 
     // Create the internal SurfaceTextures that will be used for decoding
@@ -246,6 +256,26 @@ class MainActivity : AppCompatActivity() {
                 _, isChecked -> viewModel.setDecodeStream4(isChecked) }
         viewModel.getDecodeStream4().observe(this, {
                 isChecked -> checkbox_decode_stream4.isSelected = isChecked })
+        checkbox_decode_stream5.setOnCheckedChangeListener{
+                _, isChecked -> viewModel.setDecodeStream5(isChecked) }
+        viewModel.getDecodeStream5().observe(this, {
+                isChecked -> checkbox_decode_stream5.isSelected = isChecked })
+        checkbox_decode_stream6.setOnCheckedChangeListener{
+                _, isChecked -> viewModel.setDecodeStream6(isChecked) }
+        viewModel.getDecodeStream6().observe(this, {
+                isChecked -> checkbox_decode_stream6.isSelected = isChecked })
+        checkbox_decode_stream7.setOnCheckedChangeListener{
+                _, isChecked -> viewModel.setDecodeStream7(isChecked) }
+        viewModel.getDecodeStream7().observe(this, {
+                isChecked -> checkbox_decode_stream7.isSelected = isChecked })
+        checkbox_decode_stream8.setOnCheckedChangeListener{
+                _, isChecked -> viewModel.setDecodeStream8(isChecked) }
+        viewModel.getDecodeStream8().observe(this, {
+                isChecked -> checkbox_decode_stream8.isSelected = isChecked })
+        checkbox_decode_stream9.setOnCheckedChangeListener{
+                _, isChecked -> viewModel.setDecodeStream9(isChecked) }
+        viewModel.getDecodeStream9().observe(this, {
+                isChecked -> checkbox_decode_stream9.isSelected = isChecked })
 
         // Set up toggle switches for encode, audio, filters, etc.
         switch_filter.setOnCheckedChangeListener {
@@ -305,6 +335,31 @@ class MainActivity : AppCompatActivity() {
             if (viewModel.getDecodeStream4Val()) {
                 beginVideoDecode(VIDEO_RES_4, videoSurfaceManagers[3], 3)
             }
+
+            // Stream 5
+            if (viewModel.getDecodeStream5Val()) {
+                beginVideoDecode(VIDEO_RES_5, videoSurfaceManagers[4], 4)
+            }
+
+            // Stream 6
+            if (viewModel.getDecodeStream6Val()) {
+                beginVideoDecode(VIDEO_RES_6, videoSurfaceManagers[5], 5)
+            }
+
+            // Stream 7
+            if (viewModel.getDecodeStream7Val()) {
+                beginVideoDecode(VIDEO_RES_7, videoSurfaceManagers[6], 6)
+            }
+
+            // Stream 8
+            if (viewModel.getDecodeStream8Val()) {
+                beginVideoDecode(VIDEO_RES_8, videoSurfaceManagers[7], 7)
+            }
+
+            // Stream 9
+            if (viewModel.getDecodeStream9Val()) {
+                beginVideoDecode(VIDEO_RES_9, videoSurfaceManagers[8], 8)
+            }
         }
 
         // TODO: Add option to swap out input video files
@@ -331,6 +386,11 @@ class MainActivity : AppCompatActivity() {
             KEYCODE_2 -> { checkbox_decode_stream2.isChecked = ! checkbox_decode_stream2.isChecked; checkbox_decode_stream2.clearFocus(); return true }
             KEYCODE_3 -> { checkbox_decode_stream3.isChecked = ! checkbox_decode_stream3.isChecked; checkbox_decode_stream3.clearFocus(); return true }
             KEYCODE_4 -> { checkbox_decode_stream4.isChecked = ! checkbox_decode_stream4.isChecked; checkbox_decode_stream4.clearFocus(); return true }
+            KEYCODE_5 -> { checkbox_decode_stream5.isChecked = ! checkbox_decode_stream5.isChecked; checkbox_decode_stream5.clearFocus(); return true }
+            KEYCODE_6 -> { checkbox_decode_stream6.isChecked = ! checkbox_decode_stream6.isChecked; checkbox_decode_stream6.clearFocus(); return true }
+            KEYCODE_7 -> { checkbox_decode_stream7.isChecked = ! checkbox_decode_stream7.isChecked; checkbox_decode_stream7.clearFocus(); return true }
+            KEYCODE_8 -> { checkbox_decode_stream8.isChecked = ! checkbox_decode_stream8.isChecked; checkbox_decode_stream8.clearFocus(); return true }
+            KEYCODE_9 -> { checkbox_decode_stream9.isChecked = ! checkbox_decode_stream9.isChecked; checkbox_decode_stream9.clearFocus(); return true }
 
             // E, F, A : Toggle switches
             KEYCODE_E -> { switch_encode.isChecked = ! switch_encode.isChecked; switch_encode.clearFocus(); return true }
