@@ -432,12 +432,30 @@ class MainActivity : AppCompatActivity() {
                 updateLog("About to pause, detach, seek, and re-attach surface.")
                 player.pause()
                 val currentPos = player.contentPosition
+                updateLog("About to clear")
                 player.videoComponent!!.clearVideoSurface()
+                updateLog("About to seek")
                 player.seekTo(currentPos)
+                updateLog("About to recreate surface.")
                 previewSurfaceViews[streamNumber] = SurfaceView(this@MainActivity) // new SurfaceView
-                player.videoComponent!!.setVideoSurface(previewSurfaceViews[streamNumber].holder.surface)
+                previewSurfaceViews[streamNumber].holder.addCallback(object : SurfaceHolder.Callback {
+                    override fun surfaceCreated(p0: SurfaceHolder) {
+                        updateLog("Surface created re-attaching")
+                        player.videoComponent!!.setVideoSurface(previewSurfaceViews[streamNumber].holder.surface)
+                        updateLog("Now playing again")
+                        player.play()
+                    }
+
+                    override fun surfaceChanged(p0: SurfaceHolder, p1: Int, p2: Int, p3: Int) {
+                        updateLog("SURFACE CHANGEDD")
+                    }
+
+                    override fun surfaceDestroyed(p0: SurfaceHolder) {
+                        updateLog("SURFACE DESTROYED")
+                    }
+                })
+                frame_one.addView(previewSurfaceViews[streamNumber])
             }
-            println("Hello") // main coroutine continues while a previous one is delayed
         }
     }
 
