@@ -35,6 +35,9 @@ import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
 import dev.hadrosaur.videodecodeencodedemo.Utils.*
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoSurfaceManager
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 const val NUMBER_OF_STREAMS = 4
 
@@ -371,8 +374,7 @@ class MainActivity : AppCompatActivity() {
         activeDecodes++
 
         // Setup custom video and audio renderers
-        val renderersFactory = CustomExoRenderersFactory(this@MainActivity, viewModel,
-            videoSurfaceManager, streamNumber, audioBufferManager)
+        val renderersFactory = StandardExoRenderersFactory(this@MainActivity, viewModel, streamNumber, audioBufferManager)
 
         // Reduce default buffering to MIN_DECODE_BUFFER_MS to prevent over allocation
         // when processing multiple large streams
@@ -395,7 +397,8 @@ class MainActivity : AppCompatActivity() {
                 audioVideoEncoder.startEncode()
             } else {
                 // Only set up decode surfaces
-                videoSurfaceManager.initialize(player.videoComponent as Player.VideoComponent)
+                //videoSurfaceManager.initialize(player.videoComponent as Player.VideoComponent)
+                player.videoComponent!!.setVideoSurface(previewSurfaceViews[streamNumber].holder.surface)
             }
         } else {
             updateLog("Player video component is NULL for stream ${streamNumber + 1}, aborting.")
@@ -422,6 +425,20 @@ class MainActivity : AppCompatActivity() {
         player.setMediaSource(videoSource)
         player.prepare()
         player.playWhenReady = true
+
+        runBlocking { // this: CoroutineScope
+            launch { // launch a new coroutine and continue
+                delay(2000L) // non-blocking delay for 1 second (default time unit is ms)
+                updateLog("About to pause, detach, seek, and re-attach surface.")
+                player.pause()
+                val currentPos = player.contentPosition
+                player.videoComponent!!.clearVideoSurface()
+                player.seekTo(currentPos)
+                previewSurfaceViews[streamNumber] = SurfaceView(this@MainActivity) // new SurfaceView
+                player.videoComponent!!.setVideoSurface(previewSurfaceViews[streamNumber].holder.surface)
+            }
+            println("Hello") // main coroutine continues while a previous one is delayed
+        }
     }
 
     // Indicate one more preview surface is available

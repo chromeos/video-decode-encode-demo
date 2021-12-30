@@ -20,6 +20,8 @@ import android.os.Handler
 import com.google.android.exoplayer2.Renderer
 import com.google.android.exoplayer2.RenderersFactory
 import com.google.android.exoplayer2.audio.AudioRendererEventListener
+import com.google.android.exoplayer2.audio.MediaCodecAudioRenderer
+import com.google.android.exoplayer2.mediacodec.MediaCodecSelector
 import com.google.android.exoplayer2.metadata.MetadataOutput
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
@@ -27,8 +29,10 @@ import com.google.android.exoplayer2.text.TextOutput
 import com.google.android.exoplayer2.upstream.DataSource
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.upstream.RawResourceDataSource
+import com.google.android.exoplayer2.video.MediaCodecVideoRenderer
 import com.google.android.exoplayer2.video.VideoRendererEventListener
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
+import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.CopyAndPlayAudioSink
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.VideoMediaCodecAudioRenderer
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
@@ -67,6 +71,33 @@ class CustomExoRenderersFactory(
         return arrayOf(
             VideoMediaCodecVideoRenderer(mainActivity, viewModel, videoSurfaceManager, true, streamNumber, mediaClock),
             VideoMediaCodecAudioRenderer(mainActivity, viewModel, streamNumber, audioBufferManager)
+        )
+    }
+}
+
+class StandardExoRenderersFactory(
+    val mainActivity: MainActivity,
+    val viewModel: MainViewModel,
+    private val streamNumber: Int,
+    private val audioBufferManager: AudioBufferManager?
+) : RenderersFactory {
+
+    override fun createRenderers(
+        eventHandler: Handler,
+        videoRendererEventListener: VideoRendererEventListener,
+        audioRendererEventListener: AudioRendererEventListener,
+        textRendererOutput: TextOutput,
+        metadataRendererOutput: MetadataOutput
+    ): Array<Renderer> {
+        return arrayOf(
+            MediaCodecVideoRenderer(mainActivity,
+                MediaCodecSelector.DEFAULT,
+                0,
+                true,
+                null,
+                null,
+                -1),
+            MediaCodecAudioRenderer(mainActivity, MediaCodecSelector.DEFAULT, null, null, CopyAndPlayAudioSink(viewModel, streamNumber, audioBufferManager))
         )
     }
 }
