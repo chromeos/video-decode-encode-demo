@@ -18,6 +18,8 @@ package dev.hadrosaur.videodecodeencodedemo
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Build.getSerial
 import android.os.Bundle
 import android.util.Log
 import android.view.*
@@ -38,6 +40,7 @@ import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.lang.Thread.sleep
 
 const val NUMBER_OF_STREAMS = 4
 
@@ -428,10 +431,11 @@ class MainActivity : AppCompatActivity() {
 
         runBlocking { // this: CoroutineScope
             launch { // launch a new coroutine and continue
-                delay(2000L) // non-blocking delay for 1 second (default time unit is ms)
+                delay(1000L) // non-blocking delay for 1 second (default time unit is ms)
                 updateLog("About to pause, detach, seek, and re-attach surface.")
                 player.pause()
                 val currentPos = player.contentPosition
+                player.stop()
                 updateLog("About to clear")
                 player.videoComponent!!.clearVideoSurface()
                 updateLog("About to seek")
@@ -439,15 +443,16 @@ class MainActivity : AppCompatActivity() {
                 updateLog("About to recreate surface.")
                 previewSurfaceViews[streamNumber] = SurfaceView(this@MainActivity) // new SurfaceView
                 previewSurfaceViews[streamNumber].holder.addCallback(object : SurfaceHolder.Callback {
-                    override fun surfaceCreated(p0: SurfaceHolder) {
-                        updateLog("Surface created re-attaching")
+                    override fun surfaceCreated(holder: SurfaceHolder) {
+                        updateLog("Surface created (width: ${holder.surfaceFrame.width()} / height: ${holder.surfaceFrame.height()}) re-attaching")
                         player.videoComponent!!.setVideoSurface(previewSurfaceViews[streamNumber].holder.surface)
+//                        player.videoComponent!!.setVideoSurfaceHolder(previewSurfaceViews[streamNumber].holder)
                         updateLog("Now playing again")
                         player.play()
                     }
 
-                    override fun surfaceChanged(p0: SurfaceHolder, p1: Int, p2: Int, p3: Int) {
-                        updateLog("SURFACE CHANGEDD")
+                    override fun surfaceChanged(p0: SurfaceHolder, format: Int, width: Int, height: Int) {
+                        updateLog("SURFACE CHANGED. Format ${format}, Width: ${width}, Height: ${height}")
                     }
 
                     override fun surfaceDestroyed(p0: SurfaceHolder) {
