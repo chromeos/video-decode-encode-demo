@@ -435,7 +435,6 @@ class MainActivity : AppCompatActivity() {
                 updateLog("About to pause, detach, seek, and re-attach surface.")
                 player.pause()
                 val currentPos = player.contentPosition
-                player.stop()
                 updateLog("About to clear")
                 player.videoComponent!!.clearVideoSurface()
                 updateLog("About to seek")
