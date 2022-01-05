@@ -22,25 +22,15 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <androidx.appcompat.widget.SwitchCompat
-        android:id="@+id/switch_audio"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:text="Play Audio"
-        app:layout_constraintEnd_toStartOf="@+id/button_start_decode"
-        app:layout_constraintStart_toEndOf="@+id/switch_filter"
-        app:layout_constraintTop_toTopOf="@+id/switch_filter" />
-
     <FrameLayout
         android:id="@+id/frame_one"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
+        android:layout_marginTop="16dp"
         app:layout_constraintBottom_toTopOf="@+id/checkbox_decode_stream1"
-        app:layout_constraintEnd_toStartOf="@id/frame_two"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -53,76 +43,10 @@
         android:enabled="false"
         android:focusable="false"
         android:text="Decode Stream 1?"
-        app:layout_constraintBottom_toTopOf="@+id/frame_three"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/switch_filter"
         app:layout_constraintEnd_toEndOf="@+id/frame_one"
         app:layout_constraintTop_toBottomOf="@+id/frame_one" />
-
-    <FrameLayout
-        android:id="@+id/frame_two"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp"
-        app:layout_constraintBottom_toTopOf="@+id/checkbox_decode_stream2"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/frame_one"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <CheckBox
-        android:id="@+id/checkbox_decode_stream2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:checked="false"
-        android:text="Decode Stream 2?"
-        app:layout_constraintBottom_toTopOf="@+id/frame_four"
-        app:layout_constraintEnd_toEndOf="@+id/frame_two"
-        app:layout_constraintTop_toBottomOf="@+id/frame_two" />
-
-    <FrameLayout
-        android:id="@+id/frame_three"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp"
-        app:layout_constraintBottom_toTopOf="@+id/checkbox_decode_stream3"
-        app:layout_constraintEnd_toStartOf="@id/frame_four"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/checkbox_decode_stream1" />
-
-    <CheckBox
-        android:id="@+id/checkbox_decode_stream3"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:checked="false"
-        android:text="Decode Stream 3?"
-        app:layout_constraintBottom_toTopOf="@+id/guideline"
-        app:layout_constraintEnd_toEndOf="@+id/frame_three"
-        app:layout_constraintTop_toBottomOf="@+id/frame_three" />
-
-    <FrameLayout
-        android:id="@+id/frame_four"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp"
-        app:layout_constraintBottom_toTopOf="@+id/checkbox_decode_stream4"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/frame_three"
-        app:layout_constraintTop_toBottomOf="@id/checkbox_decode_stream2" />
-
-    <CheckBox
-        android:id="@+id/checkbox_decode_stream4"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:checked="false"
-        android:text="Decode Stream 4?"
-        app:layout_constraintBottom_toTopOf="@+id/guideline"
-        app:layout_constraintEnd_toEndOf="@+id/frame_four"
-        app:layout_constraintTop_toBottomOf="@+id/frame_four" />
-
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline"
@@ -137,9 +61,20 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginTop="8dp"
+        android:visibility="gone"
         android:text="Sepia Filter"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@+id/guideline" />
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/switch_audio"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:visibility="gone"
+        android:text="Play Audio"
+        app:layout_constraintStart_toEndOf="@+id/switch_filter"
+        app:layout_constraintTop_toTopOf="@+id/switch_filter" />
 
     <androidx.appcompat.widget.SwitchCompat
         android:id="@+id/switch_encode"
@@ -147,6 +82,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginTop="8dp"
+        android:visibility="gone"
         android:text="Encode 1st Stream"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/switch_filter" />
@@ -159,9 +95,9 @@
         android:enabled="false"
         android:focusedByDefault="true"
         android:text="Decode, Detach, and Seek"
-        app:layout_constraintBottom_toBottomOf="@+id/switch_encode"
+        app:layout_constraintTop_toBottomOf="@+id/switch_encode"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/switch_filter" />
+/>
 
     <SeekBar
         android:id="@+id/seek_framedelay"
@@ -172,13 +108,14 @@
         android:layout_marginTop="8dp"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="8dp"
+        android:visibility="gone"
         android:max="30"
         android:min="1"
         android:progress="10"
         app:layout_constraintBottom_toTopOf="@+id/scroll_log"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/switch_encode" />
+        app:layout_constraintTop_toBottomOf="@+id/button_start_decode" />
 
     <ScrollView
         android:id="@+id/scroll_log"
@@ -223,6 +160,7 @@
         android:layout_height="wrap_content"
         android:layout_marginEnd="16dp"
         android:text="Preview every 10 frames"
+        android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@+id/scroll_log"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/seek_framedelay" />

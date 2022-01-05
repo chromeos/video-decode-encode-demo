@@ -33,12 +33,8 @@ import com.google.android.exoplayer2.video.MediaCodecVideoRenderer
 import com.google.android.exoplayer2.video.VideoRendererEventListener
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.CopyAndPlayAudioSink
-import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.VideoMediaCodecAudioRenderer
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
-import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.SpeedyMediaClock
-import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoMediaCodecVideoRenderer
-import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoSurfaceManager
 
 // Create an ExoPlayer media source from a raw resource ID
 fun buildExoMediaSource(mainActivity: MainActivity, raw: Int): MediaSource {
@@ -52,34 +48,11 @@ fun buildExoMediaSource(mainActivity: MainActivity, raw: Int): MediaSource {
         .createMediaSource(uri)
 }
 
-class CustomExoRenderersFactory(
-    val mainActivity: MainActivity,
-    val viewModel: MainViewModel,
-    private val videoSurfaceManager: VideoSurfaceManager,
-    private val streamNumber: Int,
-    val audioBufferManager: AudioBufferManager?
-    ) : RenderersFactory {
-
-    override fun createRenderers(
-        eventHandler: Handler,
-        videoRendererEventListener: VideoRendererEventListener,
-        audioRendererEventListener: AudioRendererEventListener,
-        textRendererOutput: TextOutput,
-        metadataRendererOutput: MetadataOutput
-    ): Array<Renderer> {
-        val mediaClock = SpeedyMediaClock()
-        return arrayOf(
-            VideoMediaCodecVideoRenderer(mainActivity, viewModel, videoSurfaceManager, true, streamNumber, mediaClock),
-            VideoMediaCodecAudioRenderer(mainActivity, viewModel, streamNumber, audioBufferManager)
-        )
-    }
-}
-
 class StandardExoRenderersFactory(
     val mainActivity: MainActivity,
     val viewModel: MainViewModel,
     private val streamNumber: Int,
-    private val audioBufferManager: AudioBufferManager?
+    private val audioBufferManager: AudioBufferManager? = null
 ) : RenderersFactory {
 
     override fun createRenderers(
@@ -97,6 +70,7 @@ class StandardExoRenderersFactory(
                 null,
                 null,
                 -1),
+            // Add an audio render even if audioBufferManager is null and no audio played, this allows fast rendering
             MediaCodecAudioRenderer(mainActivity, MediaCodecSelector.DEFAULT, null, null, CopyAndPlayAudioSink(viewModel, streamNumber, audioBufferManager))
         )
     }

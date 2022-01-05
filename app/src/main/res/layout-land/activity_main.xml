@@ -30,7 +30,7 @@
         android:layout_marginTop="32dp"
         android:layout_marginEnd="16dp"
         app:layout_constraintBottom_toTopOf="@+id/checkbox_decode_stream1"
-        app:layout_constraintEnd_toStartOf="@id/frame_two"
+        app:layout_constraintEnd_toStartOf="@id/guideline_vertical"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -42,76 +42,11 @@
         android:clickable="false"
         android:enabled="false"
         android:focusable="false"
+        android:visibility="gone"
         android:text="Decode Stream 1?"
-        app:layout_constraintBottom_toTopOf="@+id/frame_three"
+        app:layout_constraintBottom_toTopOf="@+id/button_start_decode"
         app:layout_constraintEnd_toEndOf="@+id/frame_one"
         app:layout_constraintTop_toBottomOf="@+id/frame_one" />
-
-    <FrameLayout
-        android:id="@+id/frame_two"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="32dp"
-        android:layout_marginEnd="16dp"
-        app:layout_constraintBottom_toTopOf="@+id/checkbox_decode_stream2"
-        app:layout_constraintEnd_toEndOf="@id/guideline_vertical"
-        app:layout_constraintStart_toEndOf="@id/frame_one"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <CheckBox
-        android:id="@+id/checkbox_decode_stream2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:checked="false"
-        android:text="Decode Stream 2?"
-        app:layout_constraintBottom_toTopOf="@+id/frame_four"
-        app:layout_constraintEnd_toEndOf="@+id/frame_two"
-        app:layout_constraintTop_toBottomOf="@+id/frame_two" />
-
-    <FrameLayout
-        android:id="@+id/frame_three"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_marginStart="32dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp"
-        app:layout_constraintBottom_toTopOf="@+id/checkbox_decode_stream3"
-        app:layout_constraintEnd_toStartOf="@id/frame_four"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/checkbox_decode_stream1" />
-
-    <CheckBox
-        android:id="@+id/checkbox_decode_stream3"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:checked="false"
-        android:text="Decode Stream 3?"
-        app:layout_constraintBottom_toTopOf="@+id/button_start_decode"
-        app:layout_constraintEnd_toEndOf="@+id/frame_three"
-        app:layout_constraintTop_toBottomOf="@+id/frame_three" />
-
-    <FrameLayout
-        android:id="@+id/frame_four"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp"
-        app:layout_constraintBottom_toTopOf="@+id/checkbox_decode_stream4"
-        app:layout_constraintEnd_toStartOf="@+id/guideline_vertical"
-        app:layout_constraintStart_toEndOf="@id/frame_three"
-        app:layout_constraintTop_toBottomOf="@id/checkbox_decode_stream2" />
-
-    <CheckBox
-        android:id="@+id/checkbox_decode_stream4"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:checked="false"
-        android:text="Decode Stream 4?"
-        app:layout_constraintBottom_toTopOf="@+id/button_start_decode"
-        app:layout_constraintEnd_toEndOf="@+id/frame_four"
-        app:layout_constraintTop_toBottomOf="@+id/frame_four" />
 
     <Button
         android:id="@+id/button_start_decode"
@@ -124,7 +59,7 @@
         android:text="Decode, Detach, and Seek"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="@id/guideline_vertical"
-        app:layout_constraintTop_toBottomOf="@+id/checkbox_decode_stream4" />
+        app:layout_constraintTop_toBottomOf="@+id/checkbox_decode_stream1" />
 
 
     <androidx.constraintlayout.widget.Guideline
@@ -140,6 +75,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="24dp"
         android:layout_marginTop="32dp"
+        android:visibility="gone"
         android:text="Sepia Filter"
         app:layout_constraintStart_toStartOf="@id/guideline_vertical"
         app:layout_constraintTop_toTopOf="parent" />
@@ -148,6 +84,7 @@
         android:id="@+id/switch_audio"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:visibility="gone"
         android:text="Play Audio"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/switch_filter"
@@ -159,6 +96,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="24dp"
         android:layout_marginTop="8dp"
+        android:visibility="gone"
         android:text="Encode 1st Stream"
         app:layout_constraintStart_toStartOf="@id/guideline_vertical"
         app:layout_constraintTop_toBottomOf="@+id/switch_filter" />
@@ -172,6 +110,7 @@
         android:layout_marginTop="8dp"
         android:layout_marginEnd="24dp"
         android:layout_marginBottom="8dp"
+        android:visibility="gone"
         android:max="30"
         android:min="1"
         android:progress="10"
@@ -221,6 +160,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="24dp"
+        android:visibility="gone"
         android:text="Preview every 10 frames"
         app:layout_constraintBottom_toTopOf="@+id/scroll_log"
         app:layout_constraintEnd_toEndOf="parent"
