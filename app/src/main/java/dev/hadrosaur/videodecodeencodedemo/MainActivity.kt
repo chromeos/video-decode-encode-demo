@@ -283,6 +283,7 @@ class MainActivity : AppCompatActivity() {
                 player.seekTo(currentPos)
                 updateLog("About to recreate surface.")
                 previewSurfaceViews[streamNumber] = SurfaceView(this@MainActivity) // new SurfaceView
+
                 // Add a callback to detect when the surface has been created
                 previewSurfaceViews[streamNumber].holder.addCallback(object : SurfaceHolder.Callback {
                     override fun surfaceCreated(holder: SurfaceHolder) {
@@ -292,14 +293,16 @@ class MainActivity : AppCompatActivity() {
                         player.play()
                     }
 
-                    override fun surfaceChanged(p0: SurfaceHolder, format: Int, width: Int, height: Int) {
+                    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
                         // updateLog("SURFACE CHANGED. Format ${format}, Width: ${width}, Height: ${height}")
                     }
 
-                    override fun surfaceDestroyed(p0: SurfaceHolder) {
+                    override fun surfaceDestroyed(holder: SurfaceHolder) {
                         updateLog("SURFACE DESTROYED")
                     }
                 })
+
+                // Add the new preview surface into the preview frame
                 frame_one.addView(previewSurfaceViews[streamNumber])
             }
         }
