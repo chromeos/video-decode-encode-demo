@@ -19,7 +19,7 @@ package dev.hadrosaur.videodecodeencodedemo.VideoHelpers
 import android.os.Handler
 import android.view.Surface
 import android.view.SurfaceView
-import com.google.android.exoplayer2.Player
+import com.google.android.exoplayer2.ExoPlayer
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager
 
@@ -32,11 +32,11 @@ class VideoSurfaceManager(val viewModel: MainViewModel, glManager: GlManager, di
     var renderer: InternalSurfaceTextureRenderer =
         InternalSurfaceTextureRenderer(viewModel, glManager, displaySurface, handler)
 
-    private lateinit var videoComponent: Player.VideoComponent
+    private lateinit var player: ExoPlayer
 
     // Set up the internal surfaces
     // If encoding is desired, ensure setupEncodeSurfaces has been called
-    fun initialize(videoComponent: Player.VideoComponent, encoderInputSurface: Surface? = null, encoderWidth: Int = 0, encoderHeight: Int = 0) {
+    fun initialize(player: ExoPlayer, encoderInputSurface: Surface? = null, encoderWidth: Int = 0, encoderHeight: Int = 0) {
         // Initialize decoding surfaces only
         if (encoderInputSurface == null) {
             renderer.initialize()
@@ -46,14 +46,14 @@ class VideoSurfaceManager(val viewModel: MainViewModel, glManager: GlManager, di
             renderer.initialize(encoderInputSurface, encoderWidth, encoderHeight)
         }
 
-        this.videoComponent = videoComponent
+        this.player = player
 
         // Tell ExoPlayer to decode to this surface
-        videoComponent.setVideoSurface(renderer.decoderSurface)
+        player.setVideoSurface(renderer.decoderSurface)
 
         // Use the FrameLedger to keep track of when frames are actually rendered and when a frame
         // is about to be rendered to prevent frame drops
-        videoComponent.setVideoFrameMetadataListener(renderer.frameLedger)
+        player.setVideoFrameMetadataListener(renderer.frameLedger)
     }
 
     fun release() {

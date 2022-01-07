@@ -27,10 +27,7 @@ import androidx.activity.result.contract.ActivityResultContracts.RequestPermissi
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.google.android.exoplayer2.DefaultLoadControl
-import com.google.android.exoplayer2.PlaybackParameters
-import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.SimpleExoPlayer
+import com.google.android.exoplayer2.*
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
 import dev.hadrosaur.videodecodeencodedemo.Utils.*
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoSurfaceManager
@@ -379,27 +376,22 @@ class MainActivity : AppCompatActivity() {
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS * 2, MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS)
             .createDefaultLoadControl()
-        val player: SimpleExoPlayer = SimpleExoPlayer.Builder(this@MainActivity, renderersFactory)
+        val player: ExoPlayer = ExoPlayer.Builder(this@MainActivity, renderersFactory)
             .setLoadControl(loadControl)
             .build()
 
-        if (player.videoComponent != null) {
-            if (audioVideoEncoder != null) {
-                // Set up encode and decode surfaces
-                videoSurfaceManager.initialize(player.videoComponent as Player.VideoComponent,
-                    audioVideoEncoder.videoEncoderInputSurface,
-                    audioVideoEncoder.encoderWidth,
-                    audioVideoEncoder.encoderHeight)
+        if (audioVideoEncoder != null) {
+            // Set up encode and decode surfaces
+            videoSurfaceManager.initialize(player,
+                audioVideoEncoder.videoEncoderInputSurface,
+                audioVideoEncoder.encoderWidth,
+                audioVideoEncoder.encoderHeight)
 
-                // Start the encoder
-                audioVideoEncoder.startEncode()
-            } else {
-                // Only set up decode surfaces
-                videoSurfaceManager.initialize(player.videoComponent as Player.VideoComponent)
-            }
+            // Start the encoder
+            audioVideoEncoder.startEncode()
         } else {
-            updateLog("Player video component is NULL for stream ${streamNumber + 1}, aborting.")
-            return
+            // Only set up decode surfaces
+            videoSurfaceManager.initialize(player)
         }
 
         // Note: the decoder uses a custom MediaClock that goes as fast as possible so this speed
