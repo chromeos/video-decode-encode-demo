@@ -114,18 +114,62 @@ class GlManager {
             val configs =
                 arrayOfNulls<EGLConfig>(1)
             val numConfigs = IntArray(1)
-            val success = EGL14.eglChooseConfig(
-                display,
-                EGL_CONFIG_ATTRIBUTES,  /* attrib_listOffset= */
-                0,
-                configs,  /* configsOffset= */
-                0,  /* config_size= */
-                1,
-                numConfigs,  /* num_configOffset= */
-                0
-            )
 
-            MainActivity.logd("In Choose EGLConfig. Configs 0 is null?: ${configs[0] == null}, success is ${success}")
+            // Call getConfigs with null to see how many configs
+            EGL14.eglGetConfigs(display, null, 0, 0, numConfigs, 0)
+            MainActivity.logd("I have gotten ${numConfigs[0]} EGL Configs!")
+            // Now actually fetch configs
+            val deviceConfigs = arrayOfNulls<EGLConfig>(numConfigs[0])
+            EGL14.eglGetConfigs(display, deviceConfigs, 0, numConfigs[0], numConfigs, 0)
+
+            // Log attributes we care about
+            val attributeValue = IntArray(1)
+            var configNum = 0 // Counter
+            var isYUVConfig = false
+            for (deviceConfig in deviceConfigs) {
+                val attributeCheckFailed = EGL14.eglGetConfigAttrib(display, deviceConfig, EGL14.EGL_COLOR_BUFFER_TYPE, attributeValue, 0)
+                if (!attributeCheckFailed) {
+                    MainActivity.logd("Failed getting Color Buffer Type for Config #${configNum+1}")
+                }
+
+                val colorBufferType = when (attributeValue[0]) { EGL14.EGL_RGB_BUFFER -> "RGB"; EGL14.EGL_LUMINANCE_BUFFER -> "YUV"; else -> "Unknown buffer type" }
+                MainActivity.logd("Config #${configNum+1}: Color Buffer Type: ${colorBufferType}")
+                if (attributeValue[0] == EGL14.EGL_LUMINANCE_BUFFER) {
+                    isYUVConfig = true
+                }
+                configNum++
+            }
+
+            // Choose a YUV config if one exists for this device
+            var success = false
+            if (isYUVConfig) {
+                MainActivity.logd("This device has a YUV configs! Select it.")
+                success = EGL14.eglChooseConfig(
+                    display,
+//                EGL_YUV_CONFIG_ATTRIBUTES,  /* attrib_listOffset= */
+                    EGL_YUV_CONFIG_ATTRIBUTES2,  /* attrib_listOffset= */
+                    0,
+                    configs,  /* configsOffset= */
+                    0,  /* config_size= */
+                    1,
+                    numConfigs,  /* num_configOffset= */
+                    0
+                )
+            } else {
+                MainActivity.logd("This device has NO YUV configs. Try an RGB config.")
+                success = EGL14.eglChooseConfig(
+                    display,
+                    EGL_CONFIG_ATTRIBUTES,  /* attrib_listOffset= */
+                    0,
+                    configs,  /* configsOffset= */
+                    0,  /* config_size= */
+                    1,
+                    numConfigs,  /* num_configOffset= */
+                    0
+                )
+            }
+
+            MainActivity.logd("In Choose EGLConfig. Configs 0 is null?: ${configs[0] == null}, success is ${success}. numConfigs[0] = ${numConfigs[0]}")
             if (!success || numConfigs[0] <= 0 || configs[0] == null) {
                 throw GlException(
                     Util.formatInvariant( /* format= */
