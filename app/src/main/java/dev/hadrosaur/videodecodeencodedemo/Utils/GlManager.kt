@@ -132,9 +132,9 @@ class GlManager {
                     MainActivity.logd("Failed getting Color Buffer Type for Config #${configNum+1}")
                 }
 
-                val colorBufferType = when (attributeValue[0]) { EGL14.EGL_RGB_BUFFER -> "RGB"; EGL14.EGL_LUMINANCE_BUFFER -> "YUV"; else -> "Unknown buffer type" }
+                val colorBufferType = when (attributeValue[0]) { EGL14.EGL_RGB_BUFFER -> "RGB"; EGL_YUV_BUFFER_EXT -> "YUV"; else -> "Unknown buffer type" }
                 MainActivity.logd("Config #${configNum+1}: Color Buffer Type: ${colorBufferType}")
-                if (attributeValue[0] == EGL14.EGL_LUMINANCE_BUFFER) {
+                if (attributeValue[0] == EGL_YUV_BUFFER_EXT) {
                     isYUVConfig = true
                 }
                 configNum++
