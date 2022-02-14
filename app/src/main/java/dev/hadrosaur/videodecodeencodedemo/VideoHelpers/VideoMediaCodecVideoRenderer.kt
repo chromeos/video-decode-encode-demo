@@ -102,6 +102,20 @@ class VideoMediaCodecVideoRenderer(
         return mediaClock
     }
 
+    override fun onCodecInitialized(
+        name: String,
+        initializedTimestampMs: Long,
+        initializationDurationMs: Long
+    ) {
+        mainActivity.updateLog("A codec has been initialized: ${name}")
+        super.onCodecInitialized(name, initializedTimestampMs, initializationDurationMs)
+    }
+
+    override fun onCodecReleased(name: String) {
+        mainActivity.updateLog("A codec has been released: ${name}")
+        super.onCodecReleased(name)
+    }
+
     /**
      * If the render pipeline is free, returns true here. If a frame is already in flight, returns
      * false to wait and prevent frame drops.

@@ -47,7 +47,7 @@ class MainViewModel : ViewModel() {
     var encodeOutputDir: File? = null
     var videoEncoderCodecInfo: MediaCodecInfo? = null
     var audioEncoderCodecInfo: MediaCodecInfo? = null
-    var encoderVideoFormat: MediaFormat = MediaFormat.createVideoFormat("video/avc", 1920, 1080)
+    var encoderVideoFormat: MediaFormat = MediaFormat.createVideoFormat("video/avc", 3840, 2160)
     var encoderAudioFormat: MediaFormat = MediaFormat.createAudioFormat("audio/mp4a-latm", 48000, 2)
 
     // Getters for the MutableLiveData variables for use with observers

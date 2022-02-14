@@ -22,6 +22,7 @@ import android.media.MediaCodecList
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaFormat.*
+import android.os.Build
 import android.os.Build.VERSION.SDK_INT
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
@@ -34,6 +35,9 @@ import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 fun selectEncoder(mimeType: String): MediaCodecInfo? {
     val numCodecs = MediaCodecList.getCodecCount()
     val validCodecs = ArrayList<MediaCodecInfo>()
+
+    MainActivity.logd("Select: Looking for a codec of mime: ${mimeType}")
+
     for (i in 0 until numCodecs) {
         val codecInfo = MediaCodecList.getCodecInfoAt(i)
         if (!codecInfo.isEncoder) {
@@ -42,11 +46,22 @@ fun selectEncoder(mimeType: String): MediaCodecInfo? {
         val types = codecInfo.supportedTypes
         for (j in types.indices) {
             if (types[j].equals(mimeType, ignoreCase = true)) {
+                MainActivity.logd("Select: Found a match, adding: ${codecInfo.name}")
                 validCodecs.add(codecInfo)
             }
         }
     }
-
+/*
+    // Let's privilege the Android software video encoder4
+    if ((SDK_INT >= Build.VERSION_CODES.Q && mimeType.equals("video/avc"))) {
+        for (i in 0 until validCodecs.size) {
+            if (validCodecs[i].isSoftwareOnly || (validCodecs[i].name.equals("c2.android.avc.encoder"))) {
+                MainActivity.logd("Returning a software codec. ${validCodecs[i].name}")
+                return validCodecs[i]
+            }
+        }
+    }
+*/
     // Default to returning the first codec
     return if (validCodecs.size > 0) {
         validCodecs[0]
@@ -54,8 +69,6 @@ fun selectEncoder(mimeType: String): MediaCodecInfo? {
         null
     }
 }
-
-
 
 /**
  * Gets the MIME type for the video stream
@@ -108,7 +121,11 @@ fun getAudioTrackMimeType(videoFd: AssetFileDescriptor) : String {
  * media as a guide.
  */
 fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
-    val DEFAULT_BITRATE = 20000000
+    val DEFAULT_BITRATE = 12000000
+
+    // Logging variables, will be changed to actual settings
+    var bitrate = DEFAULT_BITRATE
+    var frameRate = 30
 
     // Use the original decoded file to help set up the encode values
     // This is not necessary but just convenient
@@ -123,8 +140,9 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
         val trackFormat = extractor.getTrackFormat(i)
         mimeType = trackFormat.getString(KEY_MIME) ?: ""
         if (mimeType.startsWith("video/")) {
-            // viewModel.updateLog("Video MIME type: ${mimeType}")
+            //viewModel.updateLog("Video MIME type: ${mimeType}")
             inputMediaFormat = trackFormat
+            MainActivity.logd("getBest : inputformat: width ${trackFormat.getInteger(KEY_WIDTH)} height: ${trackFormat.getInteger(KEY_HEIGHT)}")
             break
         }
     }
@@ -139,6 +157,7 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
     // Start with decoder width/height
     var encoderWidth = inputMediaFormat.getInteger(KEY_WIDTH)
     var encoderHeight = inputMediaFormat.getInteger(KEY_HEIGHT)
+    MainActivity.logd("getBest2 : inputformat: width ${encoderWidth} height: ${encoderHeight}")
 
     // Configure encoder with the same format as the source media
     val encoderFormat = createVideoFormat(
@@ -196,6 +215,7 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
                 } else {
                     inputMediaFormat.getInteger(setting)
                 }
+                MainActivity.logd("getBest3 : inputformat: width ${encoderWidth}")
             }
             if (setting == KEY_HEIGHT) {
                 encoderHeight = if (inputMediaFormat.containsKey("crop-top") && inputMediaFormat.containsKey("crop-bottom")) {
@@ -203,6 +223,7 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
                 } else {
                     inputMediaFormat.getInteger(setting)
                 }
+                MainActivity.logd("getBest3 : inputformat: height ${encoderHeight}")
             }
         }
     }
@@ -235,11 +256,21 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
         val encoderCapabilities = capabilities.encoderCapabilities
         val videoCapabilities = capabilities.videoCapabilities
 
+        MainActivity.logd("getBest PRE 4 : size supported: width ${encoderWidth} height: ${encoderHeight}")
+        MainActivity.logd("getBest supported Widths: ${videoCapabilities.supportedWidths}")
+        MainActivity.logd("getBest supported Heights: ${videoCapabilities.supportedWidths}")
+        MainActivity.logd("getBest supported bitrates: ${videoCapabilities.bitrateRange}")
+
+/*
+ *      Completely ignore advertised capabilities and see what happens
         // Width / Height
         if (!videoCapabilities.isSizeSupported(encoderWidth, encoderHeight)) {
             encoderWidth = videoCapabilities.supportedWidths.upper
             encoderHeight = videoCapabilities.getSupportedHeightsFor(encoderWidth).upper
         }
+
+ */
+        MainActivity.logd("getBest4 : size supported: width ${encoderWidth} height: ${encoderHeight}")
 
         // Framerate. If decoder does not tell us the frame rate, choose 33, 30, 25, or whatever.
         if (!inputMediaFormat.containsKey(KEY_FRAME_RATE)) {
@@ -247,15 +278,19 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
             when {
                 supportedFrameRates.contains(33.0) -> {
                     encoderFormat.setFloat(KEY_FRAME_RATE, 33F)
+                    frameRate = 33
                 }
                 supportedFrameRates.contains(30.0) -> {
                     encoderFormat.setFloat(KEY_FRAME_RATE, 30F)
+                    frameRate = 30
                 }
                 supportedFrameRates.contains(25.0) -> {
                     encoderFormat.setFloat(KEY_FRAME_RATE, 25F)
+                    frameRate = 25
                 }
                 else -> {
                     encoderFormat.setFloat(KEY_FRAME_RATE, supportedFrameRates.upper.toFloat())
+                    frameRate = supportedFrameRates.upper.toInt()
                 }
             }
         }
@@ -270,9 +305,11 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
             } else {
                 val bitrateRange = videoCapabilities.bitrateRange
                 if (bitrateRange.contains(DEFAULT_BITRATE)) {
+                    bitrate = DEFAULT_BITRATE
                     encoderFormat.setInteger(KEY_BIT_RATE, DEFAULT_BITRATE)
                 } else {
                     encoderFormat.setInteger(KEY_BIT_RATE, bitrateRange.upper)
+                    bitrate = bitrateRange.upper
                 }
             }
         }
@@ -312,6 +349,8 @@ fun getBestVideoEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
 
     encoderFormat.setInteger(KEY_WIDTH, encoderWidth)
     encoderFormat.setInteger(KEY_HEIGHT, encoderHeight)
+
+    MainActivity.logd("BestEncoder: width: ${encoderWidth}, height: ${encoderHeight}, bitrate: ${bitrate}, frameRate: ${frameRate}")
 
     extractor.release()
     return encoderFormat
@@ -371,6 +410,8 @@ fun getBestAudioEncodingFormat(videoFd: AssetFileDescriptor) : MediaFormat {
  * This method should be run to save these variables in the view model for later use
  */
 fun setDefaultEncoderFormats(mainActivity: MainActivity, viewModel: MainViewModel) {
+    viewModel.updateLog("I AM IN DEFAULT ENCODER FORMATS!!!!")
+
     // Video
     val videoFd = mainActivity.resources.openRawResourceFd(viewModel.originalRawFileId)
     val videoMimeType = getVideoTrackMimeType(videoFd)
@@ -389,8 +430,8 @@ fun setDefaultEncoderFormats(mainActivity: MainActivity, viewModel: MainViewMode
     viewModel.encoderAudioFormat = getBestAudioEncodingFormat(videoFd)
 
     // Encoder debug info
-    // viewModel.updateLog("Video encoder: ${viewModel.videoEncoderCodecInfo?.name}, ${viewModel.encoderVideoFormat}")
-    // viewModel.updateLog("Audio encoder: ${viewModel.audioEncoderCodecInfo?.name},  ${viewModel.encoderAudioFormat}")
+    viewModel.updateLog("setDefaultFormats: Video encoder: ${viewModel.videoEncoderCodecInfo?.name}, ${viewModel.encoderVideoFormat}")
+    viewModel.updateLog("setDefaultFormats: Audio encoder: ${viewModel.audioEncoderCodecInfo?.name},  ${viewModel.encoderAudioFormat}")
 
     videoFd.close()
 }

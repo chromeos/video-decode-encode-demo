@@ -98,6 +98,9 @@ class CopyAndPlayAudioSink(
         presentationTimeUs: Long,
         encodedAccessUnitCount: Int
     ): Boolean {
+        val hackPresentationTime = presentationTimeUs - 1000000000000;
+        viewModel.updateLog("In Audio Sink. Presentation time: ${hackPresentationTime}")
+
         // buffer will be freed after this call so a deep copy is needed for encode
         val soundBuffer = cloneByteBuffer(buffer)
 
@@ -116,7 +119,7 @@ class CopyAndPlayAudioSink(
                 AudioBuffer(
                     soundBuffer,
                     numBuffersHandled + 1,
-                    presentationTimeUs,
+                    hackPresentationTime,
                     bufferLengthUs,
                     buffer.remaining()
                 )
@@ -155,7 +158,7 @@ class CopyAndPlayAudioSink(
         }
 
         // Update last position
-        lastPosition = presentationTimeUs + bufferLengthUs
+        lastPosition = hackPresentationTime + bufferLengthUs
 
         // Advance buffer position to the end to indicate the whole buffer was handled
         buffer.position(buffer.limit())
