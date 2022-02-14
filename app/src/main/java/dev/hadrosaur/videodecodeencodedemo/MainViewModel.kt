@@ -16,12 +16,15 @@
 
 package dev.hadrosaur.videodecodeencodedemo
 
+import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import dev.hadrosaur.videodecodeencodedemo.Utils.SmartMutableLiveData
+import dev.hadrosaur.videodecodeencodedemo.Utils.getVideoMediaFormat
 import java.io.File
+import kotlin.concurrent.thread
 
 class MainViewModel : ViewModel() {
     // App options
@@ -40,6 +43,7 @@ class MainViewModel : ViewModel() {
     private val decodeStream7 = SmartMutableLiveData<Boolean>(true)
     private val decodeStream8 = SmartMutableLiveData<Boolean>(true)
     private val decodeStream9 = SmartMutableLiveData<Boolean>(true)
+    private val decodeStream10 = SmartMutableLiveData<Boolean>(true)
 
     // Log text window
     private val logText = SmartMutableLiveData<String>("")
@@ -69,6 +73,7 @@ class MainViewModel : ViewModel() {
     fun getDecodeStream7(): MutableLiveData<Boolean> = decodeStream7
     fun getDecodeStream8(): MutableLiveData<Boolean> = decodeStream8
     fun getDecodeStream9(): MutableLiveData<Boolean> = decodeStream9
+    fun getDecodeStream10(): MutableLiveData<Boolean> = decodeStream10
     fun getLogText(): MutableLiveData<String> = logText
     fun getEncodingInProgress(): MutableLiveData<Boolean> = encodingInProgress
 
@@ -86,6 +91,7 @@ class MainViewModel : ViewModel() {
     fun getDecodeStream7Val(): Boolean = decodeStream7.value ?: false
     fun getDecodeStream8Val(): Boolean = decodeStream8.value ?: false
     fun getDecodeStream9Val(): Boolean = decodeStream9.value ?: false
+    fun getDecodeStream10Val(): Boolean = decodeStream10.value ?: false
     fun getLogTextVal(): String = logText.value ?: ""
     fun getEncodingInProgressVal(): Boolean = encodingInProgress.value ?: false
 
@@ -128,6 +134,9 @@ class MainViewModel : ViewModel() {
     }
     fun setDecodeStream9(value: Boolean) {
         decodeStream9.setValue(value)
+    }
+    fun setDecodeStream10(value: Boolean) {
+        decodeStream10.setValue(value)
     }
     fun setLogText(value: String) {
         logText.postValue(value)

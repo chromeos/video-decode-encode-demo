@@ -16,7 +16,10 @@
 
 package dev.hadrosaur.videodecodeencodedemo.VideoHelpers
 
+import android.media.MediaCodecInfo.CodecCapabilities
+import android.media.MediaCodecList
 import android.media.MediaFormat
+import android.os.Build
 import android.os.Build.VERSION.SDK_INT
 import com.google.android.exoplayer2.Format
 import com.google.android.exoplayer2.mediacodec.MediaCodecAdapter
@@ -50,6 +53,36 @@ class VideoMediaCodecVideoRenderer(
     private var startTime = 0L
     private var droppedFrames = 0
     private var lastPresentTime = 0L
+
+    init {
+        mainActivity.updateLog(getMaxInstancesString())
+    }
+
+    fun getMaxInstancesString() : String {
+        var outputString = " \n"
+        if (SDK_INT >= Build.VERSION_CODES.M) {
+            val allCodecs = MediaCodecList(MediaCodecList.ALL_CODECS)
+            for (info in allCodecs.getCodecInfos()) {
+                if (info.isEncoder) {
+                    continue
+                }
+                val types = info.getSupportedTypes()
+                for (type in types) {
+                    val caps: CodecCapabilities = info.getCapabilitiesForType(type)
+                    val maxInstances = caps.maxSupportedInstances
+                    var decoderType = ""
+                    if (SDK_INT >= Build.VERSION_CODES.Q) {
+                        decoderType = if (info.isHardwareAccelerated) "HW decoder" else "SW decoder"
+                    }
+                    when (type) {
+                        "video/avc" -> outputString += "Max instance for ${type} : ${maxInstances} with info : ${info.name}. ${decoderType}\n"
+                        else -> {}
+                    }
+                }
+            }
+        }
+        return outputString
+    }
 
     /**
      * Keep track of dropped frames
@@ -100,6 +133,20 @@ class VideoMediaCodecVideoRenderer(
      */
     override fun getMediaClock(): MediaClock {
         return mediaClock
+    }
+
+    override fun onCodecInitialized(
+        name: String,
+        initializedTimestampMs: Long,
+        initializationDurationMs: Long
+    ) {
+        mainActivity.updateLog("A codec has been initialized: ${name}")
+        super.onCodecInitialized(name, initializedTimestampMs, initializationDurationMs)
+    }
+
+    override fun onCodecReleased(name: String) {
+        mainActivity.updateLog("A codec has been released: ${name}")
+        super.onCodecReleased(name)
     }
 
     /**

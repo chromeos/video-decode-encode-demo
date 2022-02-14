@@ -18,7 +18,9 @@ package dev.hadrosaur.videodecodeencodedemo
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.media.MediaCodec
 import android.os.Bundle
+import android.provider.MediaStore
 import android.util.Log
 import android.view.*
 import android.view.KeyEvent.*
@@ -35,8 +37,10 @@ import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
 import dev.hadrosaur.videodecodeencodedemo.Utils.*
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoSurfaceManager
 import kotlinx.android.synthetic.main.activity_main.*
+import java.lang.Thread.sleep
+import kotlin.concurrent.thread
 
-const val NUMBER_OF_STREAMS = 9
+const val NUMBER_OF_STREAMS = 10
 
 // TODO: replace this with proper file loading
 const val VIDEO_RES_1 = R.raw.paris_01_1080p
@@ -48,6 +52,7 @@ const val VIDEO_RES_6 = R.raw.paris_06_1080p
 const val VIDEO_RES_7 = R.raw.paris_07_1080p
 const val VIDEO_RES_8 = R.raw.paris_08_1080p
 const val VIDEO_RES_9 = R.raw.paris_01_720p
+const val VIDEO_RES_10 = R.raw.video_1080x1920_30fps
 
 class MainActivity : AppCompatActivity() {
     // Preview surfaces
@@ -138,6 +143,7 @@ class MainActivity : AppCompatActivity() {
         frame_seven.addView(previewSurfaceViews[6])
         frame_eight.addView(previewSurfaceViews[7])
         frame_nine.addView(previewSurfaceViews[8])
+        frame_ten.addView(previewSurfaceViews[9])
     }
 
     // Create the internal SurfaceTextures that will be used for decoding
@@ -276,6 +282,10 @@ class MainActivity : AppCompatActivity() {
                 _, isChecked -> viewModel.setDecodeStream9(isChecked) }
         viewModel.getDecodeStream9().observe(this, {
                 isChecked -> checkbox_decode_stream9.isSelected = isChecked })
+        checkbox_decode_stream10.setOnCheckedChangeListener{
+                _, isChecked -> viewModel.setDecodeStream10(isChecked) }
+        viewModel.getDecodeStream10().observe(this, {
+                isChecked -> checkbox_decode_stream10.isSelected = isChecked })
 
         // Set up toggle switches for encode, audio, filters, etc.
         switch_filter.setOnCheckedChangeListener {
@@ -360,7 +370,21 @@ class MainActivity : AppCompatActivity() {
             if (viewModel.getDecodeStream9Val()) {
                 beginVideoDecode(VIDEO_RES_9, videoSurfaceManagers[8], 8)
             }
+
+            // Stream 10
+            if (viewModel.getDecodeStream10Val()) {
+                beginVideoDecode(VIDEO_RES_10, videoSurfaceManagers[9], 9)
+            }
+
+                /*            val breakCodec5 = MediaCodec.createDecoderByType("video/avc")
+            breakCodec5.configure(format, null, null, 0)
+            breakCodec5.start()
+            val breakCodec6 = MediaCodec.createDecoderByType("video/avc")
+            breakCodec6.configure(format, null, null, 0)
+            breakCodec6.start()*/
         }
+
+
 
         // TODO: Add option to swap out input video files
         // TODO: Add checkboxes to allow encodes for all streams
@@ -391,6 +415,7 @@ class MainActivity : AppCompatActivity() {
             KEYCODE_7 -> { checkbox_decode_stream7.isChecked = ! checkbox_decode_stream7.isChecked; checkbox_decode_stream7.clearFocus(); return true }
             KEYCODE_8 -> { checkbox_decode_stream8.isChecked = ! checkbox_decode_stream8.isChecked; checkbox_decode_stream8.clearFocus(); return true }
             KEYCODE_9 -> { checkbox_decode_stream9.isChecked = ! checkbox_decode_stream9.isChecked; checkbox_decode_stream9.clearFocus(); return true }
+            KEYCODE_0 -> { checkbox_decode_stream10.isChecked = ! checkbox_decode_stream10.isChecked; checkbox_decode_stream10.clearFocus(); return true }
 
             // E, F, A : Toggle switches
             KEYCODE_E -> { switch_encode.isChecked = ! switch_encode.isChecked; switch_encode.clearFocus(); return true }

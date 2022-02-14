@@ -99,7 +99,7 @@
         android:layout_marginTop="32dp"
         android:layout_marginEnd="16dp"
         app:layout_constraintBottom_toTopOf="@+id/checkbox_decode_stream6"
-        app:layout_constraintEnd_toEndOf="@id/guideline_vertical"
+        app:layout_constraintEnd_toEndOf="@id/frame_ten"
         app:layout_constraintStart_toEndOf="@id/frame_five"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -112,6 +112,28 @@
         app:layout_constraintBottom_toTopOf="@+id/frame_eight"
         app:layout_constraintEnd_toEndOf="@+id/frame_six"
         app:layout_constraintTop_toBottomOf="@+id/frame_six" />
+
+    <FrameLayout
+        android:id="@+id/frame_ten"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="32dp"
+        android:layout_marginEnd="16dp"
+        app:layout_constraintBottom_toTopOf="@+id/checkbox_decode_stream10"
+        app:layout_constraintEnd_toEndOf="@id/guideline_vertical"
+        app:layout_constraintStart_toEndOf="@id/frame_six"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <CheckBox
+        android:id="@+id/checkbox_decode_stream10"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:checked="true"
+        android:text="Decode Stream 10?"
+        app:layout_constraintBottom_toTopOf="@+id/frame_nine"
+        app:layout_constraintEnd_toEndOf="@+id/frame_ten"
+        app:layout_constraintTop_toBottomOf="@+id/frame_ten" />
 
     <FrameLayout
         android:id="@+id/frame_three"
@@ -212,7 +234,7 @@
         app:layout_constraintBottom_toTopOf="@+id/checkbox_decode_stream9"
         app:layout_constraintEnd_toStartOf="@+id/guideline_vertical"
         app:layout_constraintStart_toEndOf="@id/frame_eight"
-        app:layout_constraintTop_toBottomOf="@id/checkbox_decode_stream6" />
+        app:layout_constraintTop_toBottomOf="@id/checkbox_decode_stream10" />
 
     <CheckBox
         android:id="@+id/checkbox_decode_stream9"

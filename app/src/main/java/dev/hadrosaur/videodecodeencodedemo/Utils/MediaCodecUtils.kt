@@ -103,6 +103,31 @@ fun getAudioTrackMimeType(videoFd: AssetFileDescriptor) : String {
     return mimeType
 }
 
+fun getVideoMediaFormat(videoFd: AssetFileDescriptor) : MediaFormat {
+    val DEFAULT_BITRATE = 20000000
+
+    // Use the original decoded file to help set up the encode values
+    // This is not necessary but just convenient
+    val extractor = MediaExtractor()
+    var inputMediaFormat = MediaFormat()
+    var mimeType = ""
+
+    extractor.setDataSource(videoFd.fileDescriptor, videoFd.startOffset, videoFd.length)
+
+    // Find the video track format from the raw video file
+    for (i in 0 until extractor.trackCount) {
+        val trackFormat = extractor.getTrackFormat(i)
+        mimeType = trackFormat.getString(KEY_MIME) ?: ""
+        if (mimeType.startsWith("video/")) {
+            // viewModel.updateLog("Video MIME type: ${mimeType}")
+            inputMediaFormat = trackFormat
+            break
+        }
+    }
+
+    return inputMediaFormat
+}
+
 /**
  * Tries to get the best encoding settings for the device, using the setting from the original
  * media as a guide.
