@@ -98,7 +98,8 @@ class CopyAndPlayAudioSink(
         presentationTimeUs: Long,
         encodedAccessUnitCount: Int
     ): Boolean {
-        val hackPresentationTime = presentationTimeUs - 1000000000000;
+//        val hackPresentationTime = presentationTimeUs - 1000000000000;
+        val hackPresentationTime = presentationTimeUs;
         viewModel.updateLog("In Audio Sink. Presentation time: ${hackPresentationTime}")
 
         // buffer will be freed after this call so a deep copy is needed for encode

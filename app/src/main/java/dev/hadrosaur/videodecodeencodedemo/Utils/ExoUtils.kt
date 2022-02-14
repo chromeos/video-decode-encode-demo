@@ -48,14 +48,10 @@ fun buildExoMediaSource(mainActivity: MainActivity, raw: Int): MediaSource {
         .createMediaSource(uri)
 }
 
-class CustomExoRenderersFactory(
-    val mainActivity: MainActivity,
-    val viewModel: MainViewModel,
-    private val videoSurfaceManager: VideoSurfaceManager,
-    private val streamNumber: Int,
-    val audioBufferManager: AudioBufferManager?
-    ) : RenderersFactory {
 
+class CustomExoRenderersFactory(val mainActivity: MainActivity, val viewModel: MainViewModel, private val videoSurfaceManager: VideoSurfaceManager, val streamNumber: Int,
+                                val audioBufferManager: AudioBufferManager?) :
+    RenderersFactory {
     override fun createRenderers(
         eventHandler: Handler,
         videoRendererEventListener: VideoRendererEventListener,
@@ -64,6 +60,7 @@ class CustomExoRenderersFactory(
         metadataRendererOutput: MetadataOutput
     ): Array<Renderer> {
         val mediaClock = SpeedyMediaClock()
+
         return arrayOf(
             VideoMediaCodecVideoRenderer(mainActivity, viewModel, videoSurfaceManager, true, streamNumber, mediaClock),
             VideoMediaCodecAudioRenderer(mainActivity, viewModel, streamNumber, audioBufferManager)

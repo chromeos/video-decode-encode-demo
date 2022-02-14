@@ -53,7 +53,7 @@ class VideoSurfaceManager(val viewModel: MainViewModel, glManager: GlManager, di
 
         // Use the FrameLedger to keep track of when frames are actually rendered and when a frame
         // is about to be rendered to prevent frame drops
-        player.setVideoFrameMetadataListener(renderer.frameLedger)
+        player.videoComponent?.setVideoFrameMetadataListener(renderer.frameLedger)
     }
 
     fun release() {

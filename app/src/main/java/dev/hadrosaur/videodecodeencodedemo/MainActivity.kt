@@ -372,14 +372,18 @@ class MainActivity : AppCompatActivity() {
         val renderersFactory = CustomExoRenderersFactory(this@MainActivity, viewModel,
             videoSurfaceManager, streamNumber, audioBufferManager)
 
+
+
         // Reduce default buffering to MIN_DECODE_BUFFER_MS to prevent over allocation
         // when processing multiple large streams
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS * 2, MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS)
             .createDefaultLoadControl()
-        val player: ExoPlayer = ExoPlayer.Builder(this@MainActivity, renderersFactory)
-            .setLoadControl(loadControl)
-            .build()
+        // Reduce default buffering to MIN_DECODE_BUFFER_MS to prevent over allocation when processing multiple large streams
+        val player: SimpleExoPlayer = SimpleExoPlayer.Builder(this@MainActivity, renderersFactory).setLoadControl(loadControl).build()
+            //        val player: ExoPlayer = ExoPlayer.Builder(this@MainActivity, renderersFactory)
+            //.setLoadControl(loadControl)
+            //.build()
 
         if (audioVideoEncoder != null) {
             // Set up encode and decode surfaces
