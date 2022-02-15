@@ -36,8 +36,8 @@ import kotlinx.android.synthetic.main.activity_main.*
 const val NUMBER_OF_STREAMS = 4
 
 // TODO: replace this with proper file loading
-const val VIDEO_RES_1 = R.raw.short_4k_30fps_01
-//const val VIDEO_RES_1 = R.raw.paris_01_1080p
+const val VIDEO_RES_1 = R.raw.video_3840x2160_30fps
+//const val VIDEO_RES_1 = R.raw.short_4k_30fps_01
 const val VIDEO_RES_2 = R.raw.short_4k_30fps_02
 const val VIDEO_RES_3 = R.raw.short_4k_30fps_03
 const val VIDEO_RES_4 = R.raw.short_4k_30fps_04

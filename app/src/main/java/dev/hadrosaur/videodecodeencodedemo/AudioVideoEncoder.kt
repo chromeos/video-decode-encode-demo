@@ -253,7 +253,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                         // add the frame to the ledger queue to be muxed when we get the correct time
                         if (frameLedger.encodeLedger.containsKey(frameNum)) {
                             info.presentationTimeUs = frameLedger.encodeLedger[frameNum]!!
-                             viewModel.updateLog("Video encoder, got frame number ${frameNum}@${info.presentationTimeUs}, last time was ${lastPresentationTime}.")
+                            // viewModel.updateLog("Video encoder, got frame number ${frameNum}@${info.presentationTimeUs}, last time was ${lastPresentationTime}.")
                             lastPresentationTime = info.presentationTimeUs
 
                             // If the muxer hasn't started yet - eg. if the audio stream hasn't been
@@ -433,7 +433,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                     it.buffer.limit(oldQueuedBufferLimit)
 
                     val bufferDurationUs = getBufferDurationUs(bytesToCopy, format)
-                    viewModel.updateLog("Audio Encode audio buf verification: ${it.presentationTimeUs / 1000}, length: ${bufferDurationUs / 1000}, size: ${it.size}, remaining: ${it.buffer.remaining()}")
+                    // viewModel.updateLog("Audio Encode audio buf verification: ${it.presentationTimeUs / 1000}, length: ${bufferDurationUs / 1000}, size: ${it.size}, remaining: ${it.buffer.remaining()}")
                     // viewModel.updateLog("Audio Encode audio buf verification: size: ${inputBuffer.capacity()}, bytes to copy: ${bytesToCopy}")
                     // viewModel.updateLog("Audio Encode input buf verification: ${it.presentationTimeUs / 1000}, length: ${bufferDurationUs / 1000}, size: ${bytesToCopy}")
 
@@ -513,7 +513,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                                         lastMuxedAudioPresentationTimeUs =
                                             muxingBuffer.info.presentationTimeUs
                                         numMuxedBuffers++
-                                        viewModel.updateLog("Muxing audio buffer out #${numMuxedBuffers} of mux queue: ${muxingBuffer.info.presentationTimeUs}, size: ${muxingBuffer.info.size},  flags: ${info.flags}, offset: ${info.offset}")
+                                        // viewModel.updateLog("Muxing audio buffer out #${numMuxedBuffers} of mux queue: ${muxingBuffer.info.presentationTimeUs}, size: ${muxingBuffer.info.size},  flags: ${info.flags}, offset: ${info.offset}")
                                     }
                                 }
                             }
@@ -534,7 +534,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                             muxer?.writeSampleData(audioTrackIndex, outputBuffer, info)
                             lastMuxedAudioPresentationTimeUs = info.presentationTimeUs
                             numMuxedBuffers++
-                            viewModel.updateLog("Muxed audio buffer #${numMuxedBuffers}: ${info.presentationTimeUs}, size: ${info.size}, flags: ${info.flags}, offset: ${info.offset}")
+                            // viewModel.updateLog("Muxed audio buffer #${numMuxedBuffers}: ${info.presentationTimeUs}, size: ${info.size}, flags: ${info.flags}, offset: ${info.offset}")
                         }
                     }
                 } // when

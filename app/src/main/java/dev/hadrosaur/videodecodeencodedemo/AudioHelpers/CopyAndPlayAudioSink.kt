@@ -98,9 +98,8 @@ class CopyAndPlayAudioSink(
         presentationTimeUs: Long,
         encodedAccessUnitCount: Int
     ): Boolean {
-//        val hackPresentationTime = presentationTimeUs - 1000000000000;
-        val hackPresentationTime = presentationTimeUs
-        viewModel.updateLog("In Audio Sink. Presentation time: ${hackPresentationTime}")
+        // ExoPlayer adds an offset of 1000000000000 to prevent -'ve timestamps. Subtract this.
+        val hackPresentationTime = presentationTimeUs - 1000000000000;
 
         // buffer will be freed after this call so a deep copy is needed for encode
         val soundBuffer = cloneByteBuffer(buffer)
