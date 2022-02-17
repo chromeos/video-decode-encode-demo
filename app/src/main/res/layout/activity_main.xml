@@ -288,6 +288,27 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/switch_filter" />
 
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/switch_software"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="8dp"
+        android:text="SW fallback"
+        app:layout_constraintStart_toEndOf="@id/switch_encode"
+        app:layout_constraintEnd_toStartOf="@id/switch_seek"
+        app:layout_constraintTop_toBottomOf="@+id/switch_audio" />
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/switch_seek"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="8dp"
+        android:text="Perform seeks"
+        app:layout_constraintStart_toStartOf="@id/switch_audio"
+        app:layout_constraintTop_toBottomOf="@+id/switch_audio" />
+
     <Button
         android:id="@+id/button_start_decode"
         android:layout_width="wrap_content"

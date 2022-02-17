@@ -32,6 +32,8 @@ class MainViewModel : ViewModel() {
     private val applyGlFilter = SmartMutableLiveData<Boolean>(false)
     private val encodeStream1 = SmartMutableLiveData<Boolean>(false)
     private val playAudio = SmartMutableLiveData<Boolean>(false)
+    private val doSeeks = SmartMutableLiveData<Boolean>(false)
+    private val software = SmartMutableLiveData<Boolean>(false)
 
     // Stream decode switches
     private val decodeStream1 = SmartMutableLiveData<Boolean>(true)
@@ -64,6 +66,8 @@ class MainViewModel : ViewModel() {
     fun getApplyGlFilter(): MutableLiveData<Boolean> = applyGlFilter
     fun getEncodeStream1(): MutableLiveData<Boolean> = encodeStream1
     fun getPlayAudio(): MutableLiveData<Boolean> = playAudio
+    fun getDoSeeks(): MutableLiveData<Boolean> = doSeeks
+    fun getSoftware(): MutableLiveData<Boolean> = software
     fun getDecodeStream1(): MutableLiveData<Boolean> = decodeStream1
     fun getDecodeStream2(): MutableLiveData<Boolean> = decodeStream2
     fun getDecodeStream3(): MutableLiveData<Boolean> = decodeStream3
@@ -82,6 +86,8 @@ class MainViewModel : ViewModel() {
     fun getApplyGlFilterVal(): Boolean = applyGlFilter.value ?: false
     fun getEncodeStream1Val(): Boolean = encodeStream1.value ?: false
     fun getPlayAudioVal(): Boolean = playAudio.value ?: false
+    fun getDoSeeksVal(): Boolean = doSeeks.value ?: false
+    fun getSoftwareVal(): Boolean = software.value ?: false
     fun getDecodeStream1Val(): Boolean = decodeStream1.value ?: true
     fun getDecodeStream2Val(): Boolean = decodeStream2.value ?: false
     fun getDecodeStream3Val(): Boolean = decodeStream3.value ?: false
@@ -107,6 +113,12 @@ class MainViewModel : ViewModel() {
     }
     fun setPlayAudio(value: Boolean) {
         playAudio.setValue(value)
+    }
+    fun setDoSeeks(value: Boolean) {
+        doSeeks.setValue(value)
+    }
+    fun setSoftware(value: Boolean) {
+        software.setValue(value)
     }
     fun setDecodeStream1(value: Boolean) {
         decodeStream1.setValue(value)

@@ -57,7 +57,7 @@ class CopyAndPlayAudioSink(
 
     private var inputFormat: Format = Format.Builder().build()
     private var sinkVolume = 100F
-    
+
     private var numBuffersHandled = 0
     private var lastPosition = 0L
 
@@ -98,6 +98,9 @@ class CopyAndPlayAudioSink(
         presentationTimeUs: Long,
         encodedAccessUnitCount: Int
     ): Boolean {
+        // ExoPlayer adds an offset of 1000000000000 to prevent -'ve timestamps. Subtract this.
+        val hackPresentationTime = presentationTimeUs - 1000000000000;
+
         // buffer will be freed after this call so a deep copy is needed for encode
         val soundBuffer = cloneByteBuffer(buffer)
 
@@ -116,7 +119,7 @@ class CopyAndPlayAudioSink(
                 AudioBuffer(
                     soundBuffer,
                     numBuffersHandled + 1,
-                    presentationTimeUs,
+                    hackPresentationTime,
                     bufferLengthUs,
                     buffer.remaining()
                 )
@@ -155,7 +158,7 @@ class CopyAndPlayAudioSink(
         }
 
         // Update last position
-        lastPosition = presentationTimeUs + bufferLengthUs
+        lastPosition = hackPresentationTime + bufferLengthUs
 
         // Advance buffer position to the end to indicate the whole buffer was handled
         buffer.position(buffer.limit())

@@ -19,8 +19,10 @@ package dev.hadrosaur.videodecodeencodedemo
 import android.Manifest
 import android.content.pm.PackageManager
 import android.media.MediaCodec
+import android.media.MediaCodecInfo
+import android.media.MediaCodecList
+import android.os.Build
 import android.os.Bundle
-import android.provider.MediaStore
 import android.util.Log
 import android.view.*
 import android.view.KeyEvent.*
@@ -29,16 +31,15 @@ import androidx.activity.result.contract.ActivityResultContracts.RequestPermissi
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.google.android.exoplayer2.DefaultLoadControl
-import com.google.android.exoplayer2.PlaybackParameters
-import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.SimpleExoPlayer
+import androidx.lifecycle.coroutineScope
+import com.google.android.exoplayer2.*
+import com.google.android.exoplayer2.mediacodec.MediaCodecRenderer
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
 import dev.hadrosaur.videodecodeencodedemo.Utils.*
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoSurfaceManager
 import kotlinx.android.synthetic.main.activity_main.*
-import java.lang.Thread.sleep
-import kotlin.concurrent.thread
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 const val NUMBER_OF_STREAMS = 10
 
@@ -214,6 +215,9 @@ class MainActivity : AppCompatActivity() {
         // Set up preview surfaces as well as internal, non-visible decoding surfaces
         initializeSurfaces()
 
+        // Show max codec instances
+        updateLog(getMaxInstancesString())
+
         // Request file read/write permissions need to save encodes.
         if (checkPermissions()) {
             CAN_WRITE_FILES = true
@@ -300,6 +304,14 @@ class MainActivity : AppCompatActivity() {
                 _, isChecked -> viewModel.setPlayAudio(isChecked) }
         viewModel.getPlayAudio().observe(this, {
                 playAudio -> switch_audio.isSelected = playAudio })
+        switch_software.setOnCheckedChangeListener {
+                _, isChecked -> viewModel.setSoftware(isChecked) }
+        viewModel.getSoftware().observe(this, {
+                software -> switch_software.isSelected = software })
+        switch_seek.setOnCheckedChangeListener {
+                _, isChecked -> viewModel.setDoSeeks(isChecked) }
+        viewModel.getDoSeeks().observe(this, {
+                doSeeks -> switch_seek.isSelected = doSeeks })
 
         // Set up decode button
         button_start_decode.setOnClickListener {
@@ -417,10 +429,12 @@ class MainActivity : AppCompatActivity() {
             KEYCODE_9 -> { checkbox_decode_stream9.isChecked = ! checkbox_decode_stream9.isChecked; checkbox_decode_stream9.clearFocus(); return true }
             KEYCODE_0 -> { checkbox_decode_stream10.isChecked = ! checkbox_decode_stream10.isChecked; checkbox_decode_stream10.clearFocus(); return true }
 
-            // E, F, A : Toggle switches
+            // E, F, A, S, K : Toggle switches
             KEYCODE_E -> { switch_encode.isChecked = ! switch_encode.isChecked; switch_encode.clearFocus(); return true }
             KEYCODE_F -> { switch_filter.isChecked = ! switch_filter.isChecked; switch_filter.clearFocus(); return true }
             KEYCODE_A -> { switch_audio.isChecked = ! switch_audio.isChecked; switch_audio.clearFocus(); return true }
+            KEYCODE_S -> { switch_software.isChecked = ! switch_software.isChecked; switch_software.clearFocus(); return true }
+            KEYCODE_K -> { switch_seek.isChecked = ! switch_seek.isChecked; switch_seek.clearFocus(); return true }
 
             // D : Start decode
             KEYCODE_D -> {
@@ -457,48 +471,50 @@ class MainActivity : AppCompatActivity() {
 
         // Setup custom video and audio renderers
         val renderersFactory = CustomExoRenderersFactory(this@MainActivity, viewModel,
-            videoSurfaceManager, streamNumber, audioBufferManager)
+            videoSurfaceManager, streamNumber, audioBufferManager, viewModel.getSoftwareVal())
+
 
         // Reduce default buffering to MIN_DECODE_BUFFER_MS to prevent over allocation
         // when processing multiple large streams
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS * 2, MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS)
             .createDefaultLoadControl()
-        val player: SimpleExoPlayer = SimpleExoPlayer.Builder(this@MainActivity, renderersFactory)
+        val player: ExoPlayer = ExoPlayer.Builder(this@MainActivity, renderersFactory)
             .setLoadControl(loadControl)
             .build()
 
-        if (player.videoComponent != null) {
-            if (audioVideoEncoder != null) {
-                // Set up encode and decode surfaces
-                videoSurfaceManager.initialize(player.videoComponent as Player.VideoComponent,
-                    audioVideoEncoder.videoEncoderInputSurface,
-                    audioVideoEncoder.encoderWidth,
-                    audioVideoEncoder.encoderHeight)
+        if (audioVideoEncoder != null) {
+            // Set up encode and decode surfaces
+            videoSurfaceManager.initialize(player,
+                audioVideoEncoder.videoEncoderInputSurface,
+                audioVideoEncoder.encoderWidth,
+                audioVideoEncoder.encoderHeight)
 
-                // Start the encoder
-                audioVideoEncoder.startEncode()
-            } else {
-                // Only set up decode surfaces
-                videoSurfaceManager.initialize(player.videoComponent as Player.VideoComponent)
-            }
+            // Start the encoder
+            audioVideoEncoder.startEncode()
         } else {
-            updateLog("Player video component is NULL for stream ${streamNumber + 1}, aborting.")
-            return
+            // Only set up decode surfaces
+            videoSurfaceManager.initialize(player)
         }
 
         // Note: the decoder uses a custom MediaClock that goes as fast as possible so this speed
         // value is not used, but required by the ExoPlayer API
         player.setPlaybackParameters(PlaybackParameters(1f))
 
-        // Add a listener for when the video is done
-        player.addListener(object: Player.EventListener {
+        // Add a listener for when the video is done or error occurs
+        player.addListener(object : Player.Listener {
             override fun onPlayerStateChanged(playWhenReady: Boolean , playbackState: Int) {
                 if (playbackState == Player.STATE_ENDED) {
                     audioVideoEncoder?.signalDecodingComplete()
                     player.release()
                     this@MainActivity.decodeFinished()
                 }
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                updateLog("Decoder init error stream #${streamNumber}: ${error.message}")
+                activeDecodes--
+                super.onPlayerError(error)
             }
         })
 
@@ -507,6 +523,29 @@ class MainActivity : AppCompatActivity() {
         player.setMediaSource(videoSource)
         player.prepare()
         player.playWhenReady = true
+
+        if (viewModel.getDoSeeksVal()) {
+            // Do a few seeks while decoding process. Jump forward seekJump ms and then back
+            val numSeeks = 3
+            val delayTimeMs = 1000L
+            val seekJumpMs = 1000L
+            lifecycle.coroutineScope.launch {
+                delay(delayTimeMs)
+                for (i in 1..numSeeks) {
+                    player.pause()
+                    val oldPos = player.currentPosition
+                    val pos = oldPos + seekJumpMs
+                    updateLog("Stream #${streamNumber+1}: Jumping to pos: ${pos}")
+                    player.seekTo(pos)
+                    player.prepare()
+                    updateLog("Stream #${streamNumber+1}: Jumping back to pos: ${oldPos+1}")
+                    player.seekTo(oldPos+1)
+                    player.prepare()
+                    player.playWhenReady = true
+                    delay(delayTimeMs)
+                }
+            }
+        }
     }
 
     // Indicate one more preview surface is available
@@ -628,5 +667,31 @@ class MainActivity : AppCompatActivity() {
             //}
             else -> super.onOptionsItemSelected(item)
         }
+    }
+
+    fun getMaxInstancesString() : String {
+        var outputString = " \n"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val allCodecs = MediaCodecList(MediaCodecList.ALL_CODECS)
+            for (info in allCodecs.getCodecInfos()) {
+                if (info.isEncoder) {
+                    continue
+                }
+                val types = info.getSupportedTypes()
+                for (type in types) {
+                    val caps: MediaCodecInfo.CodecCapabilities = info.getCapabilitiesForType(type)
+                    val maxInstances = caps.maxSupportedInstances
+                    var decoderType = ""
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        decoderType = if (info.isHardwareAccelerated) "HW decoder" else "SW decoder"
+                    }
+                    when (type) {
+                        "video/avc" -> outputString += "Max instance for ${type} : ${maxInstances} with info : ${info.name}. ${decoderType}\n"
+                        else -> {}
+                    }
+                }
+            }
+        }
+        return outputString
     }
 }

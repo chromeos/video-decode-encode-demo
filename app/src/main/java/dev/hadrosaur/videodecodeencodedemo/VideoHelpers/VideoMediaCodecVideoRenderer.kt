@@ -55,33 +55,6 @@ class VideoMediaCodecVideoRenderer(
     private var lastPresentTime = 0L
 
     init {
-        mainActivity.updateLog(getMaxInstancesString())
-    }
-
-    fun getMaxInstancesString() : String {
-        var outputString = " \n"
-        if (SDK_INT >= Build.VERSION_CODES.M) {
-            val allCodecs = MediaCodecList(MediaCodecList.ALL_CODECS)
-            for (info in allCodecs.getCodecInfos()) {
-                if (info.isEncoder) {
-                    continue
-                }
-                val types = info.getSupportedTypes()
-                for (type in types) {
-                    val caps: CodecCapabilities = info.getCapabilitiesForType(type)
-                    val maxInstances = caps.maxSupportedInstances
-                    var decoderType = ""
-                    if (SDK_INT >= Build.VERSION_CODES.Q) {
-                        decoderType = if (info.isHardwareAccelerated) "HW decoder" else "SW decoder"
-                    }
-                    when (type) {
-                        "video/avc" -> outputString += "Max instance for ${type} : ${maxInstances} with info : ${info.name}. ${decoderType}\n"
-                        else -> {}
-                    }
-                }
-            }
-        }
-        return outputString
     }
 
     /**

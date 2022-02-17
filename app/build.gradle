@@ -21,13 +21,13 @@ plugins {
 }
 
 android {
-    compileSdkVersion 30
+    compileSdkVersion 31
 
     // Min version 21 Lollipop: technically this should work. Not tested on a real device.
     defaultConfig {
         applicationId "dev.hadrosaur.videodecodeencodedemo"
         minSdkVersion 21
-        targetSdkVersion 30
+        targetSdkVersion 31
         versionCode 1
         versionName "1.0"
 
@@ -67,5 +67,5 @@ dependencies {
     implementation "androidx.fragment:fragment-ktx:1.3.0"
 
     // Exoplayer
-    implementation 'com.google.android.exoplayer:exoplayer-core:2.13.2'
+    implementation 'com.google.android.exoplayer:exoplayer-core:2.16.1'
 }

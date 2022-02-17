@@ -53,8 +53,9 @@ class CustomExoRenderersFactory(
     val viewModel: MainViewModel,
     private val videoSurfaceManager: VideoSurfaceManager,
     private val streamNumber: Int,
-    val audioBufferManager: AudioBufferManager?
-    ) : RenderersFactory {
+    val audioBufferManager: AudioBufferManager?,
+    val encoderDecoderFallback: Boolean = true
+) : RenderersFactory {
 
     override fun createRenderers(
         eventHandler: Handler,
@@ -65,7 +66,7 @@ class CustomExoRenderersFactory(
     ): Array<Renderer> {
         val mediaClock = SpeedyMediaClock()
         return arrayOf(
-            VideoMediaCodecVideoRenderer(mainActivity, viewModel, videoSurfaceManager, true, streamNumber, mediaClock),
+            VideoMediaCodecVideoRenderer(mainActivity, viewModel, videoSurfaceManager, encoderDecoderFallback, streamNumber, mediaClock),
             VideoMediaCodecAudioRenderer(mainActivity, viewModel, streamNumber, audioBufferManager)
         )
     }
