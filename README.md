@@ -13,6 +13,8 @@ The aim of this project is to:
 The demo app decodes 4, 30-second 1080p video streams without frame-dropping via a 
 SurfaceTexture. A simple GL filter (Sepia) is provided as well as sample export/encoding code. 
 
+Note: to download the included media files, please install [git-lfs](https://git-lfs.github.com/).
+
 <img alt="Screenshot of VideoDecodeEncodeDemo" src="https://github.com/chromeos/video-decode-encode-demo/blob/master/docs/VideoDecodeEncodeDemo-Screenshot.png" width="200" />
 
 ## Details
