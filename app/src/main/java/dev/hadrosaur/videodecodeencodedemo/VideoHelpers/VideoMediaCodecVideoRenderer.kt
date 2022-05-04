@@ -103,6 +103,14 @@ class VideoMediaCodecVideoRenderer(
     }
 
     /**
+     * Update media clock after a seek
+     */
+    override fun onPositionReset(positionUs: Long, joining: Boolean) {
+        super.onPositionReset(positionUs, joining)
+        mediaClock.updateLastProcessedFrame(positionUs)
+    }
+
+    /**
      * If the render pipeline is free, returns true here. If a frame is already in flight, returns
      * false to wait and prevent frame drops.
      */
