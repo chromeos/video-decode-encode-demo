@@ -271,6 +271,10 @@ class CopyAndPlayAudioSink(
         sinkAudioAttributes = audioAttributes
     }
 
+    override fun getAudioAttributes(): AudioAttributes {
+        return sinkAudioAttributes;
+    }
+
     override fun setAudioSessionId(audioSessionId: Int) {
         sinkAudioSessionId = audioSessionId
     }

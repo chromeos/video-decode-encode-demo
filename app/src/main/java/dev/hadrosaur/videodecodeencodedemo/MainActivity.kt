@@ -399,7 +399,7 @@ class MainActivity : AppCompatActivity() {
         player.setPlaybackParameters(PlaybackParameters(1f))
 
         // Add a listener for when the video is done
-        player.addListener(object: Player.EventListener {
+        player.addListener(object: Player.Listener {
             override fun onPlayerStateChanged(playWhenReady: Boolean , playbackState: Int) {
                 if (playbackState == Player.STATE_ENDED) {
                     audioVideoEncoder?.signalDecodingComplete()
