@@ -17,6 +17,7 @@
 package dev.hadrosaur.videodecodeencodedemo.Utils
 
 import android.os.Handler
+import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Renderer
 import com.google.android.exoplayer2.RenderersFactory
 import com.google.android.exoplayer2.audio.AudioRendererEventListener
@@ -25,6 +26,7 @@ import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.text.TextOutput
 import com.google.android.exoplayer2.upstream.DataSource
+import com.google.android.exoplayer2.upstream.DefaultDataSource
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.upstream.RawResourceDataSource
 import com.google.android.exoplayer2.video.VideoRendererEventListener
@@ -45,7 +47,7 @@ fun buildExoMediaSource(mainActivity: MainActivity, raw: Int): MediaSource {
             MainActivity.LOG_TAG
         )
     return ProgressiveMediaSource.Factory(dataSourceFactory)
-        .createMediaSource(uri)
+        .createMediaSource(MediaItem.fromUri(uri))
 }
 
 class CustomExoRenderersFactory(
@@ -53,8 +55,9 @@ class CustomExoRenderersFactory(
     val viewModel: MainViewModel,
     private val videoSurfaceManager: VideoSurfaceManager,
     private val streamNumber: Int,
-    val audioBufferManager: AudioBufferManager?
-    ) : RenderersFactory {
+    val audioBufferManager: AudioBufferManager?,
+    val encoderDecoderFallback: Boolean = true
+) : RenderersFactory {
 
     override fun createRenderers(
         eventHandler: Handler,
@@ -65,7 +68,7 @@ class CustomExoRenderersFactory(
     ): Array<Renderer> {
         val mediaClock = SpeedyMediaClock()
         return arrayOf(
-            VideoMediaCodecVideoRenderer(mainActivity, viewModel, videoSurfaceManager, true, streamNumber, mediaClock),
+            VideoMediaCodecVideoRenderer(mainActivity, viewModel, videoSurfaceManager, encoderDecoderFallback, streamNumber, mediaClock),
             VideoMediaCodecAudioRenderer(mainActivity, viewModel, streamNumber, audioBufferManager)
         )
     }
