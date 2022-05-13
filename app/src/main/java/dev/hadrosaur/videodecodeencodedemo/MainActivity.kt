@@ -258,9 +258,22 @@ class MainActivity : AppCompatActivity() {
         viewModel.getPlayAudio().observe(this, {
                 playAudio -> switch_audio.isSelected = playAudio })
 
+        // Set up cancel button
+        button_cancel.isEnabled = false // Will be the opposite of Decode button
+        button_cancel.setOnClickListener {
+            for (n in 0..NUMBER_OF_STREAMS-1) {
+                if (exoPlayers[n] != null) {
+                    exoPlayers[n]?.release()
+                    exoPlayers[n] = null
+                    decodeFinished()
+                }
+            }
+        }
+
         // Set up decode button
         button_start_decode.setOnClickListener {
             button_start_decode.isEnabled = false
+            button_cancel.isEnabled = true
 
             // Release any old surfaces marked for deletion
             releaseSurfacesMarkedForDeletion()
@@ -338,6 +351,14 @@ class MainActivity : AppCompatActivity() {
             KEYCODE_D -> {
                 if (button_start_decode.isEnabled) {
                     button_start_decode.performClick()
+                    return true
+                }
+            }
+
+            // C : Cancel decode
+            KEYCODE_C -> {
+                if (button_cancel.isEnabled) {
+                    button_cancel.performClick()
                     return true
                 }
             }
@@ -425,6 +446,7 @@ class MainActivity : AppCompatActivity() {
         if (numberOfReadySurfaces >= NUMBER_OF_STREAMS) {
             runOnUiThread {
                 button_start_decode.isEnabled = true
+                button_cancel.isEnabled = false
             }
         }
     }
@@ -436,6 +458,7 @@ class MainActivity : AppCompatActivity() {
         if (numberOfReadySurfaces < NUMBER_OF_STREAMS) {
             runOnUiThread {
                 button_start_decode.isEnabled = false
+                button_cancel.isEnabled = true
             }
         }
     }
