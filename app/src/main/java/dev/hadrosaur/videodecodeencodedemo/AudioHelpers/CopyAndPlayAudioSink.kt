@@ -208,7 +208,7 @@ class CopyAndPlayAudioSink(
     }
 
     override fun handleDiscontinuity() {
-        viewModel.updateLog("CopyAndPlayAudioSink: audio buffer discontinuity received, not processing.")
+        // viewModel.updateLog("CopyAndPlayAudioSink: audio buffer discontinuity received, not processing.")
     }
 
 
@@ -226,7 +226,7 @@ class CopyAndPlayAudioSink(
                 audioBufferManager.audioDecodeComplete = true
             }
 
-            viewModel.updateLog("All audio buffers handled for Stream ${streamNum + 1}. # == ${numBuffersHandled}")
+            // viewModel.updateLog("All audio buffers handled for Stream ${streamNum + 1}. # == ${numBuffersHandled}")
         }
     }
 
