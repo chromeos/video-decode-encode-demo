@@ -46,8 +46,9 @@ class VideoMediaCodecVideoRenderer(
         null,
         -1
     )  {
-    private var decodeCounter = 0
-    private var startTime = 0L
+    private var fpsDecodeCounter = 0
+    private var fpsTotalDecodeCounter = 0
+    private var fpsLastMeasuredTime = 0L
     private var droppedFrames = 0
     private var lastPresentTime = 0L
 
@@ -159,18 +160,24 @@ class VideoMediaCodecVideoRenderer(
      * Adds some logging after each buffer processed to keep track of decode
      */
     override fun onProcessedOutputBuffer(presentationTimeUs: Long) {
-        if (startTime == 0L) {
-            startTime = System.currentTimeMillis()
+        if (fpsLastMeasuredTime == 0L) {
+            fpsLastMeasuredTime = System.currentTimeMillis()
         }
-        decodeCounter++
+        fpsDecodeCounter++
+        fpsTotalDecodeCounter++
 
         // viewModel.updateLog("I have decoded ${decodeCounter} video frames.")
 
-        if (decodeCounter % LOG_VIDEO_EVERY_N_FRAMES == 0) {
+        if (fpsDecodeCounter % LOG_VIDEO_EVERY_N_FRAMES == 0) {
             val currentFPS =
-                decodeCounter / ((System.currentTimeMillis() - startTime) / 1000.0)
+                fpsDecodeCounter / ((System.currentTimeMillis() - fpsLastMeasuredTime) / 1000.0)
             val fpsString = String.format("%.2f", currentFPS)
-            viewModel.updateLog("Decoding video stream ${streamNumber + 1}: ${fpsString}fps @frame $decodeCounter.")
+            if (streamNumber == 0)
+                viewModel.updateLog("\n")
+            viewModel.updateLog("Decoding video stream ${streamNumber + 1}: ${fpsString}fps @frame $fpsTotalDecodeCounter.")
+            fpsLastMeasuredTime = System.currentTimeMillis() // Update for next fps measurement
+            fpsDecodeCounter = 0
+
         }
 
         if (lastPresentTime == presentationTimeUs && lastPresentTime != 0L) {

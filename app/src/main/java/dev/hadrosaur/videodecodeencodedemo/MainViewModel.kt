@@ -25,16 +25,17 @@ import java.io.File
 
 class MainViewModel : ViewModel() {
     // App options
-    private val previewFrameFrequency = SmartMutableLiveData<Int>(10)
+    private val previewFrameFrequency = SmartMutableLiveData<Int>(1)
     private val applyGlFilter = SmartMutableLiveData<Boolean>(false)
     private val encodeStream1 = SmartMutableLiveData<Boolean>(false)
     private val playAudio = SmartMutableLiveData<Boolean>(false)
+    private val loop = SmartMutableLiveData<Boolean>(true)
 
     // Stream decode switches
     private val decodeStream1 = SmartMutableLiveData<Boolean>(true)
-    private val decodeStream2 = SmartMutableLiveData<Boolean>(false)
-    private val decodeStream3 = SmartMutableLiveData<Boolean>(false)
-    private val decodeStream4 = SmartMutableLiveData<Boolean>(false)
+    private val decodeStream2 = SmartMutableLiveData<Boolean>(true)
+    private val decodeStream3 = SmartMutableLiveData<Boolean>(true)
+    private val decodeStream4 = SmartMutableLiveData<Boolean>(true)
 
     // Log text window
     private val logText = SmartMutableLiveData<String>("")
@@ -55,6 +56,7 @@ class MainViewModel : ViewModel() {
     fun getApplyGlFilter(): MutableLiveData<Boolean> = applyGlFilter
     fun getEncodeStream1(): MutableLiveData<Boolean> = encodeStream1
     fun getPlayAudio(): MutableLiveData<Boolean> = playAudio
+    fun getLoop(): MutableLiveData<Boolean> = loop
     fun getDecodeStream1(): MutableLiveData<Boolean> = decodeStream1
     fun getDecodeStream2(): MutableLiveData<Boolean> = decodeStream2
     fun getDecodeStream3(): MutableLiveData<Boolean> = decodeStream3
@@ -67,6 +69,7 @@ class MainViewModel : ViewModel() {
     fun getApplyGlFilterVal(): Boolean = applyGlFilter.value ?: false
     fun getEncodeStream1Val(): Boolean = encodeStream1.value ?: false
     fun getPlayAudioVal(): Boolean = playAudio.value ?: false
+    fun getLoopVal(): Boolean = loop.value ?: false
     fun getDecodeStream1Val(): Boolean = decodeStream1.value ?: true
     fun getDecodeStream2Val(): Boolean = decodeStream2.value ?: false
     fun getDecodeStream3Val(): Boolean = decodeStream3.value ?: false
@@ -86,6 +89,9 @@ class MainViewModel : ViewModel() {
     }
     fun setPlayAudio(value: Boolean) {
         playAudio.setValue(value)
+    }
+    fun setLoop(value: Boolean) {
+        loop.setValue(value)
     }
     fun setDecodeStream1(value: Boolean) {
         decodeStream1.setValue(value)

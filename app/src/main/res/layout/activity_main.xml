@@ -73,7 +73,7 @@
         android:id="@+id/checkbox_decode_stream2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:checked="false"
+        android:checked="true"
         android:text="Decode Stream 2?"
         app:layout_constraintBottom_toTopOf="@+id/frame_four"
         app:layout_constraintEnd_toEndOf="@+id/frame_two"
@@ -95,7 +95,7 @@
         android:id="@+id/checkbox_decode_stream3"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:checked="false"
+        android:checked="true"
         android:text="Decode Stream 3?"
         app:layout_constraintBottom_toTopOf="@+id/guideline"
         app:layout_constraintEnd_toEndOf="@+id/frame_three"
@@ -117,7 +117,7 @@
         android:id="@+id/checkbox_decode_stream4"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:checked="false"
+        android:checked="true"
         android:text="Decode Stream 4?"
         app:layout_constraintBottom_toTopOf="@+id/guideline"
         app:layout_constraintEnd_toEndOf="@+id/frame_four"
@@ -150,6 +150,17 @@
         android:text="Encode 1st Stream"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/switch_filter" />
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/switch_loop"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        android:checked="true"
+        android:text="Loop"
+        app:layout_constraintStart_toStartOf="@id/switch_audio"
+        app:layout_constraintTop_toBottomOf="@+id/switch_audio" />
 
     <Button
         android:id="@+id/button_cancel"
@@ -185,7 +196,7 @@
         android:layout_marginBottom="8dp"
         android:max="30"
         android:min="1"
-        android:progress="10"
+        android:progress="1"
         app:layout_constraintBottom_toTopOf="@+id/scroll_log"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

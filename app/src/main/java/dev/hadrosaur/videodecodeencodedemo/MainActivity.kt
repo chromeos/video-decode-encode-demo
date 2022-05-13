@@ -36,9 +36,10 @@ import kotlinx.android.synthetic.main.activity_main.*
 const val NUMBER_OF_STREAMS = 4
 
 // TODO: replace this with proper file loading
-const val VIDEO_RES_1 = R.raw.short_4k_30fps_01
+//const val VIDEO_RES_1 = R.raw.short_4k_30fps_01
+const val VIDEO_RES_1 = R.raw.video_3840x2160_30fps
 const val VIDEO_RES_2 = R.raw.short_4k_30fps_02
-const val VIDEO_RES_3 = R.raw.short_4k_30fps_03
+const val VIDEO_RES_3 = R.raw.video_3840x2160_60fps
 const val VIDEO_RES_4 = R.raw.short_4k_30fps_04
 
 class MainActivity : AppCompatActivity() {
@@ -61,6 +62,9 @@ class MainActivity : AppCompatActivity() {
 
     // Audio / Video encoders
     var audioVideoEncoders = ArrayList<AudioVideoEncoder>()
+
+    // ExoPlayers
+    val exoPlayers = arrayOfNulls<ExoPlayer>(NUMBER_OF_STREAMS)
 
     // The GlManager manages the eglcontext for all renders and filters
     private val glManager = GlManager()
@@ -257,6 +261,17 @@ class MainActivity : AppCompatActivity() {
                 _, isChecked -> viewModel.setPlayAudio(isChecked) }
         viewModel.getPlayAudio().observe(this, {
                 playAudio -> switch_audio.isSelected = playAudio })
+        switch_loop.setOnCheckedChangeListener {
+                _, isChecked -> viewModel.setLoop(isChecked) }
+        viewModel.getLoop().observe(this, {
+                loop -> switch_loop.isSelected = loop
+            for (n in 0..NUMBER_OF_STREAMS-1) {
+                if (exoPlayers[n] != null) {
+                    exoPlayers[n]?.repeatMode =
+                        if (loop) ExoPlayer.REPEAT_MODE_ONE else ExoPlayer.REPEAT_MODE_OFF
+                }
+            }
+        })
 
         // Set up cancel button
         button_cancel.isEnabled = false // Will be the opposite of Decode button
@@ -346,6 +361,7 @@ class MainActivity : AppCompatActivity() {
             KEYCODE_E -> { switch_encode.isChecked = ! switch_encode.isChecked; switch_encode.clearFocus(); return true }
             KEYCODE_F -> { switch_filter.isChecked = ! switch_filter.isChecked; switch_filter.clearFocus(); return true }
             KEYCODE_A -> { switch_audio.isChecked = ! switch_audio.isChecked; switch_audio.clearFocus(); return true }
+            KEYCODE_L -> { switch_loop.isChecked = ! switch_loop.isChecked; switch_loop.clearFocus(); return true }
 
             // D : Start decode
             KEYCODE_D -> {
@@ -397,13 +413,19 @@ class MainActivity : AppCompatActivity() {
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS * 2, MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS)
             .createDefaultLoadControl()
-        val player: ExoPlayer = ExoPlayer.Builder(this@MainActivity, renderersFactory)
+
+        // Make sure any previously allocated ExoPlayers have been released
+        if (exoPlayers[streamNumber] != null) {
+            exoPlayers[streamNumber]?.release()
+        }
+
+        exoPlayers[streamNumber] = ExoPlayer.Builder(this@MainActivity, renderersFactory)
             .setLoadControl(loadControl)
             .build()
 
         if (audioVideoEncoder != null) {
             // Set up encode and decode surfaces
-            videoSurfaceManager.initialize(player,
+            videoSurfaceManager.initialize(exoPlayers[streamNumber]!!,
                 audioVideoEncoder.videoEncoderInputSurface,
                 audioVideoEncoder.encoderWidth,
                 audioVideoEncoder.encoderHeight)
@@ -412,19 +434,19 @@ class MainActivity : AppCompatActivity() {
             audioVideoEncoder.startEncode()
         } else {
             // Only set up decode surfaces
-            videoSurfaceManager.initialize(player)
+            videoSurfaceManager.initialize(exoPlayers[streamNumber]!!)
         }
 
         // Note: the decoder uses a custom MediaClock that goes as fast as possible so this speed
         // value is not used, but required by the ExoPlayer API
-        player.setPlaybackParameters(PlaybackParameters(1f))
+        exoPlayers[streamNumber]?.setPlaybackParameters(PlaybackParameters(1f))
 
         // Add a listener for when the video is done
-        player.addListener(object: Player.EventListener {
+        exoPlayers[streamNumber]?.addListener(object: Player.EventListener {
             override fun onPlayerStateChanged(playWhenReady: Boolean , playbackState: Int) {
                 if (playbackState == Player.STATE_ENDED) {
                     audioVideoEncoder?.signalDecodingComplete()
-                    player.release()
+                    exoPlayers[streamNumber]?.release()
                     this@MainActivity.decodeFinished()
                 }
             }
@@ -432,10 +454,13 @@ class MainActivity : AppCompatActivity() {
 
         // Set up video source and start the player
         val videoSource = buildExoMediaSource(this, inputVideoRawId)
-        player.setMediaSource(videoSource)
-        player.prepare()
-        player.repeatMode = Player.REPEAT_MODE_ONE
-        player.playWhenReady = true
+        exoPlayers[streamNumber]?.setMediaSource(videoSource)
+        exoPlayers[streamNumber]?.prepare()
+
+        exoPlayers[streamNumber]?.repeatMode =
+            if (switch_loop.isChecked) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+
+        exoPlayers[streamNumber]?.playWhenReady = true
     }
 
     // Indicate one more preview surface is available
