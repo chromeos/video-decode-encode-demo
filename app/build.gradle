@@ -23,10 +23,9 @@ plugins {
 android {
     compileSdkVersion 31
 
-    // Min version 21 Lollipop: technically this should work. Not tested on a real device.
     defaultConfig {
         applicationId "dev.hadrosaur.videodecodeencodedemo"
-        minSdkVersion 21
+        minSdkVersion 23
         targetSdkVersion 31
         versionCode 1
         versionName "1.0"

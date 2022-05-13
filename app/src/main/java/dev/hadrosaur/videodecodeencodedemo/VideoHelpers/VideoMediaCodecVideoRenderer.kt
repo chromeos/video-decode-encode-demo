@@ -23,6 +23,7 @@ import com.google.android.exoplayer2.mediacodec.MediaCodecAdapter
 import com.google.android.exoplayer2.mediacodec.MediaCodecSelector
 import com.google.android.exoplayer2.util.MediaClock
 import com.google.android.exoplayer2.video.MediaCodecVideoRenderer
+import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioMixTrackMediaClock
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.LOG_VIDEO_EVERY_N_FRAMES
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
@@ -35,7 +36,7 @@ class VideoMediaCodecVideoRenderer(
     private val videoSurfaceManager: VideoSurfaceManager,
     enableDecoderFallback: Boolean,
     private val streamNumber: Int,
-    private val mediaClock: SpeedyMediaClock
+    private val mediaClock: AudioMixTrackMediaClock
 ) :
     MediaCodecVideoRenderer(
         mainActivity,
@@ -107,6 +108,7 @@ class VideoMediaCodecVideoRenderer(
      */
     override fun onPositionReset(positionUs: Long, joining: Boolean) {
         super.onPositionReset(positionUs, joining)
+        mediaClock.setPositionUs(positionUs)
         mediaClock.updateLastProcessedFrame(positionUs)
     }
 

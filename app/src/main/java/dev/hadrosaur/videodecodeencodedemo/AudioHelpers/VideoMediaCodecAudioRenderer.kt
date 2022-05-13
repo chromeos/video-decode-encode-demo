@@ -23,6 +23,7 @@ import com.google.android.exoplayer2.mediacodec.MediaCodecSelector
 import com.google.android.exoplayer2.util.MediaClock
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
+import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.SpeedyMediaClock
 import java.nio.ByteBuffer
 
 
@@ -33,15 +34,17 @@ class VideoMediaCodecAudioRenderer (
     val mainActivity: MainActivity,
     val viewModel: MainViewModel,
     private val streamNumber: Int,
+    private val audioMixTrack: AudioMixTrack,
     audioBufferManager: AudioBufferManager?
-) : MediaCodecAudioRenderer(mainActivity, MediaCodecSelector.DEFAULT, null, null, CopyAndPlayAudioSink(viewModel, streamNumber, audioBufferManager)) {
+) : MediaCodecAudioRenderer(mainActivity, MediaCodecSelector.DEFAULT, null, null, CopyAndPlayAudioSink(viewModel, streamNumber, audioMixTrack, audioBufferManager)) {
 
     private var decodeCounter = 0
     private var startTime = 0L
     private var lastPresentTime = 0L
+    private val speedyMediaClock = SpeedyMediaClock()
 
     /**
-     * Return null to indicate to ExoPlayer not to use this clock (but to use video renderer clock)
+     * Return null to indicate to ExoPlayer not to use this clock
      */
     override fun getMediaClock(): MediaClock? {
         return null
