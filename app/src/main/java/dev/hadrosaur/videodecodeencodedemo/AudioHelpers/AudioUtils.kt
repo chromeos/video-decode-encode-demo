@@ -24,26 +24,38 @@ import com.google.android.exoplayer2.Format
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 import java.nio.ByteBuffer
 import kotlin.math.abs
+import kotlin.math.round
 
-fun getBufferDurationUs(bytes: Int, format: MediaFormat): Long {
-    val bytesPerFrame = format.getInteger(KEY_CHANNEL_COUNT) * 2
+// Default to 16-bit, 2 channel, 48KHz PCM
+val BYTES_PER_FRAME_PER_CHANNEL = 2 // 2 bytes per frame for 16-bit PCM
+val CHANNEL_COUNT = 2
+val SAMPLE_RATE = 48000
+
+fun bytesToDurationUs(bytes: Int, format: MediaFormat): Long {
     val sampleRate = format.getInteger(KEY_SAMPLE_RATE)
-    return getBufferDurationUs(bytes, bytesPerFrame, sampleRate)
+    return bytesToDurationUs(bytes, format.getInteger(KEY_CHANNEL_COUNT), BYTES_PER_FRAME_PER_CHANNEL, sampleRate)
 }
 
-fun getBufferDurationUs(bytes: Int, format: Format): Long {
-    val bytesPerFrame = format.channelCount * 2 // 2 bytes per frame for 16-bit PCM
-    val sampleRate = format.sampleRate
-    return getBufferDurationUs(bytes, bytesPerFrame, sampleRate)
+fun bytesToDurationUs(bytes: Int) : Long {
+    return bytesToDurationUs(bytes, CHANNEL_COUNT, BYTES_PER_FRAME_PER_CHANNEL, SAMPLE_RATE)
 }
 
-fun getBufferDurationUs(bytes: Int, bytesPerFrame: Int, sampleRate: Int): Long {
-    val framesWritten = bytes / bytesPerFrame
-    return framesWritten * C.MICROS_PER_SECOND / sampleRate
+fun bytesToDurationUs(bytes: Int, numChannels: Int, bytesPerFramePerChannel: Int, sampleRate: Int): Long {
+    val frames = bytes.toFloat() / (numChannels * bytesPerFramePerChannel)
+    return round((frames * C.MICROS_PER_SECOND) / sampleRate).toLong()
 }
 
-fun usToSeconds(timeUs: Long): Float {
-    return timeUs / 100000.0F
+fun usToBytes(durationUs: Long) : Int {
+    return usToBytes(durationUs, CHANNEL_COUNT, BYTES_PER_FRAME_PER_CHANNEL, SAMPLE_RATE)
+}
+
+fun usToBytes(durationUs: Long, numChannels: Int, bytesPerFramePerChannel: Int, sampleRate: Int): Int {
+    val frames = round((durationUs.toFloat() * sampleRate) / C.MICROS_PER_SECOND)
+    return (frames * bytesPerFramePerChannel * numChannels).toInt()
+}
+
+fun usToSeconds(timeUs: Long): Long {
+    return round(timeUs.toFloat() / C.MICROS_PER_SECOND).toLong()
 }
 
 fun usToSecondsString(timeUs: Long): String {
@@ -68,7 +80,7 @@ fun cloneByteBuffer(original: ByteBuffer): ByteBuffer {
 
     // Reset position to start of buffer
     clone.flip()
-
+    clone.order(original.order()) // Note: asReadOnlyBuffer does not preserve endian-ness
     return clone
 }
 
