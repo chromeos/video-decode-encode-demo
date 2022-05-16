@@ -202,7 +202,7 @@ class VideoMediaCodecVideoRenderer(
 
             // viewModel.updateLog("I have decoded ${decodeCounter} video frames.")
             if (fpsLastMeasuredTime == currentTime) {
-                fpsLastMeasuredTime -= 30 // 0ms since last frame, subtract time to avoid divide by 0
+                fpsLastMeasuredTime -= 3 // 0ms since last frame, subtract time to avoid divide by 0
             }
             val currentFrameFps = 1000 / (currentTime - fpsLastMeasuredTime)
 
