@@ -26,8 +26,8 @@ import android.os.Build.VERSION.SDK_INT
 import android.view.Surface
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBuffer
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
+import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.bytesToDurationUs
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.cloneByteBuffer
-import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.getBufferDurationUs
 import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.LOG_VIDEO_EVERY_N_FRAMES
 import dev.hadrosaur.videodecodeencodedemo.Utils.generateTimestamp
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoFrameLedger
@@ -447,7 +447,7 @@ class AudioVideoEncoder(val viewModel: MainViewModel, val frameLedger: VideoFram
                     if (it.buffer.hasRemaining()) {
                         // viewModel.updateLog("Audio data did not fit into encoder input buffer (time: ${it.presentationTimeUs}, cap: ${inputBuffer.capacity()}, re-queueing remaining data. Remaining: ${it.buffer.remaining()}, limit: ${it.buffer.limit()}, pos: ${it.buffer.position()}")
                         // viewModel.updateLog("Buffer duration for re-queue: ${bufferDurationUs}")
-                        val bufferDurationUs = getBufferDurationUs(bytesToCopy, format)
+                        val bufferDurationUs = bytesToDurationUs(bytesToCopy, format)
                         it.presentationTimeUs += bufferDurationUs
                         audioBufferManager.addDataFirst(it, false)
                     }
