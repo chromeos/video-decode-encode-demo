@@ -62,6 +62,9 @@ class MainActivity : AppCompatActivity() {
     // Audio / Video encoders
     var audioVideoEncoders = ArrayList<AudioVideoEncoder>()
 
+    // ExoPlayers
+    val exoPlayers = arrayOfNulls<ExoPlayer>(NUMBER_OF_STREAMS)
+
     // The GlManager manages the eglcontext for all renders and filters
     private val glManager = GlManager()
 
@@ -258,9 +261,22 @@ class MainActivity : AppCompatActivity() {
         viewModel.getPlayAudio().observe(this, {
                 playAudio -> switch_audio.isSelected = playAudio })
 
+        // Set up cancel button
+        button_cancel.isEnabled = false // Will be the opposite of Decode button
+        button_cancel.setOnClickListener {
+            for (n in 0..NUMBER_OF_STREAMS-1) {
+                if (exoPlayers[n] != null) {
+                    exoPlayers[n]?.release()
+                    exoPlayers[n] = null
+                    decodeFinished()
+                }
+            }
+        }
+
         // Set up decode button
         button_start_decode.setOnClickListener {
             button_start_decode.isEnabled = false
+            button_cancel.isEnabled = true
 
             // Release any old surfaces marked for deletion
             releaseSurfacesMarkedForDeletion()
@@ -341,6 +357,14 @@ class MainActivity : AppCompatActivity() {
                     return true
                 }
             }
+
+            // C : Cancel decode
+            KEYCODE_C -> {
+                if (button_cancel.isEnabled) {
+                    button_cancel.performClick()
+                    return true
+                }
+            }
         }
 
         // Pass up any unused keystrokes
@@ -376,13 +400,19 @@ class MainActivity : AppCompatActivity() {
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS * 2, MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS)
             .createDefaultLoadControl()
-        val player: ExoPlayer = ExoPlayer.Builder(this@MainActivity, renderersFactory)
+
+        // Make sure any previously allocated ExoPlayers have been released
+        if (exoPlayers[streamNumber] != null) {
+            exoPlayers[streamNumber]?.release()
+        }
+
+        exoPlayers[streamNumber] = ExoPlayer.Builder(this@MainActivity, renderersFactory)
             .setLoadControl(loadControl)
             .build()
 
         if (audioVideoEncoder != null) {
             // Set up encode and decode surfaces
-            videoSurfaceManager.initialize(player,
+            videoSurfaceManager.initialize(exoPlayers[streamNumber]!!,
                 audioVideoEncoder.videoEncoderInputSurface,
                 audioVideoEncoder.encoderWidth,
                 audioVideoEncoder.encoderHeight)
@@ -391,19 +421,19 @@ class MainActivity : AppCompatActivity() {
             audioVideoEncoder.startEncode()
         } else {
             // Only set up decode surfaces
-            videoSurfaceManager.initialize(player)
+            videoSurfaceManager.initialize(exoPlayers[streamNumber]!!)
         }
 
         // Note: the decoder uses a custom MediaClock that goes as fast as possible so this speed
         // value is not used, but required by the ExoPlayer API
-        player.setPlaybackParameters(PlaybackParameters(1f))
+        exoPlayers[streamNumber]?.setPlaybackParameters(PlaybackParameters(1f))
 
         // Add a listener for when the video is done
-        player.addListener(object: Player.Listener {
-            override fun onPlayerStateChanged(playWhenReady: Boolean , playbackState: Int) {
+        exoPlayers[streamNumber]?.addListener(object: Player.Listener {
+            override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
                 if (playbackState == Player.STATE_ENDED) {
                     audioVideoEncoder?.signalDecodingComplete()
-                    player.release()
+                    exoPlayers[streamNumber]?.release()
                     this@MainActivity.decodeFinished()
                 }
             }
@@ -411,9 +441,10 @@ class MainActivity : AppCompatActivity() {
 
         // Set up video source and start the player
         val videoSource = buildExoMediaSource(this, inputVideoRawId)
-        player.setMediaSource(videoSource)
-        player.prepare()
-        player.playWhenReady = true
+        exoPlayers[streamNumber]?.setMediaSource(videoSource)
+        exoPlayers[streamNumber]?.prepare()
+
+        exoPlayers[streamNumber]?.playWhenReady = true
     }
 
     // Indicate one more preview surface is available
@@ -424,6 +455,7 @@ class MainActivity : AppCompatActivity() {
         if (numberOfReadySurfaces >= NUMBER_OF_STREAMS) {
             runOnUiThread {
                 button_start_decode.isEnabled = true
+                button_cancel.isEnabled = false
             }
         }
     }
@@ -435,6 +467,7 @@ class MainActivity : AppCompatActivity() {
         if (numberOfReadySurfaces < NUMBER_OF_STREAMS) {
             runOnUiThread {
                 button_start_decode.isEnabled = false
+                button_cancel.isEnabled = true
             }
         }
     }
