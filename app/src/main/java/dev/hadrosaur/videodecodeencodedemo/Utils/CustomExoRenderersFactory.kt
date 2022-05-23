@@ -28,6 +28,7 @@ import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioMixTrack
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.VideoMediaCodecAudioRenderer
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
+import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.SpeedyMediaClock
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoMediaCodecVideoRenderer
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoSurfaceManager
 
@@ -49,6 +50,7 @@ class CustomExoRenderersFactory(
     ): Array<Renderer> {
         return arrayOf(
             VideoMediaCodecVideoRenderer(mainActivity, viewModel, videoSurfaceManager, true, streamNumber, audioMixTrack.mediaClock),
+//            VideoMediaCodecVideoRenderer(mainActivity, viewModel, videoSurfaceManager, true, streamNumber, SpeedyMediaClock()),
             VideoMediaCodecAudioRenderer(mainActivity, viewModel, streamNumber, audioMixTrack, audioBufferManager)
         )
     }

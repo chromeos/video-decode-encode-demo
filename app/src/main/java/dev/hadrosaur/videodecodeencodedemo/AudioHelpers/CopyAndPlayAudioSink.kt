@@ -16,6 +16,8 @@
 
 package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 
+import android.media.AudioFormat
+import android.media.AudioTrack
 import com.google.android.exoplayer2.C.ENCODING_PCM_16BIT
 import com.google.android.exoplayer2.Format
 import com.google.android.exoplayer2.PlaybackParameters
@@ -60,7 +62,12 @@ class CopyAndPlayAudioSink(
     private var numBuffersHandled = 0
     private var lastPosition = 0L
 
-    // private var audioTrack: AudioTrack? = null
+    private var lastClockTime = 0L
+    private var lastPresentationTime = 0L
+    private var totalClockTimeUs = 0L
+    private var totalPresentationTimeUs = 0L
+
+     private var audioTrack: AudioTrack? = null
 
     override fun setListener(listener: AudioSink.Listener) {
         // No listener needed
@@ -118,8 +125,39 @@ class CopyAndPlayAudioSink(
             )
         }
 
+        if (lastClockTime == 0L) {
+            lastClockTime = System.currentTimeMillis() - 21
+        }
+        if (lastPresentationTime == 0L) {
+            lastPresentationTime == presentationTimeUs
+        }
+        val currentClockTime = System.currentTimeMillis() * 1000
+        var elapsedClockTime = currentClockTime - lastClockTime
+        var presTimeDiff = presentationTimeUs - lastPresentationTime
+
+        if (elapsedClockTime > 100000000000) {
+            elapsedClockTime = 0
+        }
+        if (presTimeDiff > 100000000000) {
+            presTimeDiff = 0
+        }
+        lastClockTime = currentClockTime
+        lastPresentationTime = presentationTimeUs
+        totalClockTimeUs += elapsedClockTime
+        totalPresentationTimeUs += presTimeDiff
+
+        if (audioMixTrack.isFull()) {
+            return false
+        }
+
         if (viewModel.getPlayAudioVal()) {
-            audioMixTrack.addAudioChunk(
+//            logd("AudioSink:pres time diff: ${presTimeDiff}, clock time diff: ${elapsedClockTime}. Total clock: ${totalClockTimeUs}, total pres: ${totalPresentationTimeUs}")
+
+//            audioMixTrack.audioMainTrack.playBytes(buffer,4096)
+//            audioMixTrack.mediaClock.updatePositionFromMain(presentationTimeUs + bufferLengthUs)
+
+
+/*            audioMixTrack.addAudioChunk(
                 AudioBuffer(
                     cloneByteBuffer(buffer),
                     numBuffersHandled + 1,
@@ -128,13 +166,17 @@ class CopyAndPlayAudioSink(
                     buffer.remaining()
                 )
             )
+
+ */
         }
-/*
+
         // Play audio buffer through speakers if playback toggle enabled
         if (viewModel.getPlayAudioVal() && audioTrack != null) {
             val playBuffer = buffer.asReadOnlyBuffer()
             val audioTrackBufferSize = audioTrack!!.bufferSizeInFrames
             var bytesToPlay = 0
+
+            logd("AudioSink:pres time diff: ${presTimeDiff}, clock time diff: ${elapsedClockTime}. Total clock: ${totalClockTimeUs}, total pres: ${totalPresentationTimeUs}")
 
             // The AudioTrack may have a smaller buffer size than the bytes to play out. Play out one
             // chunk at a time.
@@ -159,7 +201,9 @@ class CopyAndPlayAudioSink(
                 audioTrack!!.play()
             }
         }
-*/
+
+       audioMixTrack.mediaClock.updatePositionFromMain(presentationTimeUs + bufferLengthUs)
+
         // Update last position
         lastPosition = presentationTimeUs + bufferLengthUs
 
@@ -182,7 +226,7 @@ class CopyAndPlayAudioSink(
         specifiedBufferSize: Int,
         outputChannels: IntArray?
     ) {
-/*        // Set up audio track for playback
+        // Set up audio track for playback
         audioTrack = AudioTrack.Builder()
             .setAudioAttributes(
                 android.media.AudioAttributes.Builder()
@@ -199,7 +243,7 @@ class CopyAndPlayAudioSink(
             )
             .setTransferMode(AudioTrack.MODE_STREAM)
             .build()
-*/
+
         // viewModel.updateLog("AudioSink format: ${inputFormat}, buf size: ${specifiedBufferSize}, output channels: ${outputChannels}")
         this.inputFormat = inputFormat
         isSinkInitialized = true

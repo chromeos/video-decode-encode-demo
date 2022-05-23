@@ -26,7 +26,7 @@ import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.logd
  */
 class AudioMixTrackMediaClock (private var startTimeUs: Long = 0L) : MediaClock {
     private val MIN_FPS = 1L
-    private val MAX_FRAME_DURATION_US =  100000L / MIN_FPS
+    private val MAX_FRAME_DURATION_US =  1000000L / MIN_FPS
     var lastProcessedFrameUs = -1 * MAX_FRAME_DURATION_US // Initialize at -1 frame
 
     private val runAsFastAsPossible = false
@@ -38,7 +38,7 @@ class AudioMixTrackMediaClock (private var startTimeUs: Long = 0L) : MediaClock 
     fun setPositionUs(newPosition: Long) { positionUs = newPosition }
     fun updatePositionFromMain(newMainTrackPosition: Long) {
         positionUs = newMainTrackPosition - startTimeUs
-//        logd("New pos from main: ${positionUs}")
+        //logd("New pos from main: ${positionUs}")
     }
     fun advancePosition(advanceByUs: Long) { positionUs += advanceByUs}
 

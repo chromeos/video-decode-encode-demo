@@ -32,8 +32,8 @@ import kotlin.math.round
 // Note: 44 KHz streams need conversion
 val BYTES_PER_FRAME_PER_CHANNEL = 2 // 2 bytes per frame for 16-bit PCM
 val CHANNEL_COUNT = 2
-val SAMPLE_RATE = 96000 // This is weird.
-//val SAMPLE_RATE = 48000
+//val SAMPLE_RATE = 96000 // This is weird.
+val SAMPLE_RATE = 48000
 
 
 fun bytesToDurationUs(bytes: Int, format: MediaFormat): Long {

@@ -19,7 +19,8 @@ package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 import androidx.collection.CircularArray
 import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.logd
 
-class AudioMixTrack(val startTimeUs: Long = 0L) {
+// TODO: remove audio main track. this is bad.
+class AudioMixTrack(val audioMainTrack: AudioMainTrack, val startTimeUs: Long = 0L) {
     val BUFFER_LENGTH = 250 // About 5secs at ~0.02s per buffer
     val mediaClock = AudioMixTrackMediaClock(startTimeUs)
 
@@ -29,6 +30,12 @@ class AudioMixTrack(val startTimeUs: Long = 0L) {
         return !audioBuffer.isEmpty
     }
 
+    /**
+     * Indicate if the buffer already has BUFFER_LENGTH -1 elements so as not to make it auto-grow
+     */
+    fun isFull() : Boolean {
+        return if (audioBuffer.size() >= BUFFER_LENGTH -1) true else false
+    }
     fun getFirstPresentationTimeUs() : Long {
         if (audioBuffer.isEmpty) {
             return Long.MAX_VALUE

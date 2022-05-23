@@ -381,7 +381,7 @@ class MainActivity : AppCompatActivity() {
 
         // Set up audio track for this stream
         val startTimeUS = 0L
-        val audioMixTrack = AudioMixTrack(startTimeUS)
+        val audioMixTrack = AudioMixTrack(audioMainTrack, startTimeUS)
         audioMainTrack.addMixTrack(streamNumber, audioMixTrack)
 
         // Setup custom video and audio renderers
@@ -509,7 +509,7 @@ class MainActivity : AppCompatActivity() {
         if (ContextCompat.checkSelfPermission(this,
             Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                 // Launch the permission request for WRITE_EXTERNAL_STORAGE
-                requestPermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                requestPermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE, )
                 return false
         }
         return true

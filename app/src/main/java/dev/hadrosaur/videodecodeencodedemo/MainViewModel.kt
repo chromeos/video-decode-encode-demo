@@ -25,10 +25,10 @@ import java.io.File
 
 class MainViewModel : ViewModel() {
     // App options
-    private val previewFrameFrequency = SmartMutableLiveData<Int>(10)
+    private val previewFrameFrequency = SmartMutableLiveData<Int>(1)
     private val applyGlFilter = SmartMutableLiveData<Boolean>(false)
     private val encodeStream1 = SmartMutableLiveData<Boolean>(false)
-    private val playAudio = SmartMutableLiveData<Boolean>(false)
+    private val playAudio = SmartMutableLiveData<Boolean>(true)
 
     // Stream decode switches
     private val decodeStream1 = SmartMutableLiveData<Boolean>(true)

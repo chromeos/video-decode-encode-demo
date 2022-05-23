@@ -23,6 +23,7 @@ import android.media.AudioFormat.ENCODING_PCM_16BIT
 import android.media.AudioTrack
 import androidx.collection.CircularArray
 import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.logd
+import dev.hadrosaur.videodecodeencodedemo.Utils.minOf
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -202,8 +203,9 @@ class AudioMainTrack {
     }
 
     fun playMainAudio() {
+
+/*
         val audioTrackBufferSize = audioTrack.bufferSizeInFrames
-        var bytesToPlay = 0
 
         while (state == STATE.PLAYING) {
             // If no audio in the mix tracks yet, playhead is Long.MAX_VALUE: don't buffer or play
@@ -222,19 +224,7 @@ class AudioMainTrack {
                 var chunkTimePlayedUs = 0L
 
                 // audioTrackBufferSize may be less than bytesToPlay. Play one chunk at a time
-                while (buffer.remaining() > 0) {
-                    bytesToPlay = buffer.remaining().coerceAtMost(audioTrackBufferSize) // Math.min
-                    //logd("MAIN AUDIO: remaining: ${buffer.remaining()}, toPlay: ${bytesToPlay}, buffersize: ${audioTrack.bufferSizeInFrames}")
-                    val bytesPlayed = audioTrack.write(buffer, bytesToPlay, AudioTrack.WRITE_BLOCKING)
-                    chunkTimePlayedUs += bytesToDurationUs(bytesPlayed)
-                     // logd("MAIN AUDIO played ${chunkTimePlayedUs/1000}ms, from ${chunk.presentationTimeUs} to ${chunk.presentationTimeUs + chunk.lengthUs}. Tried: ${bytesToPlay} and played: ${bytesPlayed}")
-
-                    // If AudioTrack.write did not succeed, this loop can get stuck. Just exit.
-                    if (bytesPlayed <= 0) {
-                        logd("Malformed buffer, skipping chunk")
-                        break
-                    }
-                }
+                chunkTimePlayedUs += playBytes(buffer, audioTrackBufferSize)
 
                 // Update the main track playhead and the media clock for the mix tracks
                 if (chunkTimePlayedUs > 0) {
@@ -244,5 +234,28 @@ class AudioMainTrack {
                 }
             }
         }
+
+ */
+    }
+
+    fun playBytes(buffer: ByteBuffer, maxFrames: Int) : Long {
+        var bytesToPlay: Int
+        var timePlayedUs = 0L
+
+        while (buffer.remaining() > 0) {
+            bytesToPlay = minOf(buffer.remaining(), maxFrames)
+            //logd("MAIN AUDIO: remaining: ${buffer.remaining()}, toPlay: ${bytesToPlay}, buffersize: ${audioTrack.bufferSizeInFrames}")
+            val bytesPlayed = audioTrack.write(buffer, bytesToPlay, AudioTrack.WRITE_BLOCKING)
+            timePlayedUs += bytesToDurationUs(bytesPlayed)
+             logd("MAIN AUDIO played ${timePlayedUs/1000}ms, Tried: ${bytesToPlay} and played: ${bytesPlayed}")
+
+            // If AudioTrack.write did not succeed, this loop can get stuck. Just exit.
+            if (bytesPlayed <= 0) {
+                logd("Malformed buffer, skipping chunk")
+                break
+            }
+        }
+
+        return timePlayedUs
     }
 }
