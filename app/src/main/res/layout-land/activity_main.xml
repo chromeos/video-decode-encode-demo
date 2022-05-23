@@ -303,6 +303,7 @@
         android:layout_marginStart="24dp"
         android:layout_marginTop="8dp"
         android:text="SW fallback"
+        android:checked="true"
         app:layout_constraintStart_toEndOf="@id/switch_encode"
         app:layout_constraintEnd_toStartOf="@id/switch_seek"
         app:layout_constraintTop_toBottomOf="@+id/switch_audio" />

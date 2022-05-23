@@ -33,7 +33,7 @@ class MainViewModel : ViewModel() {
     private val encodeStream1 = SmartMutableLiveData<Boolean>(false)
     private val playAudio = SmartMutableLiveData<Boolean>(false)
     private val doSeeks = SmartMutableLiveData<Boolean>(false)
-    private val software = SmartMutableLiveData<Boolean>(false)
+    private val software = SmartMutableLiveData<Boolean>(true)
 
     // Stream decode switches
     private val decodeStream1 = SmartMutableLiveData<Boolean>(true)

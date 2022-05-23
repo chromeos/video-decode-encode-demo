@@ -55,7 +55,7 @@ object GlUtils {
                 "}\n"
         , POSITION_ATTRIBUTE_NAME, TEXCOORD_ATTRIBUTE_NAME, TEX_COORDINATE_NAME, POS_MATRIX_UNIFORM_NAME, ST_MATRIX_UNIFORM_NAME
     )
-
+/*
     /**
      * Fragment shader that renders from an external shader to the current target.
      */
@@ -66,6 +66,28 @@ object GlUtils {
                 "varying vec2 %2${"$"}s;\n" +
                 "void main() {\n" +
                 "  gl_FragColor = texture2D(%1${"$"}s, %2${"$"}s);\n" +
+                "}\n"
+        , TEX_SAMPLER_NAME, TEX_COORDINATE_NAME
+    )
+*/
+    private val COPY_EXTERNAL_FRAGMENT_SHADER = String.format(Locale.US,
+        "#extension GL_OES_EGL_image_external : require\n" +
+                "precision mediump float;\n" +
+                "uniform samplerExternalOES %1${"$"}s;\n" +
+                "varying vec2 %2${"$"}s;\n" +
+                "void main() {\n" +
+                "  vec4 sampleColor = texture2D(%1${"$"}s, %2${"$"}s);\n" +
+                "  // 8 needless sampling lines and a divide to cause the glitch\n" +
+                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
+                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
+                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
+                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
+                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
+                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
+                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
+                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
+                "  sampleColor /= 6.0;" +
+                "  gl_FragColor = sampleColor;\n" +
                 "}\n"
         , TEX_SAMPLER_NAME, TEX_COORDINATE_NAME
     )
@@ -92,25 +114,7 @@ object GlUtils {
             "varying vec2 %2${"$"}s;\n" +
             "void main() {\n" +
             "  vec4 sampleColor = texture2D(%1${"$"}s, %2${"$"}s);\n" +
-                "  // 8 needless sampling lines to cause glitch\n" +
-                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
-                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
-                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
-                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
-                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
-                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
-                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
-                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
-                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
-                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
-                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
-                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
-                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
-                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
-                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
-                "  sampleColor += texture2D(%1${"$"}s, %2${"$"}s);\n" +
-
-                "  gl_FragColor = vec4(sampleColor.r * 0.493 + sampleColor. g * 0.769 + sampleColor.b * 0.289, sampleColor.r * 0.449 + sampleColor.g * 0.686 + sampleColor.b * 0.268, sampleColor.r * 0.272 + sampleColor.g * 0.534 + sampleColor.b * 0.131, 1.0);\n" +
+            "  gl_FragColor = vec4(sampleColor.r * 0.493 + sampleColor. g * 0.769 + sampleColor.b * 0.289, sampleColor.r * 0.449 + sampleColor.g * 0.686 + sampleColor.b * 0.268, sampleColor.r * 0.272 + sampleColor.g * 0.534 + sampleColor.b * 0.131, 1.0);\n" +
             "}\n"
         , TEX_SAMPLER_NAME, TEX_COORDINATE_NAME
     )
