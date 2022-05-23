@@ -17,6 +17,7 @@
 package dev.hadrosaur.videodecodeencodedemo.Utils
 
 import android.os.Handler
+import com.google.android.exoplayer2.DefaultRenderersFactory
 import com.google.android.exoplayer2.Renderer
 import com.google.android.exoplayer2.RenderersFactory
 import com.google.android.exoplayer2.audio.AudioRendererEventListener
@@ -35,6 +36,7 @@ import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.SpeedyMediaClock
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoMediaCodecVideoRenderer
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoSurfaceManager
+
 
 // Create an ExoPlayer media source from a raw resource ID
 fun buildExoMediaSource(mainActivity: MainActivity, raw: Int): MediaSource {
@@ -65,9 +67,11 @@ class CustomExoRenderersFactory(
         metadataRendererOutput: MetadataOutput
     ): Array<Renderer> {
         val mediaClock = SpeedyMediaClock()
+
         return arrayOf(
             VideoMediaCodecVideoRenderer(mainActivity, viewModel, videoSurfaceManager, encoderDecoderFallback, streamNumber, mediaClock),
             VideoMediaCodecAudioRenderer(mainActivity, viewModel, streamNumber, audioBufferManager)
         )
     }
 }
+

@@ -41,19 +41,10 @@ import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-const val NUMBER_OF_STREAMS = 10
+const val NUMBER_OF_STREAMS = 1
 
 // TODO: replace this with proper file loading
 const val VIDEO_RES_1 = R.raw.paris_01_1080p
-const val VIDEO_RES_2 = R.raw.paris_02_1080p
-const val VIDEO_RES_3 = R.raw.paris_03_1080p
-const val VIDEO_RES_4 = R.raw.paris_04_1080p
-const val VIDEO_RES_5 = R.raw.paris_05_1080p
-const val VIDEO_RES_6 = R.raw.paris_06_1080p
-const val VIDEO_RES_7 = R.raw.paris_07_1080p
-const val VIDEO_RES_8 = R.raw.paris_08_1080p
-const val VIDEO_RES_9 = R.raw.paris_01_720p
-const val VIDEO_RES_10 = R.raw.video_1080x1920_30fps
 
 class MainActivity : AppCompatActivity() {
     // Preview surfaces
@@ -75,6 +66,9 @@ class MainActivity : AppCompatActivity() {
 
     // Audio / Video encoders
     var audioVideoEncoders = ArrayList<AudioVideoEncoder>()
+
+    // ExoPlayers
+    val exoPlayers = arrayOfNulls<ExoPlayer>(NUMBER_OF_STREAMS)
 
     // The GlManager manages the eglcontext for all renders and filters
     private val glManager = GlManager()
@@ -136,15 +130,6 @@ class MainActivity : AppCompatActivity() {
 
         // Add the preview surfaces to the UI
         frame_one.addView(previewSurfaceViews[0])
-        frame_two.addView(previewSurfaceViews[1])
-        frame_three.addView(previewSurfaceViews[2])
-        frame_four.addView(previewSurfaceViews[3])
-        frame_five.addView(previewSurfaceViews[4])
-        frame_six.addView(previewSurfaceViews[5])
-        frame_seven.addView(previewSurfaceViews[6])
-        frame_eight.addView(previewSurfaceViews[7])
-        frame_nine.addView(previewSurfaceViews[8])
-        frame_ten.addView(previewSurfaceViews[9])
     }
 
     // Create the internal SurfaceTextures that will be used for decoding
@@ -254,42 +239,6 @@ class MainActivity : AppCompatActivity() {
                 _, isChecked -> viewModel.setDecodeStream1(isChecked) }
         viewModel.getDecodeStream1().observe(this, {
                 isChecked -> checkbox_decode_stream1.isSelected = isChecked })
-        checkbox_decode_stream2.setOnCheckedChangeListener{
-                _, isChecked -> viewModel.setDecodeStream2(isChecked) }
-        viewModel.getDecodeStream2().observe(this, {
-                isChecked -> checkbox_decode_stream2.isSelected = isChecked })
-        checkbox_decode_stream3.setOnCheckedChangeListener{
-                _, isChecked -> viewModel.setDecodeStream3(isChecked) }
-        viewModel.getDecodeStream3().observe(this, {
-                isChecked -> checkbox_decode_stream3.isSelected = isChecked })
-        checkbox_decode_stream4.setOnCheckedChangeListener{
-                _, isChecked -> viewModel.setDecodeStream4(isChecked) }
-        viewModel.getDecodeStream4().observe(this, {
-                isChecked -> checkbox_decode_stream4.isSelected = isChecked })
-        checkbox_decode_stream5.setOnCheckedChangeListener{
-                _, isChecked -> viewModel.setDecodeStream5(isChecked) }
-        viewModel.getDecodeStream5().observe(this, {
-                isChecked -> checkbox_decode_stream5.isSelected = isChecked })
-        checkbox_decode_stream6.setOnCheckedChangeListener{
-                _, isChecked -> viewModel.setDecodeStream6(isChecked) }
-        viewModel.getDecodeStream6().observe(this, {
-                isChecked -> checkbox_decode_stream6.isSelected = isChecked })
-        checkbox_decode_stream7.setOnCheckedChangeListener{
-                _, isChecked -> viewModel.setDecodeStream7(isChecked) }
-        viewModel.getDecodeStream7().observe(this, {
-                isChecked -> checkbox_decode_stream7.isSelected = isChecked })
-        checkbox_decode_stream8.setOnCheckedChangeListener{
-                _, isChecked -> viewModel.setDecodeStream8(isChecked) }
-        viewModel.getDecodeStream8().observe(this, {
-                isChecked -> checkbox_decode_stream8.isSelected = isChecked })
-        checkbox_decode_stream9.setOnCheckedChangeListener{
-                _, isChecked -> viewModel.setDecodeStream9(isChecked) }
-        viewModel.getDecodeStream9().observe(this, {
-                isChecked -> checkbox_decode_stream9.isSelected = isChecked })
-        checkbox_decode_stream10.setOnCheckedChangeListener{
-                _, isChecked -> viewModel.setDecodeStream10(isChecked) }
-        viewModel.getDecodeStream10().observe(this, {
-                isChecked -> checkbox_decode_stream10.isSelected = isChecked })
 
         // Set up toggle switches for encode, audio, filters, etc.
         switch_filter.setOnCheckedChangeListener {
@@ -313,9 +262,22 @@ class MainActivity : AppCompatActivity() {
         viewModel.getDoSeeks().observe(this, {
                 doSeeks -> switch_seek.isSelected = doSeeks })
 
+        // Set up cancel button
+        button_cancel.isEnabled = false // Will be the opposite of Decode button
+        button_cancel.setOnClickListener {
+            for (n in 0..NUMBER_OF_STREAMS-1) {
+                if (exoPlayers[n] != null) {
+                    exoPlayers[n]?.release()
+                    exoPlayers[n] = null
+                    decodeFinished()
+                }
+            }
+        }
+
         // Set up decode button
         button_start_decode.setOnClickListener {
             button_start_decode.isEnabled = false
+            button_cancel.isEnabled = true
 
             // Release any old surfaces marked for deletion
             releaseSurfacesMarkedForDeletion()
@@ -342,58 +304,6 @@ class MainActivity : AppCompatActivity() {
                     beginVideoDecode(VIDEO_RES_1, videoSurfaceManagers[0], 0)
                 }
             }
-
-            // Stream 2
-            if (viewModel.getDecodeStream2Val()) {
-                beginVideoDecode(VIDEO_RES_2, videoSurfaceManagers[1], 1)
-            }
-
-            // Stream 3
-            if (viewModel.getDecodeStream3Val()) {
-                beginVideoDecode(VIDEO_RES_3, videoSurfaceManagers[2], 2)
-            }
-
-            // Stream 4
-            if (viewModel.getDecodeStream4Val()) {
-                beginVideoDecode(VIDEO_RES_4, videoSurfaceManagers[3], 3)
-            }
-
-            // Stream 5
-            if (viewModel.getDecodeStream5Val()) {
-                beginVideoDecode(VIDEO_RES_5, videoSurfaceManagers[4], 4)
-            }
-
-            // Stream 6
-            if (viewModel.getDecodeStream6Val()) {
-                beginVideoDecode(VIDEO_RES_6, videoSurfaceManagers[5], 5)
-            }
-
-            // Stream 7
-            if (viewModel.getDecodeStream7Val()) {
-                beginVideoDecode(VIDEO_RES_7, videoSurfaceManagers[6], 6)
-            }
-
-            // Stream 8
-            if (viewModel.getDecodeStream8Val()) {
-                beginVideoDecode(VIDEO_RES_8, videoSurfaceManagers[7], 7)
-            }
-
-            // Stream 9
-            if (viewModel.getDecodeStream9Val()) {
-                beginVideoDecode(VIDEO_RES_9, videoSurfaceManagers[8], 8)
-            }
-
-            // Stream 10
-            if (viewModel.getDecodeStream10Val()) {
-                beginVideoDecode(VIDEO_RES_10, videoSurfaceManagers[9], 9)
-            }
-
-                /*            val breakCodec5 = MediaCodec.createDecoderByType("video/avc")
-            breakCodec5.configure(format, null, null, 0)
-            breakCodec5.start()
-            val breakCodec6 = MediaCodec.createDecoderByType("video/avc")
-            breakCodec6.configure(format, null, null, 0)
-            breakCodec6.start()*/
         }
 
 
@@ -419,15 +329,6 @@ class MainActivity : AppCompatActivity() {
         when (keyCode) {
             // 1 - 4 : Toggle decode checkboxes
             KEYCODE_1 -> { checkbox_decode_stream1.isChecked = ! checkbox_decode_stream1.isChecked; checkbox_decode_stream1.clearFocus(); return true }
-            KEYCODE_2 -> { checkbox_decode_stream2.isChecked = ! checkbox_decode_stream2.isChecked; checkbox_decode_stream2.clearFocus(); return true }
-            KEYCODE_3 -> { checkbox_decode_stream3.isChecked = ! checkbox_decode_stream3.isChecked; checkbox_decode_stream3.clearFocus(); return true }
-            KEYCODE_4 -> { checkbox_decode_stream4.isChecked = ! checkbox_decode_stream4.isChecked; checkbox_decode_stream4.clearFocus(); return true }
-            KEYCODE_5 -> { checkbox_decode_stream5.isChecked = ! checkbox_decode_stream5.isChecked; checkbox_decode_stream5.clearFocus(); return true }
-            KEYCODE_6 -> { checkbox_decode_stream6.isChecked = ! checkbox_decode_stream6.isChecked; checkbox_decode_stream6.clearFocus(); return true }
-            KEYCODE_7 -> { checkbox_decode_stream7.isChecked = ! checkbox_decode_stream7.isChecked; checkbox_decode_stream7.clearFocus(); return true }
-            KEYCODE_8 -> { checkbox_decode_stream8.isChecked = ! checkbox_decode_stream8.isChecked; checkbox_decode_stream8.clearFocus(); return true }
-            KEYCODE_9 -> { checkbox_decode_stream9.isChecked = ! checkbox_decode_stream9.isChecked; checkbox_decode_stream9.clearFocus(); return true }
-            KEYCODE_0 -> { checkbox_decode_stream10.isChecked = ! checkbox_decode_stream10.isChecked; checkbox_decode_stream10.clearFocus(); return true }
 
             // E, F, A, S, K : Toggle switches
             KEYCODE_E -> { switch_encode.isChecked = ! switch_encode.isChecked; switch_encode.clearFocus(); return true }
@@ -440,6 +341,14 @@ class MainActivity : AppCompatActivity() {
             KEYCODE_D -> {
                 if (button_start_decode.isEnabled) {
                     button_start_decode.performClick()
+                    return true
+                }
+            }
+
+            // C : Cancel decode
+            KEYCODE_C -> {
+                if (button_cancel.isEnabled) {
+                    button_cancel.performClick()
                     return true
                 }
             }
@@ -479,13 +388,19 @@ class MainActivity : AppCompatActivity() {
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS * 2, MIN_DECODE_BUFFER_MS, MIN_DECODE_BUFFER_MS)
             .createDefaultLoadControl()
-        val player: ExoPlayer = ExoPlayer.Builder(this@MainActivity, renderersFactory)
+
+        // Make sure any previously allocated ExoPlayers have been released
+        if (exoPlayers[streamNumber] != null) {
+            exoPlayers[streamNumber]?.release()
+        }
+
+        exoPlayers[streamNumber] = ExoPlayer.Builder(this@MainActivity, renderersFactory)
             .setLoadControl(loadControl)
             .build()
 
         if (audioVideoEncoder != null) {
             // Set up encode and decode surfaces
-            videoSurfaceManager.initialize(player,
+            videoSurfaceManager.initialize(exoPlayers[streamNumber]!!,
                 audioVideoEncoder.videoEncoderInputSurface,
                 audioVideoEncoder.encoderWidth,
                 audioVideoEncoder.encoderHeight)
@@ -494,19 +409,20 @@ class MainActivity : AppCompatActivity() {
             audioVideoEncoder.startEncode()
         } else {
             // Only set up decode surfaces
-            videoSurfaceManager.initialize(player)
+            videoSurfaceManager.initialize(exoPlayers[streamNumber]!!)
         }
 
         // Note: the decoder uses a custom MediaClock that goes as fast as possible so this speed
         // value is not used, but required by the ExoPlayer API
-        player.setPlaybackParameters(PlaybackParameters(1f))
+        exoPlayers[streamNumber]?.setPlaybackParameters(PlaybackParameters(1f))
 
-        // Add a listener for when the video is done or error occurs
-        player.addListener(object : Player.Listener {
-            override fun onPlayerStateChanged(playWhenReady: Boolean , playbackState: Int) {
+        // Add a listener for when the video is done
+        exoPlayers[streamNumber]?.addListener(object: Player.Listener {
+            override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
+
                 if (playbackState == Player.STATE_ENDED) {
                     audioVideoEncoder?.signalDecodingComplete()
-                    player.release()
+                    exoPlayers[streamNumber]?.release()
                     this@MainActivity.decodeFinished()
                 }
             }
@@ -520,9 +436,10 @@ class MainActivity : AppCompatActivity() {
 
         // Set up video source and start the player
         val videoSource = buildExoMediaSource(this, inputVideoRawId)
-        player.setMediaSource(videoSource)
-        player.prepare()
-        player.playWhenReady = true
+        exoPlayers[streamNumber]?.setMediaSource(videoSource)
+        exoPlayers[streamNumber]?.prepare()
+
+        exoPlayers[streamNumber]?.playWhenReady = true
 
         if (viewModel.getDoSeeksVal()) {
             // Do a few seeks while decoding process. Jump forward seekJump ms and then back
@@ -532,16 +449,16 @@ class MainActivity : AppCompatActivity() {
             lifecycle.coroutineScope.launch {
                 delay(delayTimeMs)
                 for (i in 1..numSeeks) {
-                    player.pause()
-                    val oldPos = player.currentPosition
+                    exoPlayers[streamNumber]?.pause()
+                    val oldPos = exoPlayers[streamNumber]?.currentPosition!!
                     val pos = oldPos + seekJumpMs
                     updateLog("Stream #${streamNumber+1}: Jumping to pos: ${pos}")
-                    player.seekTo(pos)
-                    player.prepare()
+                    exoPlayers[streamNumber]?.seekTo(pos)
+                    exoPlayers[streamNumber]?.prepare()
                     updateLog("Stream #${streamNumber+1}: Jumping back to pos: ${oldPos+1}")
-                    player.seekTo(oldPos+1)
-                    player.prepare()
-                    player.playWhenReady = true
+                    exoPlayers[streamNumber]?.seekTo(oldPos+1)
+                    exoPlayers[streamNumber]?.prepare()
+                    exoPlayers[streamNumber]?.playWhenReady = true
                     delay(delayTimeMs)
                 }
             }
@@ -556,6 +473,7 @@ class MainActivity : AppCompatActivity() {
         if (numberOfReadySurfaces >= NUMBER_OF_STREAMS) {
             runOnUiThread {
                 button_start_decode.isEnabled = true
+                button_cancel.isEnabled = false
             }
         }
     }
@@ -567,6 +485,7 @@ class MainActivity : AppCompatActivity() {
         if (numberOfReadySurfaces < NUMBER_OF_STREAMS) {
             runOnUiThread {
                 button_start_decode.isEnabled = false
+                button_cancel.isEnabled = true
             }
         }
     }

@@ -42,7 +42,7 @@ class VideoMediaCodecVideoRenderer(
 ) :
     MediaCodecVideoRenderer(
         mainActivity,
-        MediaCodecSelector.DEFAULT,
+        VideoSWMediaCodecSelector(enableDecoderFallback),
         0,
         enableDecoderFallback,
         null,
