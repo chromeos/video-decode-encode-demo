@@ -17,6 +17,7 @@
 package dev.hadrosaur.videodecodeencodedemo.Utils
 
 import android.os.Handler
+import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Renderer
 import com.google.android.exoplayer2.RenderersFactory
 import com.google.android.exoplayer2.audio.AudioRendererEventListener
@@ -25,6 +26,7 @@ import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.text.TextOutput
 import com.google.android.exoplayer2.upstream.DataSource
+import com.google.android.exoplayer2.upstream.DefaultDataSource
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.upstream.RawResourceDataSource
 import com.google.android.exoplayer2.video.VideoRendererEventListener
@@ -35,6 +37,7 @@ import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.SpeedyMediaClock
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoMediaCodecVideoRenderer
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoSurfaceManager
 
+
 // Create an ExoPlayer media source from a raw resource ID
 fun buildExoMediaSource(mainActivity: MainActivity, raw: Int): MediaSource {
     val uri = RawResourceDataSource.buildRawResourceUri(raw)
@@ -44,5 +47,5 @@ fun buildExoMediaSource(mainActivity: MainActivity, raw: Int): MediaSource {
             MainActivity.LOG_TAG
         )
     return ProgressiveMediaSource.Factory(dataSourceFactory)
-        .createMediaSource(uri)
+        .createMediaSource(MediaItem.fromUri(uri))
 }

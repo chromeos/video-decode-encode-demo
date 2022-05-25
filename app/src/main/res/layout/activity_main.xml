@@ -152,6 +152,18 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/switch_filter" />
 
+
+    <Button
+        android:id="@+id/button_cancel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:enabled="true"
+        android:text="Cancel"
+        app:layout_constraintBottom_toBottomOf="@id/switch_encode"
+        app:layout_constraintEnd_toStartOf="@id/button_start_decode"
+        app:layout_constraintTop_toTopOf="@+id/switch_filter" />
+
     <Button
         android:id="@+id/button_start_decode"
         android:layout_width="wrap_content"

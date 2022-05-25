@@ -18,6 +18,8 @@ package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 
 import android.media.AudioFormat
 import android.media.AudioTrack
+import android.os.Build
+import androidx.annotation.RequiresApi
 import com.google.android.exoplayer2.C.ENCODING_PCM_16BIT
 import com.google.android.exoplayer2.Format
 import com.google.android.exoplayer2.PlaybackParameters
@@ -108,7 +110,16 @@ class CopyAndPlayAudioSink(
         val hackPresentationTime = presentationTimeUs - 1000000000000;
 
         // Calculate clock time duration of the buffer
-        val bufferLengthUs = bytesToDurationUs(buffer.remaining())
+
+//        val bufferLengthUs = bytesToDurationUs(buffer.remaining())
+        val bufferLengthUs = bytesToDurationUs(
+            buffer.remaining(),
+            inputFormat.channelCount,
+            2, // 2 bytes per frame for 16-bit PCM,
+            inputFormat.sampleRate
+        )
+
+        // viewModel.updateLog("Buffer info: pos: ${buffer.position()}, limit: ${buffer.position()}, rem: ${buffer.remaining()}, order: ${buffer.order()}")
 
         // If buffer is needed for encoding, copy it out
         // buffer will be freed after this call so a deep copy is needed for encode
@@ -174,7 +185,7 @@ class CopyAndPlayAudioSink(
         if (viewModel.getPlayAudioVal() && audioTrack != null) {
             val playBuffer = buffer.asReadOnlyBuffer()
             val audioTrackBufferSize = audioTrack!!.bufferSizeInFrames
-            var bytesToPlay = 0
+            var bytesToPlay: Int
 
             logd("AudioSink:pres time diff: ${presTimeDiff}, clock time diff: ${elapsedClockTime}. Total clock: ${totalClockTimeUs}, total pres: ${totalPresentationTimeUs}")
 
@@ -217,7 +228,7 @@ class CopyAndPlayAudioSink(
 
 
     override fun getCurrentPositionUs(sourceEnded: Boolean): Long {
-        viewModel.updateLog("AudioSink: getCurrentPositionUs is called @ ${lastPosition}")
+        // viewModel.updateLog("AudioSink: getCurrentPositionUs is called @ ${lastPosition}")
         return lastPosition
     }
 
@@ -317,9 +328,9 @@ class CopyAndPlayAudioSink(
         sinkAudioAttributes = audioAttributes
     }
 
-//    override fun getAudioAttributes(): AudioAttributes {
-//        return sinkAudioAttributes
-//    }
+    override fun getAudioAttributes(): AudioAttributes {
+        return sinkAudioAttributes
+    }
 
     override fun setAudioSessionId(audioSessionId: Int) {
         sinkAudioSessionId = audioSessionId
