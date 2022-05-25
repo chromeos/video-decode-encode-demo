@@ -27,10 +27,10 @@ import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager
  * Holder for the internal decoding SurfaceTexture. Ties together the ExoPlayer VideoComponent,
  * and the custom SurfaceTexture and Renderer
  */
-class VideoSurfaceManager(val viewModel: MainViewModel, glManager: GlManager, displaySurface: SurfaceView) {
+class VideoSurfaceManager(val viewModel: MainViewModel, glManager: GlManager, displaySurface: SurfaceView, val streamNumber: Int) {
     private val handler: Handler = Handler()
     var renderer: InternalSurfaceTextureRenderer =
-        InternalSurfaceTextureRenderer(viewModel, glManager, displaySurface, handler)
+        InternalSurfaceTextureRenderer(viewModel, glManager, displaySurface, handler, streamNumber)
 
     private lateinit var player: ExoPlayer
 

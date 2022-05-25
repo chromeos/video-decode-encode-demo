@@ -39,8 +39,8 @@ import java.util.concurrent.atomic.AtomicInteger
  * time for use in encoding.
  */
 class VideoFrameLedger : VideoFrameMetadataListener {
-    val decodeLedger = ConcurrentHashMap<Long, Long>()
-    val encodeLedger = ConcurrentHashMap<Int, Long>()
+    val decodeLedger = ConcurrentHashMap<Long, Long>() // < ReleaseTimeUs, presentationTimeUs >
+    val encodeLedger = ConcurrentHashMap<Int, Long>() // < frameCount, presentationTimeUs >
     private var framesEntered = AtomicInteger(0)
     var framesRendered = AtomicInteger(0)
     private var encodingCounter = AtomicInteger(0)
