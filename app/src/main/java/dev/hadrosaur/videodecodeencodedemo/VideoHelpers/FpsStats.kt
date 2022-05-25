@@ -109,7 +109,7 @@ class FpsStats(val viewModel: MainViewModel, val streamNumber: Int) {
                 if (streamNumber == 0)
                     viewModel.updateLog("\n")
 
-                val logString = "V${streamNumber + 1}@frame $fpsTotalDecodeCounter. FPS: min: ${minFps} max: ${maxFps} avg: ${averageFpsString}. Choppy frames: ${numChoppyFrames}${choppyString}.\n\t" +
+                val logString = "V${streamNumber + 1}@$fpsTotalDecodeCounter. FPS min: ${minFps} max: ${maxFps} avg: ${averageFpsString}. Choppy frames: ${numChoppyFrames}/${MainActivity.LOG_VIDEO_EVERY_N_FRAMES} (${numChoppyFrames * 100 / MainActivity.LOG_VIDEO_EVERY_N_FRAMES}%)${choppyString}.\n\t" +
                         bucketsString1
                 viewModel.updateLog(logString)
 
