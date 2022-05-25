@@ -139,7 +139,7 @@ class MainActivity : AppCompatActivity() {
         videoSurfaceManagers.clear()
 
         for (n in 0..NUMBER_OF_STREAMS) {
-            videoSurfaceManagers.add(VideoSurfaceManager(viewModel, glManager, previewSurfaceViews[n]))
+            videoSurfaceManagers.add(VideoSurfaceManager(viewModel, glManager, previewSurfaceViews[n], n+1))
         }
     }
 
