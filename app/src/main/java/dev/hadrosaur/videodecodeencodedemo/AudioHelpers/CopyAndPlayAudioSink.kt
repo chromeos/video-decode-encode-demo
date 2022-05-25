@@ -105,9 +105,10 @@ class CopyAndPlayAudioSink(
         val soundBuffer = cloneByteBuffer(buffer)
 
         // Calculate clock time duration of the buffer
-        val bufferLengthUs = getBufferDurationUs(
+        val bufferLengthUs = bytesToDurationUs(
             buffer.remaining(),
-            inputFormat.channelCount * 2, // 2 bytes per frame for 16-bit PCM,
+            inputFormat.channelCount,
+            2, // 2 bytes per frame for 16-bit PCM,
             inputFormat.sampleRate
         )
 
@@ -131,7 +132,7 @@ class CopyAndPlayAudioSink(
         if (SDK_INT >= 23 && viewModel.getPlayAudioVal() && audioTrack != null) {
             val playBuffer = buffer.asReadOnlyBuffer()
             val audioTrackBufferSize = audioTrack!!.bufferSizeInFrames
-            var bytesToPlay = 0
+            var bytesToPlay: Int
 
             // The AudioTrack may have a smaller buffer size than the bytes to play out. Play out one
             // chunk at a time.
@@ -269,6 +270,10 @@ class CopyAndPlayAudioSink(
     override fun setAudioAttributes(audioAttributes: AudioAttributes) {
         // viewModel.updateLog("setAudioAttributes called on audio sink. Attributes: ${audioAttributes}")
         sinkAudioAttributes = audioAttributes
+    }
+
+    override fun getAudioAttributes(): AudioAttributes {
+        return sinkAudioAttributes;
     }
 
     override fun setAudioSessionId(audioSessionId: Int) {

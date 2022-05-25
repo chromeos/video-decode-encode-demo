@@ -29,11 +29,12 @@ import dev.hadrosaur.videodecodeencodedemo.Utils.GlManager
  *
  * Logs to the main log as the render progresses.
  */
-class InternalSurfaceTextureRenderer(val viewModel: MainViewModel, glManager: GlManager, displaySurface: SurfaceView, handler: Handler) : InternalSurfaceTexture.TextureImageListener {
+class InternalSurfaceTextureRenderer(val viewModel: MainViewModel, glManager: GlManager, displaySurface: SurfaceView, handler: Handler, val streamNumber: Int) : InternalSurfaceTexture.TextureImageListener {
     val frameLedger = VideoFrameLedger()
     private val internalSurfaceTexture: InternalSurfaceTexture = InternalSurfaceTexture(viewModel, glManager, displaySurface, handler, this)
     private var onFrameAvailableCounter = 0
     private var doEncode = false
+    private val stats = FpsStats(viewModel, streamNumber)
 
     // The internal Surface from the SurfaceTexture to be decoded to, used by ExoPlayer
     var decoderSurface: Surface? = null
@@ -69,11 +70,14 @@ class InternalSurfaceTextureRenderer(val viewModel: MainViewModel, glManager: Gl
         // that was set in the FrameLedger's onVideoFrameAboutToBeRendered callback
         frameLedger.releaseRenderLock()
 
+
         if (surfaceTimestamp != 0L) {
             // Check if this frame was decoded and sent to the rendered
             if (frameLedger.decodeLedger.containsKey(surfaceTimestamp)) {
                 // Frame matched, increment the frames rendered counter
                 val framesRendered = frameLedger.framesRendered.incrementAndGet()
+
+                stats.updateStats()
 
                 // If this frame matches the requested draw frequency, or the frequency is set to
                 // draw every frame, draw the frame to the preview surface

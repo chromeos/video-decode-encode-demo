@@ -140,7 +140,7 @@ class MainActivity : AppCompatActivity() {
         videoSurfaceManagers.clear()
 
         for (n in 0..NUMBER_OF_STREAMS) {
-            videoSurfaceManagers.add(VideoSurfaceManager(viewModel, glManager, previewSurfaceViews[n]))
+            videoSurfaceManagers.add(VideoSurfaceManager(viewModel, glManager, previewSurfaceViews[n], n))
         }
     }
 
@@ -272,6 +272,18 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         })
+
+        // Set up cancel button
+        button_cancel.isEnabled = false // Will be the opposite of Decode button
+        button_cancel.setOnClickListener {
+            for (n in 0..NUMBER_OF_STREAMS-1) {
+                if (exoPlayers[n] != null) {
+                    exoPlayers[n]?.release()
+                    exoPlayers[n] = null
+                    decodeFinished()
+                }
+            }
+        }
 
         // Set up cancel button
         button_cancel.isEnabled = false // Will be the opposite of Decode button
@@ -442,8 +454,8 @@ class MainActivity : AppCompatActivity() {
         exoPlayers[streamNumber]?.setPlaybackParameters(PlaybackParameters(1f))
 
         // Add a listener for when the video is done
-        exoPlayers[streamNumber]?.addListener(object: Player.EventListener {
-            override fun onPlayerStateChanged(playWhenReady: Boolean , playbackState: Int) {
+        exoPlayers[streamNumber]?.addListener(object: Player.Listener {
+            override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
                 if (playbackState == Player.STATE_ENDED) {
                     audioVideoEncoder?.signalDecodingComplete()
                     exoPlayers[streamNumber]?.release()
