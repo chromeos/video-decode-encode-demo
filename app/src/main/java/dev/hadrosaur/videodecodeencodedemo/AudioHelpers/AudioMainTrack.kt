@@ -32,7 +32,8 @@ class AudioMainTrack {
 
     val MAX_BUFFER_LENGTH = 250 // About 5secs at ~0.02s per buffer
     //val DEFAULT_BUFFERING_DURATION_US = 1024000L // 48 4096-byte buffers
-    val DEFAULT_BUFFERING_DURATION_US = 512000L // 24 4096-byte buffers
+    //val DEFAULT_BUFFERING_DURATION_US = 512000L // 24 4096-byte buffers
+    val DEFAULT_BUFFERING_DURATION_US = 128000L // 6 4096-byte buffers
 
     enum class STATE {
         STOPPED, PLAYING, PAUSED
@@ -57,7 +58,7 @@ class AudioMainTrack {
                     AudioFormat.Builder()
                         .setEncoding(ENCODING)
                         .setSampleRate(SAMPLE_RATE)
-                        .setChannelMask(CHANNEL_COUNT)
+                        .setChannelMask(channelCountToChannelMask(CHANNEL_COUNT))
                         .build()
                 )
                 .setTransferMode(AudioTrack.MODE_STREAM)
@@ -204,7 +205,7 @@ class AudioMainTrack {
 
     fun playMainAudio() {
 
-/*
+
         val audioTrackBufferSize = audioTrack.bufferSizeInFrames
 
         while (state == STATE.PLAYING) {
@@ -234,8 +235,6 @@ class AudioMainTrack {
                 }
             }
         }
-
- */
     }
 
     fun playBytes(buffer: ByteBuffer, maxFrames: Int) : Long {

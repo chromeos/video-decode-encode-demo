@@ -16,6 +16,7 @@
 
 package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 
+import android.media.AudioFormat.*
 import android.media.MediaFormat
 import android.media.MediaFormat.KEY_CHANNEL_COUNT
 import android.media.MediaFormat.KEY_SAMPLE_RATE
@@ -67,6 +68,16 @@ fun usToSeconds(timeUs: Long): Float {
 
 fun usToSecondsString(timeUs: Long): String {
     return usToSeconds(timeUs).toString()
+}
+
+fun channelCountToChannelMask(channelCount: Int): Int {
+    return when (channelCount) {
+        1 -> CHANNEL_OUT_MONO
+        2 -> CHANNEL_OUT_STEREO
+        4 -> CHANNEL_OUT_QUAD
+        else -> 0
+    }
+
 }
 
 // Copy a ByteBuffer (only data between position and limit)

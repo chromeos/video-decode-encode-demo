@@ -17,6 +17,7 @@
 package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 
 import android.media.AudioFormat
+import android.media.AudioFormat.CHANNEL_OUT_STEREO
 import android.media.AudioTrack
 import com.google.android.exoplayer2.C.ENCODING_PCM_16BIT
 import com.google.android.exoplayer2.Format
@@ -170,7 +171,7 @@ class CopyAndPlayAudioSink(
 //            audioMixTrack.mediaClock.updatePositionFromMain(presentationTimeUs + bufferLengthUs)
 
 
-/*            audioMixTrack.addAudioChunk(
+            audioMixTrack.addAudioChunk(
                 AudioBuffer(
                     cloneByteBuffer(buffer),
                     numBuffersHandled + 1,
@@ -180,10 +181,11 @@ class CopyAndPlayAudioSink(
                 )
             )
 
- */
+
         }
 
         // Play audio buffer through speakers if playback toggle enabled
+/*
         if (viewModel.getPlayAudioVal() && audioTrack != null) {
             val playBuffer = buffer.asReadOnlyBuffer()
             val audioTrackBufferSize = audioTrack!!.bufferSizeInFrames
@@ -216,7 +218,7 @@ class CopyAndPlayAudioSink(
         }
 
        audioMixTrack.mediaClock.updatePositionFromMain(presentationTimeUs + bufferLengthUs)
-
+*/
         // Update last position
         lastPosition = presentationTimeUs + bufferLengthUs
 
@@ -271,16 +273,15 @@ class CopyAndPlayAudioSink(
     ) {
         this.inputFormat = inputFormat
 
-
+        /*
         // Set up audio track for playback
-
         audioTrack = AudioTrack.Builder()
             .setAudioAttributes(getAudioTrackAttributes())
             .setAudioFormat(
                 AudioFormat.Builder()
                     .setEncoding(AudioFormat.ENCODING_PCM_16BIT) // Note: forcing 16-bit here
                     .setSampleRate(inputFormat.sampleRate)
-                    .setChannelMask(inputFormat.channelCount)
+                    .setChannelMask(channelCountToChannelMask(inputFormat.channelCount))
                     .build()
             )
             .setTransferMode(AudioTrack.MODE_STREAM)
@@ -291,6 +292,8 @@ class CopyAndPlayAudioSink(
         viewModel.updateLog("Sample rate: ${inputFormat.sampleRate}, channels: ${inputFormat.channelCount}")
         viewModel.updateLog("AudioSink format: ${inputFormat}, buf size: ${specifiedBufferSize}, output channels: ${outputChannels}")
         isSinkInitialized = true
+
+         */
     }
 
     override fun play() {
