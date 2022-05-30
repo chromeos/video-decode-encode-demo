@@ -193,7 +193,7 @@ class CopyAndPlayAudioSink(
                     AudioFormat.Builder()
                         .setEncoding(AudioFormat.ENCODING_PCM_16BIT) // Note: forcing 16-bit here
                         .setSampleRate(inputFormat.sampleRate)
-                        .setChannelMask(inputFormat.channelCount)
+                        .setChannelMask(channelCountToChannelMask(inputFormat.channelCount))
                         .build()
                 )
                 .setTransferMode(AudioTrack.MODE_STREAM)
