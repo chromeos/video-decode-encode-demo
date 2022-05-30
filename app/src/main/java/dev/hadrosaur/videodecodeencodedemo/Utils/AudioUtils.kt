@@ -46,7 +46,8 @@ fun bytesToDurationUs(bytes: Int) : Long {
 }
 
 fun bytesToDurationUs(bytes: Int, numChannels: Int, bytesPerFramePerChannel: Int, sampleRate: Int): Long {
-    val frames = bytes.toFloat() / (numChannels * bytesPerFramePerChannel)
+    val frameSize = numChannels * bytesPerFramePerChannel
+    val frames = bytes.toFloat() / frameSize
     return round((frames * C.MICROS_PER_SECOND) / sampleRate).toLong()
 }
 
@@ -56,7 +57,8 @@ fun usToBytes(durationUs: Long) : Int {
 
 fun usToBytes(durationUs: Long, numChannels: Int, bytesPerFramePerChannel: Int, sampleRate: Int): Int {
     val frames = round((durationUs.toFloat() * sampleRate) / C.MICROS_PER_SECOND)
-    return (frames * bytesPerFramePerChannel * numChannels).toInt()
+    val frameSize = numChannels * bytesPerFramePerChannel
+    return (frames * frameSize).toInt()
 }
 
 fun usToSeconds(timeUs: Long): Float {

@@ -17,6 +17,7 @@
 package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 
 import com.google.android.exoplayer2.Format
+import com.google.android.exoplayer2.audio.DefaultAudioSink
 import com.google.android.exoplayer2.audio.MediaCodecAudioRenderer
 import com.google.android.exoplayer2.mediacodec.MediaCodecAdapter
 import com.google.android.exoplayer2.mediacodec.MediaCodecSelector

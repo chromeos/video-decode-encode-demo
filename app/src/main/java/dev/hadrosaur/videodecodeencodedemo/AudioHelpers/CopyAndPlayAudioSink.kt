@@ -18,18 +18,20 @@ package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 
 import android.media.AudioFormat
 import android.media.AudioTrack
-import android.os.Build
-import androidx.annotation.RequiresApi
 import com.google.android.exoplayer2.C.ENCODING_PCM_16BIT
 import com.google.android.exoplayer2.Format
 import com.google.android.exoplayer2.PlaybackParameters
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.audio.AudioSink
 import com.google.android.exoplayer2.audio.AuxEffectInfo
+import com.google.android.exoplayer2.audio.DefaultAudioSink.OUTPUT_MODE_OFFLOAD
+import com.google.android.exoplayer2.audio.DefaultAudioSink.OUTPUT_MODE_PCM
+import com.google.android.exoplayer2.audio.DefaultAudioTrackBufferSizeProvider
 import com.google.android.exoplayer2.util.MimeTypes
 import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.logd
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 import java.nio.ByteBuffer
+
 
 /**
  * An AudioSink for ExoPlayer that copies out audio buffers to an encode queue and optionally plays
@@ -119,7 +121,7 @@ class CopyAndPlayAudioSink(
             inputFormat.sampleRate
         )
 
-        // viewModel.updateLog("Buffer info: pos: ${buffer.position()}, limit: ${buffer.position()}, rem: ${buffer.remaining()}, order: ${buffer.order()}")
+        //viewModel.updateLog("Buffer info: pos: ${buffer.position()}, limit: ${buffer.position()}, rem: ${buffer.remaining()}, order: ${buffer.order()}")
 
         // If buffer is needed for encoding, copy it out
         // buffer will be freed after this call so a deep copy is needed for encode
@@ -187,7 +189,7 @@ class CopyAndPlayAudioSink(
             val audioTrackBufferSize = audioTrack!!.bufferSizeInFrames
             var bytesToPlay: Int
 
-            logd("AudioSink:pres time diff: ${presTimeDiff}, clock time diff: ${elapsedClockTime}. Total clock: ${totalClockTimeUs}, total pres: ${totalPresentationTimeUs}")
+            // logd("AudioSink:pres time diff: ${presTimeDiff}, clock time diff: ${elapsedClockTime}. Total clock: ${totalClockTimeUs}, total pres: ${totalPresentationTimeUs}")
 
             // The AudioTrack may have a smaller buffer size than the bytes to play out. Play out one
             // chunk at a time.
@@ -232,19 +234,48 @@ class CopyAndPlayAudioSink(
         return lastPosition
     }
 
+    fun getAudioFormat(sampleRate: Int, channelConfig: Int, encoding: Int): AudioFormat {
+        return AudioFormat.Builder()
+            .setSampleRate(sampleRate)
+            .setChannelMask(channelConfig)
+            .setEncoding(encoding)
+            .build()
+    }
+
+    fun getAudioTrackAttributes() : android.media.AudioAttributes {
+        return android.media.AudioAttributes.Builder()
+            .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MOVIE)
+            .build()
+    }
+
+    fun createAudioTrack(): AudioTrack {
+        val audioFormat: AudioFormat =
+            getAudioFormat(inputFormat.sampleRate, inputFormat.channelCount, AudioFormat.ENCODING_PCM_16BIT)
+        val audioTrackAttributes = getAudioTrackAttributes()
+        val audioTrackBufferSizeProvider = DefaultAudioTrackBufferSizeProvider.Builder().build()
+        val audioTrackBufferSize = audioTrackBufferSizeProvider.getBufferSizeInBytes(4096, ENCODING_PCM_16BIT, OUTPUT_MODE_PCM, 4, inputFormat.sampleRate, 1.0)
+
+        return AudioTrack.Builder()
+            .setAudioAttributes(audioTrackAttributes)
+            .setAudioFormat(audioFormat)
+            .setTransferMode(AudioTrack.MODE_STREAM)
+//            .setBufferSizeInBytes(audioTrackBufferSize)
+            .build()
+    }
+
     override fun configure(
         inputFormat: Format,
         specifiedBufferSize: Int,
         outputChannels: IntArray?
     ) {
+        this.inputFormat = inputFormat
+
+
         // Set up audio track for playback
+
         audioTrack = AudioTrack.Builder()
-            .setAudioAttributes(
-                android.media.AudioAttributes.Builder()
-                    .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
-                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MOVIE)
-                    .build()
-            )
+            .setAudioAttributes(getAudioTrackAttributes())
             .setAudioFormat(
                 AudioFormat.Builder()
                     .setEncoding(AudioFormat.ENCODING_PCM_16BIT) // Note: forcing 16-bit here
@@ -255,8 +286,10 @@ class CopyAndPlayAudioSink(
             .setTransferMode(AudioTrack.MODE_STREAM)
             .build()
 
-        // viewModel.updateLog("AudioSink format: ${inputFormat}, buf size: ${specifiedBufferSize}, output channels: ${outputChannels}")
-        this.inputFormat = inputFormat
+        //audioTrack = createAudioTrack()
+        viewModel.updateLog("PCM encoding is: ${inputFormat.pcmEncoding} and PCM16 = ${ENCODING_PCM_16BIT}")
+        viewModel.updateLog("Sample rate: ${inputFormat.sampleRate}, channels: ${inputFormat.channelCount}")
+        viewModel.updateLog("AudioSink format: ${inputFormat}, buf size: ${specifiedBufferSize}, output channels: ${outputChannels}")
         isSinkInitialized = true
     }
 
