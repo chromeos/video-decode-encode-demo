@@ -16,6 +16,9 @@
 
 package dev.hadrosaur.videodecodeencodedemo.Utils
 
+import java.nio.ByteBuffer
+import java.util.*
+
 fun maxOf(a: Int, b: Int) : Int {
     return a.coerceAtLeast(b)
 }
@@ -28,4 +31,8 @@ fun maxOf(a: Long, b: Long) : Long {
 }
 fun minOf(a: Long, b: Long) : Long {
     return a.coerceAtMost(b)
+}
+
+fun isByteBufferZeroed(byteBuffer: ByteBuffer) : Boolean {
+    return Arrays.equals(byteBuffer.array(), ByteArray(byteBuffer.array().size))
 }

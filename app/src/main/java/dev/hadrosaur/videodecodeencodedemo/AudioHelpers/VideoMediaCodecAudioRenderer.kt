@@ -41,8 +41,6 @@ class VideoMediaCodecAudioRenderer (
 
     private var decodeCounter = 0
     private var startTime = 0L
-    private var lastPresentTime = 0L
-    private val speedyMediaClock = SpeedyMediaClock()
 
     /**
      * Return null to indicate to ExoPlayer not to use this clock
@@ -94,13 +92,8 @@ class VideoMediaCodecAudioRenderer (
             val currentBPS =
                 decodeCounter / ((System.currentTimeMillis() - startTime) / 1000.0)
             val bpsString = String.format("%.2f", currentBPS)
-            viewModel.updateLog("Decoding audio Stream ${streamNumber + 1}: ${bpsString}bps @buffer $decodeCounter.")
+            viewModel.updateLog("Decoding audio Stream ${streamNumber + 1}: ${bpsString} buf/sec @buffer $decodeCounter.")
         }
-
-        if (lastPresentTime == presentationTimeUs && lastPresentTime != 0L) {
-            viewModel.updateLog("Last AUDIO present time is current present time. Audio is stuck! Time: ${presentationTimeUs}")
-        }
-        lastPresentTime = presentationTimeUs
 
         super.onProcessedOutputBuffer(presentationTimeUs)
     }

@@ -18,33 +18,47 @@ package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 
 import com.google.android.exoplayer2.PlaybackParameters
 import com.google.android.exoplayer2.util.MediaClock
-import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.logd
 
 /**
- * A MediaClock that advances relative to a main audio track. This track may have a non-zero start
- * time to facilitate multi-track video/audio playback.
+ * A MediaClock that needs to be advanced manually. The intended use is to keep an individual
+ * track's decoding in sync with another track, like an AudioMainTrack for synchronized multi-track
+ * decoding. This clock can have a non-zero start time to for the case where this track begins at a
+ * later time than the reference track. Ie. not at 0s on the main timeline.
+ *
+ * This clock can also be set to run as fast as possible, for example if audio is muted and a decode
+ * wants to proceed at maximum speed.
  */
 class AudioMixTrackMediaClock (private var startTimeUs: Long = 0L) : MediaClock {
+    // Set a minimum frame rate for when this clock runs as fast as possible
     private val MIN_FPS = 1L
     private val MAX_FRAME_DURATION_US =  1000000L / MIN_FPS
-    var lastProcessedFrameUs = -1 * MAX_FRAME_DURATION_US // Initialize at -1 frame
+//    var lastProcessedFrameUs = -1 * MAX_FRAME_DURATION_US // Initialize at -1 frame
 
-    private val runAsFastAsPossible = false
+    private var runAsFastAsPossible = false
     private var internalPlaybackParameters = PlaybackParameters(1.0f)
     private var positionUs = 0L
 
+    fun setRunAsFastAsPossible(shouldRunFast: Boolean) { runAsFastAsPossible = shouldRunFast }
     fun setStartTime(newStartTimeUs: Long) { startTimeUs = newStartTimeUs }
-
     fun setPositionUs(newPosition: Long) { positionUs = newPosition }
-    fun updatePositionFromMain(newMainTrackPosition: Long) {
-        positionUs = newMainTrackPosition - startTimeUs
-        //logd("New pos from main: ${positionUs}")
+
+    fun updateRelativePosition(newRelativeTrackPosition: Long) {
+        // logd("Updated relative position to: ${newRelativeTrackPosition}")
+        positionUs = newRelativeTrackPosition - startTimeUs
     }
     fun advancePosition(advanceByUs: Long) { positionUs += advanceByUs}
 
+    fun tick() {
+        positionUs = positionUs + MAX_FRAME_DURATION_US
+    }
+
+    fun reset() {
+        positionUs = 0L
+    }
+
     override fun getPositionUs(): Long {
         if (runAsFastAsPossible) {
-            return lastProcessedFrameUs + MAX_FRAME_DURATION_US
+            return positionUs + MAX_FRAME_DURATION_US
         } else {
             return positionUs
         }
@@ -58,10 +72,12 @@ class AudioMixTrackMediaClock (private var startTimeUs: Long = 0L) : MediaClock 
         internalPlaybackParameters = playbackParameters
     }
 
-    fun updateLastProcessedFrame(frameProcessedUs: Long) {
-        // If a later frame has been processed, advance the clock tick
-        if (frameProcessedUs > lastProcessedFrameUs) {
-            lastProcessedFrameUs = frameProcessedUs
+    fun updateLastProcessedVideoPosition(videoPositionUs: Long) {
+        // logd("updateLastProcessed: ${frameProcessedUs}, current pos: ${positionUs}")
+        // If a later frame has been processed, advance
+        if (videoPositionUs > positionUs) {
+            positionUs = videoPositionUs
+            // logd("Updated frame position to: ${frameProcessedUs}")
         }
     }
 }

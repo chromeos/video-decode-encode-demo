@@ -266,8 +266,10 @@ class MainActivity : AppCompatActivity() {
                 encodeStream -> switch_encode.isSelected = encodeStream })
         switch_audio.setOnCheckedChangeListener {
                 _, isChecked -> viewModel.setPlayAudio(isChecked) }
-        viewModel.getPlayAudio().observe(this, {
-                playAudio -> switch_audio.isSelected = playAudio })
+        viewModel.getPlayAudio().observe(this) { playAudio ->
+            switch_audio.isSelected = playAudio
+            audioMainTrack.mute(!playAudio)
+        }
 
         // Set up cancel button
         button_cancel.isEnabled = false // Will be the opposite of Decode button
@@ -405,7 +407,7 @@ class MainActivity : AppCompatActivity() {
 
         // Set up audio track for this stream
         val startTimeUS = 0L
-        val audioMixTrack = AudioMixTrack(audioMainTrack, startTimeUS)
+        val audioMixTrack = AudioMixTrack(startTimeUS)
         audioMainTrack.addMixTrack(streamNumber, audioMixTrack)
 
         // Setup custom video and audio renderers
@@ -442,8 +444,8 @@ class MainActivity : AppCompatActivity() {
             videoSurfaceManager.initialize(exoPlayers[streamNumber]!!)
         }
 
-        // Note: the decoder uses a custom MediaClock that goes as fast as possible so this speed
-        // value is not used, but required by the ExoPlayer API
+        // Note: the decoder uses a custom MediaClock so this speed
+        // value is not used, but it is required by the ExoPlayer API
         exoPlayers[streamNumber]?.setPlaybackParameters(PlaybackParameters(1f))
 
         // Add a listener for when the video is done
@@ -499,7 +501,7 @@ class MainActivity : AppCompatActivity() {
                 markSurfacesForDeletion()
                 initializeSurfaces()
             }
-            audioMainTrack.stop()
+            audioMainTrack.reset()
         }
     }
 

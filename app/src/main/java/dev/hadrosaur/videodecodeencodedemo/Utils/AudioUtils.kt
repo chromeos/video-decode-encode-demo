@@ -16,13 +16,14 @@
 
 package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 
+import android.media.AudioFormat
 import android.media.AudioFormat.*
+import android.media.AudioTrack
 import android.media.MediaFormat
 import android.media.MediaFormat.KEY_CHANNEL_COUNT
 import android.media.MediaFormat.KEY_SAMPLE_RATE
 import androidx.collection.CircularArray
 import com.google.android.exoplayer2.C
-import com.google.android.exoplayer2.Format
 import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.logd
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 import java.nio.ByteBuffer
@@ -30,12 +31,9 @@ import kotlin.math.abs
 import kotlin.math.round
 
 // Default to 16-bit, 2 channel, 48KHz PCM
-// Note: 44 KHz streams need conversion
 val BYTES_PER_FRAME_PER_CHANNEL = 2 // 2 bytes per frame for 16-bit PCM
 val CHANNEL_COUNT = 2
-//val SAMPLE_RATE = 96000 // This is weird.
 val SAMPLE_RATE = 48000
-
 
 fun bytesToDurationUs(bytes: Int, format: MediaFormat): Long {
     val sampleRate = format.getInteger(KEY_SAMPLE_RATE)
@@ -70,16 +68,6 @@ fun usToSecondsString(timeUs: Long): String {
     return usToSeconds(timeUs).toString()
 }
 
-fun channelCountToChannelMask(channelCount: Int): Int {
-    return when (channelCount) {
-        1 -> CHANNEL_OUT_MONO
-        2 -> CHANNEL_OUT_STEREO
-        4 -> CHANNEL_OUT_QUAD
-        else -> 0
-    }
-
-}
-
 // Copy a ByteBuffer (only data between position and limit)
 // Adapted from: https://stackoverflow.com/a/21388198/3151916
 fun cloneByteBuffer(original: ByteBuffer): ByteBuffer {
@@ -103,68 +91,111 @@ fun cloneByteBuffer(original: ByteBuffer): ByteBuffer {
 }
 
 /**
- * Mixes array of AudioBuffers into mainAudio with given gain
+ * Mixes an array of AudioBuffers into the given mainAudio, applying gain.
  *
- * Assume mixAudioArray is in order
- *
- * Returns earliest position written to
+ * Assumes samples in mixAudioArray are 16-bits and in order.
  */
-fun mixAudioByteBuffer(mainAudio: AudioBuffer, mixAudioArray: CircularArray<AudioBuffer>, gain: Float = 0.5F) : Int {
-    val initPosition = mainAudio.buffer.position()
-    var earliestPositionMixed = mainAudio.buffer.limit()
-    var bytesMixed = 0
+fun mixAudioByteBuffer(mainAudio: AudioBuffer, mixAudioArray: CircularArray<AudioBuffer>, gain: Float = 0.5F) {
+    val TOLERANCE_US = 21 // 1 frame 16-bit stereo PCM = 20.8us, tolerate presentation time differences smaller than this
+    val mainAudioInitPosition = mainAudio.buffer.position()
+    var mainAudioMixheadUs = mainAudio.presentationTimeUs
 
     while (!mixAudioArray.isEmpty) {
         val mixAudioBuffer = mixAudioArray.popFirst()
+        var timeToAdvanceMixHead = 0L
+
         if (mixAudioBuffer != null) {
-            val timeMixedSoFar = bytesToDurationUs(bytesMixed)
-            val mixInitPosition = mixAudioBuffer.buffer.position()
+            // mixAudioBuffer is a single, continuous audio buffer to mix into main
+            val mixInitPosition = mixAudioBuffer.buffer.position() // Save init position
+            val mixToMainDeltaUs = mixAudioBuffer.presentationTimeUs - mainAudioMixheadUs
 
-            //logd("Checking. mainstart: ${mainAudio.presentationTimeUs}, main length: ${mainAudio.lengthUs}, mixed: ${timeMixedSoFar}, mixBuff start: ${mixAudioBuffer.presentationTimeUs}, mix length: ${mixAudioBuffer.lengthUs}")
             // Skip bytes from main if mix start position is ahead of main position
-            if (mixAudioBuffer.presentationTimeUs > mainAudio.presentationTimeUs + timeMixedSoFar) {
-                val timeToSkipUs = mixAudioBuffer.presentationTimeUs - (mainAudio.presentationTimeUs + timeMixedSoFar)
+            if (mixToMainDeltaUs > TOLERANCE_US) {
+                val timeToSkipUs = mixToMainDeltaUs
                 val bytesToSkip = usToBytes(timeToSkipUs)
 
-                //logd("Skipping ${bytesToSkip} because mix audio is after main presentation. mainstart: ${mainAudio.presentationTimeUs}, mixed: ${timeMixedSoFar}, toskip: ${timeToSkipUs}, mixBuff: ${mixAudioBuffer.presentationTimeUs}. bufPos: ${mainAudio.buffer.position()}, bufLimit: ${mainAudio.buffer.limit()}")
-                if (mainAudio.buffer.position() + bytesToSkip > mainAudio.buffer.limit()) {
-                    continue
+                // logd("Skipping ${bytesToSkip} because mix audio is after main presentation. mainstart: ${mainAudio.presentationTimeUs}, toskip: ${timeToSkipUs}, mixBuff: ${mixAudioBuffer.presentationTimeUs}. bufPos: ${mainAudio.buffer.position()}, bufLimit: ${mainAudio.buffer.limit()}")
+                if (mainAudio.buffer.position() + bytesToSkip >= mainAudio.buffer.limit()) {
+                    continue // mix track starts after mainAudio limit so do not mix
                 }
-                val newPosition = mainAudio.buffer.limit().coerceAtMost(mainAudio.buffer.position() + bytesToSkip)
-                mainAudio.buffer.position(newPosition)
+
+                // Advance the mainAudio position to the mix position
+                mainAudio.buffer.position(mainAudio.buffer.position() + bytesToSkip)
+                timeToAdvanceMixHead += timeToSkipUs
             }
 
-            // Skip bytes from mix if main start position is ahead of mix position
-            if (mainAudio.presentationTimeUs + timeMixedSoFar > mixAudioBuffer.presentationTimeUs) {
-                //logd("Main start is ahead of mix. ${mainAudio.presentationTimeUs} + so far: ${timeMixedSoFar} and mix presentation: ${mixAudioBuffer.presentationTimeUs}")
-                val timeToSkipUs = mainAudio.presentationTimeUs + timeMixedSoFar - mixAudioBuffer.presentationTimeUs
+            // Skip bytes from mix if main start position is ahead of mix position more than 100us
+            if (mixToMainDeltaUs < TOLERANCE_US * -1) {
+                val timeToSkipUs = mainAudioMixheadUs - mixAudioBuffer.presentationTimeUs
                 val bytesToSkip = usToBytes(timeToSkipUs)
-                val newPosition = mixAudioBuffer.buffer.limit().coerceAtMost(mixAudioBuffer.buffer.position() + bytesToSkip)
+                val newPosition = minOf(mixAudioBuffer.buffer.limit(), mixAudioBuffer.buffer.position() + bytesToSkip)
                 mixAudioBuffer.buffer.position(newPosition)
-                // logd("SKipping ${bytesToSkip} because main audio is after mix presentation")
+                // logd("Skipping ${timeToSkipUs}us and ${bytesToSkip} bytes because main audio is after mix presentation")
             }
 
-            // Keep track of the earliest place in main that is mixed too
-            if (mainAudio.buffer.remaining() > 0 && mixAudioBuffer.buffer.remaining() > 0) {
-                earliestPositionMixed = earliestPositionMixed.coerceAtMost(mainAudio.buffer.position())
-            }
-
-            // logd("main pos: ${mainAudio.buffer.position()}, remain: ${mainAudio.buffer.remaining()}, mix remain: ${mixAudioBuffer.buffer.remaining()}")
+            // Actually mix the audio samples from mixAudioBuffer to main
+            var bytesMixed = 0
             while (mainAudio.buffer.remaining() > 0 && mixAudioBuffer.buffer.remaining() > 0) {
                 val mainSample = mainAudio.buffer.getShort(mainAudio.buffer.position()) // get no advance
-                val mixSample = round(mixAudioBuffer.buffer.getShort().toFloat() * gain).toInt() // get and advance
-                mainAudio.buffer.putShort((mainSample + mixSample).toShort()) // put and advance
+                val mixSample = mixAudioBuffer.buffer.getShort().toFloat() // get and advance
+                val mixSampleWithGain = round(mixSample * gain).toInt() // apply gain
+                mainAudio.buffer.putShort((mainSample + mixSampleWithGain).toShort()) // put and advance
                 bytesMixed += 2
             }
             mixAudioBuffer.buffer.position(mixInitPosition) // Restore mix buffer position
+            timeToAdvanceMixHead += bytesToDurationUs(bytesMixed)
+
+            mainAudioMixheadUs += timeToAdvanceMixHead
         }
+    } // while audio buffers to mix
 
-        //logd("Mixed down ${bytesMixed} bytes and ${bytesToDurationUs(bytesMixed) / 1000}ms from ${mixAudioBuffer.presentationTimeUs} to ${mixAudioBuffer.presentationTimeUs + mixAudioBuffer.lengthUs}. Check remaining: ${mainAudio.buffer.remaining()}")
+    mainAudio.buffer.position(mainAudioInitPosition) // Re-set main position
+}
+
+/**
+ * Helper function for building an AudioFormat
+ */
+fun getAudioFormat(sampleRate: Int, channelMask: Int, encoding: Int): AudioFormat {
+    return AudioFormat.Builder()
+        .setSampleRate(sampleRate)
+        .setChannelMask(channelMask)
+        .setEncoding(encoding)
+        .build()
+}
+
+/**
+ * Helper function for building AudioAttributes
+ */
+fun getVideoPlaybackAudioTrackAttributes() : android.media.AudioAttributes {
+    return android.media.AudioAttributes.Builder()
+        .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MOVIE)
+        .build()
+}
+
+/**
+ * Convert number of channels to an AudioTrack channel mask
+ */
+fun channelCountToChannelMask(channelCount: Int): Int {
+    return when (channelCount) {
+        1 -> CHANNEL_OUT_MONO
+        2 -> CHANNEL_OUT_STEREO
+        4 -> CHANNEL_OUT_QUAD
+        else -> 0
     }
+}
 
-    mainAudio.buffer.position(earliestPositionMixed) // Set start position
-    mainAudio.buffer.limit(earliestPositionMixed + bytesMixed)
-    return earliestPositionMixed
+fun createPcmAudioTrack(): AudioTrack {
+    val channelMask = channelCountToChannelMask(CHANNEL_COUNT) // Note channel count != mask
+    val audioFormat: AudioFormat =
+        getAudioFormat(SAMPLE_RATE, channelMask, ENCODING_PCM_16BIT)
+    val audioTrackAttributes = getVideoPlaybackAudioTrackAttributes()
+    return AudioTrack.Builder()
+        .setAudioAttributes(audioTrackAttributes)
+        .setAudioFormat(audioFormat)
+        .setTransferMode(AudioTrack.MODE_STREAM)
+        .setBufferSizeInBytes(4096 * 1)
+        .build()
 }
 
 /**

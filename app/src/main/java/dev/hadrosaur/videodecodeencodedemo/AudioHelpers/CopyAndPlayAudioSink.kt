@@ -33,7 +33,6 @@ import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.logd
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 import java.nio.ByteBuffer
 
-
 /**
  * An AudioSink for ExoPlayer that copies out audio buffers to an encode queue and optionally plays
  * back audio buffers as they are received.
@@ -51,8 +50,6 @@ class CopyAndPlayAudioSink(
     private val audioMixTrack: AudioMixTrack,
     private val audioBufferManager: AudioBufferManager? = null
 ): AudioSink {
-
-    private var isSinkInitialized = false
     private var handledEndOfStream = false
 
     private var pbParameters = PlaybackParameters.DEFAULT
@@ -66,13 +63,6 @@ class CopyAndPlayAudioSink(
     
     private var numBuffersHandled = 0
     private var lastPosition = 0L
-
-    private var lastClockTime = 0L
-    private var lastPresentationTime = 0L
-    private var totalClockTimeUs = 0L
-    private var totalPresentationTimeUs = 0L
-
-     private var audioTrack: AudioTrack? = null
 
     override fun setListener(listener: AudioSink.Listener) {
         // No listener needed
@@ -109,20 +99,16 @@ class CopyAndPlayAudioSink(
         presentationTimeUs: Long,
         encodedAccessUnitCount: Int
     ): Boolean {
-        // ExoPlayer adds an offset of 1000000000000 to prevent -'ve timestamps. Subtract this.
+        // Exo adds an offset of 1000000000000 to prevent -'ve timestamps. Subtract this for encode
         val hackPresentationTime = presentationTimeUs - 1000000000000;
 
         // Calculate clock time duration of the buffer
-
-//        val bufferLengthUs = bytesToDurationUs(buffer.remaining())
         val bufferLengthUs = bytesToDurationUs(
             buffer.remaining(),
             inputFormat.channelCount,
             2, // 2 bytes per frame for 16-bit PCM,
             inputFormat.sampleRate
         )
-
-        //viewModel.updateLog("Buffer info: pos: ${buffer.position()}, limit: ${buffer.position()}, rem: ${buffer.remaining()}, order: ${buffer.order()}")
 
         // If buffer is needed for encoding, copy it out
         // buffer will be freed after this call so a deep copy is needed for encode
@@ -139,38 +125,11 @@ class CopyAndPlayAudioSink(
             )
         }
 
-        if (lastClockTime == 0L) {
-            lastClockTime = System.currentTimeMillis() - 21
-        }
-        if (lastPresentationTime == 0L) {
-            lastPresentationTime == presentationTimeUs
-        }
-        val currentClockTime = System.currentTimeMillis() * 1000
-        var elapsedClockTime = currentClockTime - lastClockTime
-        var presTimeDiff = presentationTimeUs - lastPresentationTime
+        // TODO: add some sort of underrun detection
 
-        if (elapsedClockTime > 100000000000) {
-            elapsedClockTime = 0
-        }
-        if (presTimeDiff > 100000000000) {
-            presTimeDiff = 0
-        }
-        lastClockTime = currentClockTime
-        lastPresentationTime = presentationTimeUs
-        totalClockTimeUs += elapsedClockTime
-        totalPresentationTimeUs += presTimeDiff
-
-        if (audioMixTrack.isFull()) {
-            return false
-        }
-
-        if (viewModel.getPlayAudioVal()) {
-//            logd("AudioSink:pres time diff: ${presTimeDiff}, clock time diff: ${elapsedClockTime}. Total clock: ${totalClockTimeUs}, total pres: ${totalPresentationTimeUs}")
-
-//            audioMixTrack.audioMainTrack.playBytes(buffer,4096)
-//            audioMixTrack.mediaClock.updatePositionFromMain(presentationTimeUs + bufferLengthUs)
-
-
+        // If the play audio toggle is enabled, copy this buffer to the mix track for playback
+        // buffer will be freed after this call so a copy is needed
+//        if (viewModel.getPlayAudioVal()) {
             audioMixTrack.addAudioChunk(
                 AudioBuffer(
                     cloneByteBuffer(buffer),
@@ -180,45 +139,8 @@ class CopyAndPlayAudioSink(
                     buffer.remaining()
                 )
             )
+//        }
 
-
-        }
-
-        // Play audio buffer through speakers if playback toggle enabled
-/*
-        if (viewModel.getPlayAudioVal() && audioTrack != null) {
-            val playBuffer = buffer.asReadOnlyBuffer()
-            val audioTrackBufferSize = audioTrack!!.bufferSizeInFrames
-            var bytesToPlay: Int
-
-            // logd("AudioSink:pres time diff: ${presTimeDiff}, clock time diff: ${elapsedClockTime}. Total clock: ${totalClockTimeUs}, total pres: ${totalPresentationTimeUs}")
-
-            // The AudioTrack may have a smaller buffer size than the bytes to play out. Play out one
-            // chunk at a time.
-            while (playBuffer.remaining() > 0) {
-                bytesToPlay = playBuffer.remaining().coerceAtMost(audioTrackBufferSize) // Same as Math.min
-
-                // Write sound and auto-advance position
-                val bytesPlayed = audioTrack!!.write(playBuffer, bytesToPlay, AudioTrack.WRITE_BLOCKING)
-
-                // If AudioTrack.write did not succeed, playBuffer.position will not be auto-advanced
-                // and this loop can get stuck. This can happen if a malformed buffer arrives. To
-                // prevent an endless loop, just exit.
-                // If correct playback is required, do something more intelligent here
-                if (bytesPlayed <= 0) {
-                    viewModel.updateLog("CopyAndPlayAudioSink: 0 bytes played when playing audio: there is a problem! ${playBuffer.remaining()}")
-                    break
-                }
-            }
-
-            // If the AudioTrack is not playing, begin playback
-            if (audioTrack!!.playState != AudioTrack.PLAYSTATE_PLAYING) {
-                audioTrack!!.play()
-            }
-        }
-
-       audioMixTrack.mediaClock.updatePositionFromMain(presentationTimeUs + bufferLengthUs)
-*/
         // Update last position
         lastPosition = presentationTimeUs + bufferLengthUs
 
@@ -230,40 +152,9 @@ class CopyAndPlayAudioSink(
         return true
     }
 
-
     override fun getCurrentPositionUs(sourceEnded: Boolean): Long {
         // viewModel.updateLog("AudioSink: getCurrentPositionUs is called @ ${lastPosition}")
         return lastPosition
-    }
-
-    fun getAudioFormat(sampleRate: Int, channelConfig: Int, encoding: Int): AudioFormat {
-        return AudioFormat.Builder()
-            .setSampleRate(sampleRate)
-            .setChannelMask(channelConfig)
-            .setEncoding(encoding)
-            .build()
-    }
-
-    fun getAudioTrackAttributes() : android.media.AudioAttributes {
-        return android.media.AudioAttributes.Builder()
-            .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
-            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MOVIE)
-            .build()
-    }
-
-    fun createAudioTrack(): AudioTrack {
-        val audioFormat: AudioFormat =
-            getAudioFormat(inputFormat.sampleRate, inputFormat.channelCount, AudioFormat.ENCODING_PCM_16BIT)
-        val audioTrackAttributes = getAudioTrackAttributes()
-        val audioTrackBufferSizeProvider = DefaultAudioTrackBufferSizeProvider.Builder().build()
-        val audioTrackBufferSize = audioTrackBufferSizeProvider.getBufferSizeInBytes(4096, ENCODING_PCM_16BIT, OUTPUT_MODE_PCM, 4, inputFormat.sampleRate, 1.0)
-
-        return AudioTrack.Builder()
-            .setAudioAttributes(audioTrackAttributes)
-            .setAudioFormat(audioFormat)
-            .setTransferMode(AudioTrack.MODE_STREAM)
-//            .setBufferSizeInBytes(audioTrackBufferSize)
-            .build()
     }
 
     override fun configure(
@@ -272,28 +163,6 @@ class CopyAndPlayAudioSink(
         outputChannels: IntArray?
     ) {
         this.inputFormat = inputFormat
-
-        /*
-        // Set up audio track for playback
-        audioTrack = AudioTrack.Builder()
-            .setAudioAttributes(getAudioTrackAttributes())
-            .setAudioFormat(
-                AudioFormat.Builder()
-                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT) // Note: forcing 16-bit here
-                    .setSampleRate(inputFormat.sampleRate)
-                    .setChannelMask(channelCountToChannelMask(inputFormat.channelCount))
-                    .build()
-            )
-            .setTransferMode(AudioTrack.MODE_STREAM)
-            .build()
-
-        //audioTrack = createAudioTrack()
-        viewModel.updateLog("PCM encoding is: ${inputFormat.pcmEncoding} and PCM16 = ${ENCODING_PCM_16BIT}")
-        viewModel.updateLog("Sample rate: ${inputFormat.sampleRate}, channels: ${inputFormat.channelCount}")
-        viewModel.updateLog("AudioSink format: ${inputFormat}, buf size: ${specifiedBufferSize}, output channels: ${outputChannels}")
-        isSinkInitialized = true
-
-         */
     }
 
     override fun play() {
@@ -304,12 +173,11 @@ class CopyAndPlayAudioSink(
         viewModel.updateLog("CopyAndPlayAudioSink: audio buffer discontinuity received, not processing.")
     }
 
-
     // If an internal buffer is implemented, make sure to drain internal buffers.
     // Currently there are no internal buffers. However, leverage this call to insert a fake
     // audio buffer for the encoder to know when the end of stream (EOS) is
     override fun playToEndOfStream() {
-        if (!handledEndOfStream && isSinkInitialized && drainToEndOfStream()) {
+        if (!handledEndOfStream && drainToEndOfStream()) {
             handledEndOfStream = true
             playPendingData()
 

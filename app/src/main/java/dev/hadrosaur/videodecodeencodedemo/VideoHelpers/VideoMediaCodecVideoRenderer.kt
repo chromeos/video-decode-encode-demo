@@ -25,10 +25,7 @@ import com.google.android.exoplayer2.util.MediaClock
 import com.google.android.exoplayer2.video.MediaCodecVideoRenderer
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioMixTrackMediaClock
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
-import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.LOG_VIDEO_EVERY_N_FRAMES
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
-import dev.hadrosaur.videodecodeencodedemo.Utils.maxOf
-import dev.hadrosaur.videodecodeencodedemo.Utils.minOf
 import java.nio.ByteBuffer
 
 
@@ -50,7 +47,6 @@ class VideoMediaCodecVideoRenderer(
         -1
     )  {
     private var droppedFrames = 0
-    private var lastPresentTime = 0L
 
     /**
      * Keep track of dropped frames
@@ -109,7 +105,6 @@ class VideoMediaCodecVideoRenderer(
     override fun onPositionReset(positionUs: Long, joining: Boolean) {
         super.onPositionReset(positionUs, joining)
         mediaClock.setPositionUs(positionUs)
-        mediaClock.updateLastProcessedFrame(positionUs)
     }
 
     /**
@@ -161,14 +156,7 @@ class VideoMediaCodecVideoRenderer(
      * Update media clock after each buffer processed
      */
     override fun onProcessedOutputBuffer(presentationTimeUs: Long) {
-        // Check if decoder is stuck
-        // TODO: is this needed for anything?
-        if (lastPresentTime == presentationTimeUs && lastPresentTime != 0L) {
-            viewModel.updateLog("Last present time is current present time. Frame is stuck! Time: ${presentationTimeUs}")
-        }
-        lastPresentTime = presentationTimeUs
-
-        mediaClock.updateLastProcessedFrame(presentationTimeUs)
+        mediaClock.updateLastProcessedVideoPosition(presentationTimeUs)
         super.onProcessedOutputBuffer(presentationTimeUs)
     }
 

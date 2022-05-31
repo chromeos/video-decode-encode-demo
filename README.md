@@ -6,6 +6,7 @@ This is a proof-of-concept demo. This code should not be used in production.
 ## About
 The aim of this project is to:
  * Demonstrate a workaround for the "frame-dropping problem" (see below)
+ * Demonstrate synchronizing multiple video track playback using a single main audio track
  * Provide proof-of-concept code showing that the Android APIs provide building blocks that can be
  used for performant video transcoding
  * Offer some open-source approaches to some transcoding tasks
@@ -50,8 +51,6 @@ advantages over using [MediaCodec](https://developer.android.com/reference/andro
  re-implement them. FYI, They are mostly found in the [MediaCodecRenderer.java](https://github.com/google/ExoPlayer/blob/release-v2/library/core/src/main/java/com/google/android/exoplayer2/mediacodec/MediaCodecRenderer.java)
  file of the ExoPlayer library.
  
-This project could be replicated using MediaCodec directly.
- 
 MediaCodec/[MediaMuxer](https://developer.android.com/reference/android/media/MediaMuxer) is used for encoding.
 
 ### OpenGL Filter
@@ -94,8 +93,8 @@ encoding logic is contained within `VideoEncoder.kt` and is a relatively straigh
 of [MediaMuxer](https://developer.android.com/reference/android/media/MediaMuxer), excepting the
 caveats below.
 
-6. Audio. Audio is decoded and decoded and can optionally be previewed (note there will be glitches
-in playback during decode).
+6. Audio. Audio is always decoded and will be encoded along with video. It can optionally be played
+out during decoding. See Audio Mixing below.
 
 For detailed architecture notes and diagrams, see [Architecture.md](docs/Architecture.md).
 <img alt="Detailed demo architecture showing main, exoplayer, audio buffers, video frames, preview, and encoding with internal structures including internal data flow." src="https://github.com/chromeos/video-decode-encode-demo/blob/master/docs/VideoDemo-04-Full.png" />
@@ -125,12 +124,45 @@ For detailed architecture notes and diagrams, see [Architecture.md](docs/Archite
  * Much logging code is intentionally left in the code. Uncommenting "viewModel.updateLog" lines
  will add logging to the in-app log area as well as the logcat messages.
 
+## Audio mixing
+If audio playback in enabled, all audio tracks will be mixed down to a single main [AudioTrack](https://developer.android.com/reference/android/media/AudioTrack).
+The presentation time from this main audio track will drive the playback of all videos by sync'ing
+each tracks MediaClock. On Android, if synchronized playback of multiple media files with audio is
+desired, it is necessary to manually mix them to a single source of truth as there is currently no
+way to strictly control audio playback start time and sync in the Android APIs.
+
+### Audio mixing details
+The `CopyAndPlayAudioSink`s for each media track will copy out audio buffers into an individual
+`AudioMixTrack`. These will be mixed into a new `AudioMainTrack` that will be used for playback and
+drive the decoding timeline. Audio playback speed (set to 1x in this demo) will therefore govern
+video decode/playback speed. If audio is disabled, videos will decode as fast as possible.
+
+The architecture of audio playback is made up of two sliding windows.
+ 1. a larger window ("Playback Window") for the main track corresponding to a circular array of
+mixed audio samples that expects to be at least partially filled so that smooth audio playback can
+proceed. As audio frames are played out, they are freed. The size of this array is bounded to
+restrict memory use.
+ 2. a smaller window ("Mix Window") whose end is aligned with the end of the Playback Window. This
+window is used to fill the Playback Window's array. As it moves forward, samples are mixed from all
+tracks with audio in the Mix Window's timeframe. The mixed samples are copied into the playback
+buffer.
+ 
+In a multi-track audio/video editing situation, some tracks may not be aligned and/or contain silent
+spaces, as shown in the following diagram. The Mixer should accommodate this. In this demo,
+`AudioUtils.mixAudioByteBuffer` mixes an array of `AudioBuffer`s into the main `AudioBuffer` based
+on presentation times, handling silences and different start times.
+
+This demo assumes audio will be decoded into 16-bit PCM stereo samples at 48kHz.
+
+<img alt="Breakdown of audio mixing logic" src="https://github.com/chromeos/video-decode-encode-demo/blob/master/docs/AudioMixdown.png" />
+
 ## Usage
 * Use the slider to set the frequency of preview frames to be shown (all the way to the left means
 preview every frame, all the way to the right means only show 1 frame in 30
 * Choose which of the 4 videos you wish to simultaneously decode
-* Click `Decode` to simultaneously decode all selected video streams
-* Toggle the sepia filter flag to engage the simple GL filter. These switch may be turned on and off 
+* Click `Decode` (or press 'd') to simultaneously decode all selected video streams
+* Toggle the "Play Audio" control to turn on/off audio playback
+* Toggle the sepia filter flag to engage a simple GL filter. These switch may be turned on and off 
 during the decode/encode
 * Turning on the "Encode 1st Stream" switch before beginning a decode will take the decoded frames
 from the first media stream and re-encode it (with filter effects if selected)

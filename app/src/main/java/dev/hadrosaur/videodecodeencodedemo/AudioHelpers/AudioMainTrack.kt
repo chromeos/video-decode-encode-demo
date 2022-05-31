@@ -16,16 +16,13 @@
 
 package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 
-import android.media.AudioAttributes.CONTENT_TYPE_MOVIE
-import android.media.AudioAttributes.USAGE_MEDIA
-import android.media.AudioFormat
-import android.media.AudioFormat.ENCODING_PCM_16BIT
 import android.media.AudioTrack
 import androidx.collection.CircularArray
 import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.logd
 import dev.hadrosaur.videodecodeencodedemo.Utils.minOf
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.collections.ArrayList
 
 class AudioMainTrack {
     private val audioMixTracks = ArrayList<AudioMixTrack>()
@@ -43,34 +40,24 @@ class AudioMainTrack {
     private var state = STATE.STOPPED
     private var audioBufferCounter = 0 // monotonically increasing counter
 
-    // Note: CircularArray implementation auto-grows but avoid this if possible below
+    private val UNDERRUN_TOLERANCE = 1 // How many underruns can occur before logging
+    private var lastUnderrunCount = 0
+    private var lastUnderrunCountTimeMs = 0L
+
+    private var isMuted = false
+
+    // Note: CircularArray implementation will auto-grow, avoid this situation if possible below
     private val audioBuffer = CircularArray<AudioBuffer>(MAX_BUFFER_LENGTH)
 
     init {
-        audioTrack = AudioTrack.Builder()
-                .setAudioAttributes(
-                    android.media.AudioAttributes.Builder()
-                        .setUsage(ATTRIB_USAGE)
-                        .setContentType(ATTRIB_CONTENT)
-                        .build()
-                )
-                .setAudioFormat(
-                    AudioFormat.Builder()
-                        .setEncoding(ENCODING)
-                        .setSampleRate(SAMPLE_RATE)
-                        .setChannelMask(channelCountToChannelMask(CHANNEL_COUNT))
-                        .build()
-                )
-                .setTransferMode(AudioTrack.MODE_STREAM)
-                .build()
+        // Note: AudioMainTrack assumes audio samples are 16-bit PCM at 48kHz. It does not currently
+        // respect the input format of the AudioSink. This could be a problem on some devices
+        audioTrack = createPcmAudioTrack()
     }
 
     companion object {
         val BUFFER_SIZE = 4096
         val BUFFER_DURATION = bytesToDurationUs(BUFFER_SIZE, CHANNEL_COUNT, BYTES_PER_FRAME_PER_CHANNEL, SAMPLE_RATE)
-        val ENCODING = ENCODING_PCM_16BIT
-        val ATTRIB_USAGE = USAGE_MEDIA
-        val ATTRIB_CONTENT = CONTENT_TYPE_MOVIE
 
         /**
          * Create 4096 byte (21333uS) silent audio sample
@@ -81,6 +68,12 @@ class AudioMainTrack {
             buffer.order(ByteOrder.nativeOrder())
             return buffer
         }
+    }
+
+    fun reset() {
+        stop()
+        playheadUs = 0L
+        audioMixTracks.clear()
     }
 
     fun addAudioChunk(chunkToAdd: AudioBuffer) {
@@ -94,86 +87,77 @@ class AudioMainTrack {
         return audioMixTracks[streamNum]
     }
 
-    fun bufferToUs(bufferToPositionUs: Long) {
-
-        // This is where the mixing from incoming AudioMixTracks down to the main track is done
-        // This is a "rolling" playback/preview which means all of the buffers from all the tracks
-        // are not nicely laid out, we cannot do a simple mix-down. We must do an on-the-fly mix.
-
-        // For the period playheadUs -> bufferToPostionUs, look at each AudioMixTrack for buffers
-        // with the correct presentation time. Mix down those
-        // chunks into 4096 byte / 21333L uS chunks
-
-        // Apply a gain function of track_output_volume = mix_volume / #_of_tracks_with_audio at any
-        // given chunk in the main mix. So if 4 tracks have a audio for a given chunk, they will
-        // each be mixed in at 25% gain.
-
-        // Assume each AudioMixTrack's chunks are in order
-
-        // Create a series of BUFFER_SIZE byte audio buffers for this range and mix down all the mix
-        // tracks into it
+    // Create an empty audio buffer and mix down all mix tracks into it up to bufferToPositionUs.
+    // This is a "rolling" mix-down, mixing from arbitrarily aligned AudioMixTracks down into the
+    // playback buffer on-the-fly.
+    // Gain function: output_volume = mix_volume / #_of_tracks, eg. 4 tracks == 25% gain each.
+    fun bufferAndMixToUs(bufferToPositionUs: Long) {
         val bufferToDurationUs = bufferToPositionUs - playheadUs
         val bufferToBytes = usToBytes(bufferToDurationUs, CHANNEL_COUNT, BYTES_PER_FRAME_PER_CHANNEL, SAMPLE_RATE)
-        val numMainAudioBuffers = (bufferToBytes + BUFFER_SIZE - 1) / BUFFER_SIZE // Ceil
+        val numMainAudioBuffersRequired = (bufferToBytes + BUFFER_SIZE - 1) / BUFFER_SIZE // Ceil
         var bufferingPlayheadUs = playheadUs
 
-        for (i in 0 until numMainAudioBuffers) {
-            var chunkDurationUs = bufferToPositionUs - bufferingPlayheadUs
+        for (i in 0 until numMainAudioBuffersRequired) {
+            var chunkDurationUs = bufferToPositionUs - bufferingPlayheadUs // Remaining time
+            // Don't buffer more than main audio buffer's duration
             if (chunkDurationUs > BUFFER_DURATION) {
                 chunkDurationUs = BUFFER_DURATION
             }
             val chunkSize = usToBytes(chunkDurationUs, CHANNEL_COUNT, BYTES_PER_FRAME_PER_CHANNEL, SAMPLE_RATE)
 
+            // Create an empty buffer
             val newAudioBuffer = AudioBuffer (
                 createEmptyAudioSample(),
                 audioBufferCounter++,
                 bufferingPlayheadUs,
                 chunkDurationUs,
                 chunkSize)
-            newAudioBuffer.buffer.limit(chunkSize) // In case this is not a full buffer
+            newAudioBuffer.buffer.limit(chunkSize) // May not be a full buffer
 
-            // logd("New main buffer: duration: ${chunkDurationUs} buffersize: ${BUFFER_SIZE} bufferduration: ${BUFFER_DURATION} chunk size: ${chunkSize}, remaining: ${newAudioBuffer.buffer.remaining()}")
             // Find groups of AudioBuffers from each mix track with audio within the buffer's range
             // Note: there may be mix tracks without any audio in this time range
             val AudioBufferArraysInRange = ArrayList<CircularArray<AudioBuffer>>()
             for (mixTrack in audioMixTracks) {
-                // logd("Popping chunks from ${bufferingPlayheadUs} to ${bufferingPlayheadUs + chunkDurationUs}")
                 val AudioBufferArray = mixTrack.popChunksFromTo(bufferingPlayheadUs, bufferingPlayheadUs + chunkDurationUs)
                 if (!AudioBufferArray.isEmpty) {
                     AudioBufferArraysInRange.add(AudioBufferArray)
                 }
             }
 
-            // Calculate the first byte location mixed to. This might not be the beginning of the
-            // buffer. The first track cannot just mix down directly to the beginning of the buffer
-            // because there may be silence at the beginning of first track and audio for other mix
-            // tracks. This will be unknown until the track is fully mixed
-            var earliestPositionMixed = newAudioBuffer.buffer.limit()
-            val numTracksToMix = AudioBufferArraysInRange.size
+            // Gain: apply a simple gain by mixing in tracks at 1/X of their volume, where X is the
+            // the total number of mix tracks. Note: If a track is silent, this will still reduce
+            // the volume of all other tracks. Normalization could be done here instead.
+            val gain = 1F/audioMixTracks.size
 
             for (AudioBufferArray in AudioBufferArraysInRange) {
-                // Mix the audiobuffer array to the main track with gain adjustment
-                val mixStartPos = mixAudioByteBuffer(newAudioBuffer, AudioBufferArray, 1F/numTracksToMix)
-                earliestPositionMixed = earliestPositionMixed.coerceAtMost(mixStartPos)
+                // Mix the audiobuffer array into the main track with gain adjustment
+                mixAudioByteBuffer(newAudioBuffer, AudioBufferArray, gain)
             }
 
-            // Add newly mixed audio buffer if any mix tracks contained audio
-            if (numTracksToMix > 0) {
-                // logd("New remain: ${newAudioBuffer.buffer.remaining()}, New pos: ${newAudioBuffer.buffer.position()}, New limit: ${newAudioBuffer.buffer.limit()}. Earliest mixed: ${earliestPositionMixed}")
-                newAudioBuffer.buffer.position(earliestPositionMixed) // Adjust start
-                addAudioChunk(newAudioBuffer)
-            }
+            // Add the now fully mixed main audio buffer for playback
+            addAudioChunk(newAudioBuffer)
 
-            //logd("New remain: ${newAudioBuffer.buffer.remaining()}, New pos: ${newAudioBuffer.buffer.position()}, New limit: ${newAudioBuffer.buffer.limit()}")
             bufferingPlayheadUs += chunkDurationUs
         } // For all main audio buffers in this buffering duration
-
     }
 
+    fun advanceMixTrackMediaClocks() {
+        for (mixTrack in audioMixTracks) {
+            mixTrack.mediaClock.tick()
+        }
+    }
     fun updateMixTrackMediaClocks(newPositionUs: Long) {
         for (mixTrack in audioMixTracks) {
-            mixTrack.mediaClock.updatePositionFromMain(newPositionUs)
+            mixTrack.mediaClock.updateRelativePosition(newPositionUs)
         }
+    }
+
+    fun getEarliestMediaClockTime() : Long {
+        var earliestUs = Long.MAX_VALUE
+        for (mixTrack in audioMixTracks) {
+            earliestUs = minOf(earliestUs, mixTrack.mediaClock.positionUs)
+        }
+        return earliestUs
     }
 
     /**
@@ -181,72 +165,101 @@ class AudioMainTrack {
      *
      * Return Long.MAX_VALUE if no audio yet
      */
-    fun getFirstPresentationTimeUs() : Long {
+    fun getFirstAudioPresentationTimeUs() : Long {
         var earliestUs = Long.MAX_VALUE
         for (mixTrack in audioMixTracks) {
             val mixTrackEarliestUs = mixTrack.getFirstPresentationTimeUs()
-            earliestUs = earliestUs.coerceAtMost(mixTrackEarliestUs) // Math.min
+            earliestUs = minOf(earliestUs, mixTrackEarliestUs)
         }
         return earliestUs
     }
 
     fun start() {
-        playheadUs = getFirstPresentationTimeUs()
-
+        playheadUs = getFirstAudioPresentationTimeUs()
         state = STATE.PLAYING
         audioTrack.play()
         playMainAudio()
     }
 
+    fun pause() {
+        state = STATE.PAUSED
+        audioTrack.pause()
+    }
+
     fun stop() {
         state = STATE.STOPPED
         audioTrack.stop()
-    }
+        playheadUs = 0L
 
-    fun playMainAudio() {
-
-
-        val audioTrackBufferSize = audioTrack.bufferSizeInFrames
-
-        while (state == STATE.PLAYING) {
-            // If no audio in the mix tracks yet, playhead is Long.MAX_VALUE: don't buffer or play
-            if (playheadUs < Long.MAX_VALUE){
-                bufferToUs(playheadUs + DEFAULT_BUFFERING_DURATION_US)
-            } else {
-                playheadUs = getFirstPresentationTimeUs()
-                continue
-            }
-
-            // Play whatever has been mixed-down
-            while (!audioBuffer.isEmpty) {
-                // We have some data
-                val chunk = audioBuffer.popFirst()
-                val buffer = chunk.buffer
-                var chunkTimePlayedUs = 0L
-
-                // audioTrackBufferSize may be less than bytesToPlay. Play one chunk at a time
-                chunkTimePlayedUs += playBytes(buffer, audioTrackBufferSize)
-
-                // Update the main track playhead and the media clock for the mix tracks
-                if (chunkTimePlayedUs > 0) {
-                    // logd("MAIN OLD playhead: ${playheadUs}, chunkPres: ${chunk.presentationTimeUs}, time played: ${chunkTimePlayedUs}")
-                    playheadUs = chunk.presentationTimeUs + chunkTimePlayedUs
-                    updateMixTrackMediaClocks(playheadUs)
-                }
-            }
+        for (mixTrack in audioMixTracks) {
+            mixTrack.reset()
+            audioBuffer.clear()
         }
     }
 
-    fun playBytes(buffer: ByteBuffer, maxFrames: Int) : Long {
+    fun mute(shouldMute: Boolean = false) {
+        isMuted = shouldMute
+        for (mixTrack in audioMixTracks) {
+            mixTrack.mediaClock.setRunAsFastAsPossible(isMuted)
+        }
+    }
+
+    fun playMainAudio() {
+        var firstAudioPresentationTime = 0L
+
+        while (state == STATE.PLAYING) {
+            // Don't start playing until there is audio in the mix tracks
+            // ie. (playhead < Long.MAX_VALUE)
+            if (playheadUs < Long.MAX_VALUE){
+                bufferAndMixToUs(playheadUs + DEFAULT_BUFFERING_DURATION_US)
+            } else {
+                // Check if there is any audio yet, save the start presentation time for later
+                firstAudioPresentationTime = getFirstAudioPresentationTimeUs()
+                playheadUs = firstAudioPresentationTime
+            }
+
+            // Loops and plays out whatever has already been mixed-down
+            while (!audioBuffer.isEmpty) {
+                val chunk = audioBuffer.popFirst()
+                val buffer = chunk.buffer
+
+                if (isMuted) {
+                    // If the track is muted, the clock is being driven by video frames being
+                    // processed. This can get stuck on first frame so we manually tick if needed.
+                    // TODO: can we avoid this check every loop when muted.
+                    playheadUs = getEarliestMediaClockTime()
+                    if (playheadUs == firstAudioPresentationTime) {
+                        // We are at the start. Bump the clock forward
+                        advanceMixTrackMediaClocks()
+                        playheadUs = getEarliestMediaClockTime()
+                        updateMixTrackMediaClocks(playheadUs)
+                    }
+                } else {
+                    // Play the audio
+                    val bytesPlayed = playBytes(buffer)
+                    val timePlayedUs = bytesToDurationUs(bytesPlayed)
+
+                    // Update the main track playhead and the media clock for the mix tracks
+                    if (timePlayedUs > 0) {
+                        playheadUs = chunk.presentationTimeUs + timePlayedUs
+                    }
+                    updateMixTrackMediaClocks(playheadUs)
+                }
+            }
+
+            // checkForUnderruns() // main should not underrun, skip check for performance
+        } // While playing
+    }
+
+    // Writes the given buffer to the audioTrack, returns bytes actually played
+    fun playBytes(buffer: ByteBuffer) : Int {
+        val audioTrackBufferSize = audioTrack.bufferSizeInFrames
         var bytesToPlay: Int
-        var timePlayedUs = 0L
+        var bytesPlayed = 0
 
         while (buffer.remaining() > 0) {
-            bytesToPlay = minOf(buffer.remaining(), maxFrames)
-            //logd("MAIN AUDIO: remaining: ${buffer.remaining()}, toPlay: ${bytesToPlay}, buffersize: ${audioTrack.bufferSizeInFrames}")
-            val bytesPlayed = audioTrack.write(buffer, bytesToPlay, AudioTrack.WRITE_BLOCKING)
-            timePlayedUs += bytesToDurationUs(bytesPlayed)
-             logd("MAIN AUDIO played ${timePlayedUs/1000}ms, Tried: ${bytesToPlay} and played: ${bytesPlayed}")
+            bytesToPlay = minOf(buffer.remaining(), audioTrackBufferSize)
+            bytesPlayed += audioTrack.write(buffer, bytesToPlay, AudioTrack.WRITE_BLOCKING)
 
             // If AudioTrack.write did not succeed, this loop can get stuck. Just exit.
             if (bytesPlayed <= 0) {
@@ -255,6 +268,20 @@ class AudioMainTrack {
             }
         }
 
-        return timePlayedUs
+        return bytesPlayed
+    }
+
+    fun checkForUnderruns() {
+        val now = System.currentTimeMillis()
+        if (now - lastUnderrunCountTimeMs <= 1000L) {
+            return
+        } else {
+            val newUnderruns = audioTrack.underrunCount - lastUnderrunCount
+            if (newUnderruns > UNDERRUN_TOLERANCE) {
+                logd("AUDIO UNDERRUNS : ${newUnderruns} in ${now - lastUnderrunCountTimeMs}ms")
+            }
+            lastUnderrunCount = audioTrack.underrunCount
+            lastUnderrunCountTimeMs = now
+        }
     }
 }
