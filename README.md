@@ -6,10 +6,9 @@ This is a proof-of-concept demo. This code should not be used in production.
 ## About
 The aim of this project is to:
  * Demonstrate a workaround for the "frame-dropping problem" (see below)
- * Demonstrate synchronizing multiple video track playback using a single main audio track
+ * Demonstrate synchronizing playback of multiple video tracks using a single main audio track
  * Provide proof-of-concept code showing that the Android APIs provide building blocks that can be
  used for performant video transcoding
- * Offer some open-source approaches to some transcoding tasks
  
 The demo app decodes 4, 30-second 1080p video streams without frame-dropping via a 
 SurfaceTexture. A simple GL filter (Sepia) is provided as well as sample export/encoding code. 
@@ -28,7 +27,7 @@ This logic is not controllable or visible before Android 10 (Q) when the
 [allow-frame-drop](https://developer.android.com/reference/android/media/MediaCodec#using-an-output-surface)
 flag was introduced.
 
-This works for the vast majority of media decoding cases and offers performance boosts and battery
+This works for the majority of media decoding cases and offers performance boosts and battery
 savings. However, for video transcoding/editing use-cases, this either limits the decoding speed to
 the device's refresh rate, or means frames will be lost. This can result in incorrect encodes,
 synchronization issues between tracks, and glitches in effects and transitions.
@@ -93,8 +92,8 @@ encoding logic is contained within `VideoEncoder.kt` and is a relatively straigh
 of [MediaMuxer](https://developer.android.com/reference/android/media/MediaMuxer), excepting the
 caveats below.
 
-6. Audio. Audio is always decoded and will be encoded along with video. It can optionally be played
-out during decoding. See Audio Mixing below.
+6. Audio. Audio tracks are always decoded and will be encoded along with video if encoding is
+selected. Audio can optionally be played out during decoding. See Audio Mixing below.
 
 For detailed architecture notes and diagrams, see [Architecture.md](docs/Architecture.md).
 <img alt="Detailed demo architecture showing main, exoplayer, audio buffers, video frames, preview, and encoding with internal structures including internal data flow." src="https://github.com/chromeos/video-decode-encode-demo/blob/master/docs/VideoDemo-04-Full.png" />
@@ -126,35 +125,34 @@ For detailed architecture notes and diagrams, see [Architecture.md](docs/Archite
 
 ## Audio mixing
 If audio playback in enabled, all audio tracks will be mixed down to a single main [AudioTrack](https://developer.android.com/reference/android/media/AudioTrack).
-The presentation time from this main audio track will drive the playback of all videos by sync'ing
-each tracks MediaClock. On Android, if synchronized playback of multiple media files with audio is
-desired, it is necessary to manually mix them to a single source of truth as there is currently no
-way to strictly control audio playback start time and sync in the Android APIs.
+The presentation time from this main audio track will drive the playback of all videos by syncing
+with each track's MediaClock. On Android, if synchronized playback of multiple media files with
+audio is desired, it is necessary to manually mix them down to a single source of truth.
 
 ### Audio mixing details
-The `CopyAndPlayAudioSink`s for each media track will copy out audio buffers into an individual
+The `CopyAndPlayAudioSinks` for each media track will copy out audio buffers into an individual
 `AudioMixTrack`. These will be mixed into a new `AudioMainTrack` that will be used for playback and
 drive the decoding timeline. Audio playback speed (set to 1x in this demo) will therefore govern
 video decode/playback speed. If audio is disabled, videos will decode as fast as possible.
 
-The architecture of audio playback is made up of two sliding windows.
- 1. a larger window ("Playback Window") for the main track corresponding to a circular array of
+The architecture of audio playback is made up of two sliding windows:
+ 1. A larger window ("Playback Window") for the main track corresponding to a circular array of
 mixed audio samples that expects to be at least partially filled so that smooth audio playback can
 proceed. As audio frames are played out, they are freed. The size of this array is bounded to
 restrict memory use.
- 2. a smaller window ("Mix Window") whose end is aligned with the end of the Playback Window. This
+ 2. A smaller window ("Mix Window") whose end is aligned with the end of the Playback Window. This
 window is used to fill the Playback Window's array. As it moves forward, samples are mixed from all
 tracks with audio in the Mix Window's timeframe. The mixed samples are copied into the playback
 buffer.
  
 In a multi-track audio/video editing situation, some tracks may not be aligned and/or contain silent
 spaces, as shown in the following diagram. The Mixer should accommodate this. In this demo,
-`AudioUtils.mixAudioByteBuffer` mixes an array of `AudioBuffer`s into the main `AudioBuffer` based
-on presentation times, handling silences and different start times.
+`AudioUtils::mixAudioByteBuffer` mixes an array of `AudioBuffers` into the main `AudioBuffer` based
+on presentation times, while handling silences and different start times.
 
 This demo assumes audio will be decoded into 16-bit PCM stereo samples at 48kHz.
 
-<img alt="Breakdown of audio mixing logic" src="https://github.com/chromeos/video-decode-encode-demo/blob/master/docs/AudioMixdown.png" />
+<img alt="Breakdown of audio mixing logic" src="docs/AudioMixdown.png" />
 
 ## Usage
 * Use the slider to set the frequency of preview frames to be shown (all the way to the left means
