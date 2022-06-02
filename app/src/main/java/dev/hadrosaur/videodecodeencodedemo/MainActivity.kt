@@ -29,9 +29,14 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.android.exoplayer2.*
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
+import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioMainTrack
+import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioMixTrack
 import dev.hadrosaur.videodecodeencodedemo.Utils.*
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoSurfaceManager
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 const val NUMBER_OF_STREAMS = 4
 
@@ -57,7 +62,10 @@ class MainActivity : AppCompatActivity() {
     private var videoSurfaceManagersToDelete = ArrayList<VideoSurfaceManager>()
 
     // Managers for audio buffers used for encoding
-    private var audioBufferManagers = ArrayList<AudioBufferManager>()
+    private var encodeAudioBufferManagers = ArrayList<AudioBufferManager>()
+
+    // The main audio mixdown track
+    private var audioMainTrack = AudioMainTrack()
 
     // Audio / Video encoders
     var audioVideoEncoders = ArrayList<AudioVideoEncoder>()
@@ -89,8 +97,8 @@ class MainActivity : AppCompatActivity() {
         releaseEncoders()
 
         // Stream 1
-        audioBufferManagers.add(AudioBufferManager())
-        audioVideoEncoders.add(AudioVideoEncoder(viewModel, videoSurfaceManagers[0].renderer.frameLedger, audioBufferManagers[0]))
+        encodeAudioBufferManagers.add(AudioBufferManager())
+        audioVideoEncoders.add(AudioVideoEncoder(viewModel, videoSurfaceManagers[0].renderer.frameLedger, encodeAudioBufferManagers[0]))
 
         // Stream 2 - 4 not currently permitted to encode
 
@@ -173,7 +181,7 @@ class MainActivity : AppCompatActivity() {
 
     // Empty and free current arrays encoders and audio managers
     private fun releaseEncoders() {
-        audioBufferManagers.clear()
+        encodeAudioBufferManagers.clear()
         for (encoder in audioVideoEncoders) {
             encoder.release()
         }
@@ -258,8 +266,10 @@ class MainActivity : AppCompatActivity() {
                 encodeStream -> switch_encode.isSelected = encodeStream })
         switch_audio.setOnCheckedChangeListener {
                 _, isChecked -> viewModel.setPlayAudio(isChecked) }
-        viewModel.getPlayAudio().observe(this, {
-                playAudio -> switch_audio.isSelected = playAudio })
+        viewModel.getPlayAudio().observe(this) { playAudio ->
+            switch_audio.isSelected = playAudio
+            audioMainTrack.mute(!playAudio)
+        }
 
         // Set up cancel button
         button_cancel.isEnabled = false // Will be the opposite of Decode button
@@ -297,7 +307,7 @@ class MainActivity : AppCompatActivity() {
 
                     // Decode and Encode
                     beginVideoDecode(VIDEO_RES_1, videoSurfaceManagers[0], 0,
-                        audioVideoEncoders[0], audioBufferManagers[0])
+                        audioVideoEncoders[0], encodeAudioBufferManagers[0])
                 } else {
                     // Decode only
                     beginVideoDecode(VIDEO_RES_1, videoSurfaceManagers[0], 0)
@@ -317,6 +327,10 @@ class MainActivity : AppCompatActivity() {
             // Stream 4
             if (viewModel.getDecodeStream4Val()) {
                 beginVideoDecode(VIDEO_RES_4, videoSurfaceManagers[3], 3)
+            }
+
+            GlobalScope.launch(Dispatchers.Default) {
+                audioMainTrack.start()
             }
         }
 
@@ -379,21 +393,27 @@ class MainActivity : AppCompatActivity() {
      * internal decoding surfaces
      * @param streamNumber Stream number (0 - 3)
      * @param audioVideoEncoder Optional AudioVideoEncoder (if encoding is desired)
-     * @param audioBufferManager Optional AudioBufferManager (if encoding is desired)
+     * @param encodeAudioBufferManager Optional AudioBufferManager (if encoding is desired)
      */
     // ,
     // TODO: clean up line wrapping
     private fun beginVideoDecode(inputVideoRawId: Int,
-                         videoSurfaceManager: VideoSurfaceManager,
-                         streamNumber: Int,
-                         audioVideoEncoder: AudioVideoEncoder? = null,
-                         audioBufferManager: AudioBufferManager? = null) {
+                                 videoSurfaceManager: VideoSurfaceManager,
+                                 streamNumber: Int,
+                                 audioVideoEncoder: AudioVideoEncoder? = null,
+                                 encodeAudioBufferManager: AudioBufferManager? = null) {
         // Keep track of active decodes to know when to re-enable decode button/clean up surfaces
         activeDecodes++
 
+        // Set up audio track for this stream
+        val startTimeUS = 0L
+        val audioMixTrack = AudioMixTrack(startTimeUS)
+        audioMainTrack.addMixTrack(streamNumber, audioMixTrack)
+
         // Setup custom video and audio renderers
+        // Here is where you could set a start time relative to master timeline
         val renderersFactory = CustomExoRenderersFactory(this@MainActivity, viewModel,
-            videoSurfaceManager, streamNumber, audioBufferManager)
+            videoSurfaceManager, streamNumber, audioMixTrack, encodeAudioBufferManager)
 
         // Reduce default buffering to MIN_DECODE_BUFFER_MS to prevent over allocation
         // when processing multiple large streams
@@ -424,8 +444,8 @@ class MainActivity : AppCompatActivity() {
             videoSurfaceManager.initialize(exoPlayers[streamNumber]!!)
         }
 
-        // Note: the decoder uses a custom MediaClock that goes as fast as possible so this speed
-        // value is not used, but required by the ExoPlayer API
+        // Note: the decoder uses a custom MediaClock so this speed
+        // value is not used, but it is required by the ExoPlayer API
         exoPlayers[streamNumber]?.setPlaybackParameters(PlaybackParameters(1f))
 
         // Add a listener for when the video is done
@@ -481,6 +501,7 @@ class MainActivity : AppCompatActivity() {
                 markSurfacesForDeletion()
                 initializeSurfaces()
             }
+            audioMainTrack.reset()
         }
     }
 
@@ -523,7 +544,7 @@ class MainActivity : AppCompatActivity() {
         if (ContextCompat.checkSelfPermission(this,
             Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                 // Launch the permission request for WRITE_EXTERNAL_STORAGE
-                requestPermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                requestPermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE, )
                 return false
         }
         return true

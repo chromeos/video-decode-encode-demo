@@ -18,8 +18,6 @@ package dev.hadrosaur.videodecodeencodedemo.VideoHelpers
 
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
-import dev.hadrosaur.videodecodeencodedemo.Utils.getMax
-import dev.hadrosaur.videodecodeencodedemo.Utils.getMin
 
 /**
  * Keep track of FPS stats
@@ -77,15 +75,15 @@ class FpsStats(val viewModel: MainViewModel, val streamNumber: Int) {
 
 
             // Calculate stats for this frame
-            minFps = getMin(minFps, currentFrameFps.toInt())
-            maxFps = getMax(maxFps, currentFrameFps.toInt())
+            minFps = minOf(minFps, currentFrameFps.toInt())
+            maxFps = maxOf(maxFps, currentFrameFps.toInt())
 
             if (currentFrameFps < CHOPPINESS_CUTOFF) {
                 numChoppyFrames++
             }
 
             // Place this frame's fps in the bucket
-            val currentfpsBucketIndex = getMin(currentFrameFps.toInt(), MAX_FPS_STATS - 1) / FPS_BUCKET_SIZE
+            val currentfpsBucketIndex = minOf(currentFrameFps.toInt(), MAX_FPS_STATS - 1) / FPS_BUCKET_SIZE
             fpsBuckets[currentfpsBucketIndex]++
 
 
