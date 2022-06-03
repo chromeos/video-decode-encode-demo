@@ -30,9 +30,24 @@ import java.nio.ByteBuffer
  */
 class AudioBuffer(
     val buffer: ByteBuffer,
-    val id: Int,
+    var id: Int,
     var presentationTimeUs: Long,
-    val lengthUs: Long,
-    val size: Int,
-    val isLastBuffer: Boolean = false
-)
+    var lengthUs: Long,
+    var size: Int,
+    var isLastBuffer: Boolean = false) {
+
+    /**
+     * Duplicate the Audio buffer, making a deep copy of the ByteBuffer
+     */
+    fun cloneAudioBuffer() : AudioBuffer {
+        val clone = AudioBuffer(
+                cloneByteBuffer(buffer),
+                id,
+                presentationTimeUs,
+                lengthUs,
+                buffer.remaining(),
+                isLastBuffer
+        )
+        return clone
+    }
+}

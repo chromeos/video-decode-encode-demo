@@ -159,6 +159,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Play Audio"
+        android:checked="false"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/switch_filter"
         app:layout_constraintTop_toTopOf="@+id/switch_filter" />

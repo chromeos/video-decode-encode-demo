@@ -268,10 +268,9 @@ class MainActivity : AppCompatActivity() {
                 encodeStream -> switch_encode.isSelected = encodeStream })
         switch_audio.setOnCheckedChangeListener {
                 _, isChecked -> viewModel.setPlayAudio(isChecked) }
-        viewModel.getPlayAudio().observe(this) { playAudio ->
-            switch_audio.isSelected = playAudio
-            audioMainTrack.mute(!playAudio)
-        }
+<<<<<<< HEAD
+        viewModel.getPlayAudio().observe(this, {
+                playAudio -> switch_audio.isSelected = playAudio })
         switch_loop.setOnCheckedChangeListener {
                 _, isChecked -> viewModel.setLoop(isChecked) }
         viewModel.getLoop().observe(this, {
@@ -294,6 +293,11 @@ class MainActivity : AppCompatActivity() {
                     decodeFinished()
                 }
             }
+=======
+        viewModel.getPlayAudio().observe(this) { playAudio ->
+            switch_audio.isSelected = playAudio
+            audioMainTrack.mute(!playAudio)
+>>>>>>> master
         }
 
         // Set up cancel button
@@ -490,8 +494,13 @@ class MainActivity : AppCompatActivity() {
         exoPlayers[streamNumber]?.setMediaSource(videoSource)
         exoPlayers[streamNumber]?.prepare()
 
+<<<<<<< HEAD
+        exoPlayers[streamNumber]?.repeatMode =
+            if (switch_loop.isChecked) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+=======
         // Clear FPS stats
         FpsStats.get().reset()
+>>>>>>> master
 
         exoPlayers[streamNumber]?.playWhenReady = true
     }

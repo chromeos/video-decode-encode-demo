@@ -92,7 +92,11 @@ class VideoMediaCodecAudioRenderer (
             val currentBPS =
                 decodeCounter / ((System.currentTimeMillis() - startTime) / 1000.0)
             val bpsString = String.format("%.2f", currentBPS)
+<<<<<<< HEAD
+            // viewModel.updateLog("Decoding audio Stream ${streamNumber + 1}: ${bpsString}bps @buffer $decodeCounter.")
+=======
             viewModel.updateLog("Decoding audio Stream ${streamNumber + 1}: ${bpsString} buf/sec @buffer $decodeCounter.")
+>>>>>>> master
         }
 
         super.onProcessedOutputBuffer(presentationTimeUs)

@@ -28,6 +28,7 @@
         android:layout_height="wrap_content"
         android:layout_marginEnd="16dp"
         android:text="Play Audio"
+        android:checked="false"
         app:layout_constraintEnd_toStartOf="@+id/button_start_decode"
         app:layout_constraintStart_toEndOf="@+id/switch_filter"
         app:layout_constraintTop_toTopOf="@+id/switch_filter" />

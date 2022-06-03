@@ -34,7 +34,7 @@ class InternalSurfaceTextureRenderer(val viewModel: MainViewModel, glManager: Gl
     private val internalSurfaceTexture: InternalSurfaceTexture = InternalSurfaceTexture(viewModel, glManager, displaySurface, handler, this)
     private var onFrameAvailableCounter = 0
     private var doEncode = false
-    private val stats = FpsStats(viewModel, streamNumber)
+    private val stats = FpsStats.get()
 
     // The internal Surface from the SurfaceTexture to be decoded to, used by ExoPlayer
     var decoderSurface: Surface? = null
@@ -77,7 +77,7 @@ class InternalSurfaceTextureRenderer(val viewModel: MainViewModel, glManager: Gl
                 // Frame matched, increment the frames rendered counter
                 val framesRendered = frameLedger.framesRendered.incrementAndGet()
 
-                stats.updateStats()
+                viewModel.updateLog(stats.updateStatsAndGetAll(streamNumber))
 
                 // If this frame matches the requested draw frequency, or the frequency is set to
                 // draw every frame, draw the frame to the preview surface
