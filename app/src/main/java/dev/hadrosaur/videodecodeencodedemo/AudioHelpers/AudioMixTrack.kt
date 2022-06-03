@@ -66,7 +66,7 @@ class AudioMixTrack(startTimeUs: Long = 0L) {
         while (!audioBuffer.isEmpty) {
             val chunk = audioBuffer.popFirst()
             if (chunk == null) {
-                logd("popChunksFromTo: Chunk is null, exiting")
+                // logd("popChunksFromTo: Chunk is null, exiting")
                 break
             }
             var chunkStartUs = chunk.presentationTimeUs;

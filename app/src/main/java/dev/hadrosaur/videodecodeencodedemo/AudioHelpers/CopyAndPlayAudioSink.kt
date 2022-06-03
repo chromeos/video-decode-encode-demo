@@ -187,7 +187,7 @@ class CopyAndPlayAudioSink(
                 audioBufferManager.audioDecodeComplete = true
             }
 
-            viewModel.updateLog("All audio buffers handled for Stream ${streamNum + 1}. # == ${numBuffersHandled}")
+            // viewModel.updateLog("All audio buffers handled for Stream ${streamNum + 1}. # == ${numBuffersHandled}")
         }
     }
 
