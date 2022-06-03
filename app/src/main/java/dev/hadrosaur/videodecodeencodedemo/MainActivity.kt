@@ -32,6 +32,7 @@ import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioMainTrack
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioMixTrack
 import dev.hadrosaur.videodecodeencodedemo.Utils.*
+import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.FpsStats
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoSurfaceManager
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.Dispatchers
@@ -464,6 +465,9 @@ class MainActivity : AppCompatActivity() {
         exoPlayers[streamNumber]?.setMediaSource(videoSource)
         exoPlayers[streamNumber]?.prepare()
 
+        // Clear FPS stats
+        FpsStats.get().reset()
+
         exoPlayers[streamNumber]?.playWhenReady = true
     }
 
@@ -552,8 +556,15 @@ class MainActivity : AppCompatActivity() {
 
     // Convenience function to write to on-screen log and logcat log simultaneously
     fun updateLog(message: String, clear: Boolean = false) {
+        // Don't log empty strings
+        if (!clear && message.equals("")) {
+            return
+        }
+
+        // Output to logcat
         logd(message)
 
+        // Clear and/or update on-screen log
         runOnUiThread {
             if (clear)
                 text_log.text = ""

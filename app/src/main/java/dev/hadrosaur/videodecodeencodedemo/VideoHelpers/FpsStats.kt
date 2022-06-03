@@ -16,20 +16,19 @@
 
 package dev.hadrosaur.videodecodeencodedemo.VideoHelpers
 
+import androidx.annotation.MainThread
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
+import dev.hadrosaur.videodecodeencodedemo.NUMBER_OF_STREAMS
 
 /**
  * Keep track of FPS stats
  *
- * Uses the ViewModel to log periodically
+ * A singleton logging class for FPS stats
  */
-class FpsStats(val viewModel: MainViewModel, val streamNumber: Int) {
-    // Stats counters
-    private var fpsDecodeCounter = 0
-    private var fpsTotalDecodeCounter = 0
-    private var fpsLastMeasuredTime = 0L
-    private var fpsLastLoggedTime = 0L
+class FpsStats() {
+    // TODO: is there a useful/elegant way of getting rid of this global constant
+    val NUM_STREAMS = NUMBER_OF_STREAMS
 
     // Set up an int array for fps stats to get an idea of choppiness. Ex. 0-55fps+, 12 buckets
     // 0-4, 5-9, 10-14, 15-19, 20-24 . . . 50-54, 55+
@@ -37,86 +36,213 @@ class FpsStats(val viewModel: MainViewModel, val streamNumber: Int) {
     private val NUM_FPS_BUCKETS = 6
     private val FPS_BUCKET_SIZE = MAX_FPS_STATS / NUM_FPS_BUCKETS // 10fps
     private val LAST_FPS_BUCKET_START = MAX_FPS_STATS - FPS_BUCKET_SIZE // 50+
-    private val fpsBuckets = IntArray(NUM_FPS_BUCKETS) { 0 }
-
-    // Keep track of mix/max fps
-    private var minFps = MAX_FPS_STATS
-    private var maxFps = 0
 
     // Choppiness = num frames < 30fps
     private val CHOPPINESS_CUTOFF = 30
     private val TOO_MANY_CHOPPY_FRAMES = 10
-    private var numChoppyFrames = 0
 
-    private fun resetStatsCounters() {
-        minFps = MAX_FPS_STATS
-        maxFps = 0
-        numChoppyFrames = 0
-        for (i in 0 until NUM_FPS_BUCKETS) {
-            fpsBuckets[i] = 0
+    private val streamFpsStats = ArrayList<StreamFpsStats>(NUM_STREAMS)
+
+    // Output variables
+    private var lastSummaryLogFrame = -1
+
+    // The individual streams' stats
+    companion object {
+        private lateinit var instance: FpsStats
+
+        @MainThread
+        fun get(): FpsStats {
+            instance = if (::instance.isInitialized) instance else FpsStats()
+            return instance
         }
     }
 
-    fun updateStats() {
-        val currentTime = System.currentTimeMillis()
-        // If this is the first frame, don't calculate stats
-        if (fpsLastLoggedTime == 0L || fpsLastMeasuredTime == 0L) {
-            fpsLastLoggedTime = currentTime
-            fpsLastMeasuredTime = currentTime
-        } else {
-            fpsDecodeCounter++
-            fpsTotalDecodeCounter++
+    init {
+        reset()
+    }
 
-            // viewModel.updateLog("I have decoded ${decodeCounter} video frames.")
-            if (fpsLastMeasuredTime == currentTime) {
-                fpsLastMeasuredTime -= 3 // 0ms since last frame, subtract time to avoid divide by 0
-            }
-            val currentFrameFps = 1000 / (currentTime - fpsLastMeasuredTime)
+    fun reset() {
+        lastSummaryLogFrame = -1
+        streamFpsStats.clear()
+        for (i in 0 until NUM_STREAMS) {
+            streamFpsStats.add(StreamFpsStats(i))
+        }
+    }
 
+    // Convenience function to update stats for a single string and return summary of all strings
+    // only if all streams have the newests fps info
+    fun updateStatsAndGetAll(streamNumber: Int) : String {
+        var outputString = ""
+        var maxFrameCount = -1
 
-            // Calculate stats for this frame
-            minFps = minOf(minFps, currentFrameFps.toInt())
-            maxFps = maxOf(maxFps, currentFrameFps.toInt())
+        if (streamNumber in 0 until NUM_STREAMS) {
+            // Update stats
+            streamFpsStats[streamNumber].updateStats()
 
-            if (currentFrameFps < CHOPPINESS_CUTOFF) {
-                numChoppyFrames++
-            }
-
-            // Place this frame's fps in the bucket
-            val currentfpsBucketIndex = minOf(currentFrameFps.toInt(), MAX_FPS_STATS - 1) / FPS_BUCKET_SIZE
-            fpsBuckets[currentfpsBucketIndex]++
-
-
-            // If this is a logging frame, output states and reset counters
-            if (fpsDecodeCounter % MainActivity.LOG_VIDEO_EVERY_N_FRAMES == 0) {
-                val averageFps = fpsDecodeCounter / ((currentTime - fpsLastLoggedTime) / 1000.0)
-
-                val averageFpsString = String.format("%.2f", averageFps)
-                val choppyString = if (numChoppyFrames >= TOO_MANY_CHOPPY_FRAMES) " ---CHOPPY---" else ""
-
-                // FPS buckets line
-                var bucketsString1 = ""
-                for (i in 0 until NUM_FPS_BUCKETS) {
-                    if (i == NUM_FPS_BUCKETS -1) {
-                        // Last bucket
-                        bucketsString1 += "[${i * FPS_BUCKET_SIZE}+: ${fpsBuckets[i]}]"
-                    } else {
-                        bucketsString1 += "[${i * FPS_BUCKET_SIZE}-${(i+1) * FPS_BUCKET_SIZE - 1}: ${fpsBuckets[i]}]    "
-                    }
+            // Build up output string, only if each stream is at the same frame
+            outputString = "\n"
+            for (streamStats in streamFpsStats) {
+                // If this is just starting, record the lastest frame from recents
+                if (maxFrameCount == -1) {
+                    maxFrameCount = streamStats.recentStats.latestFrameCount
                 }
-                if (streamNumber == 0)
-                    viewModel.updateLog("\n")
+                // If this frame count has been logged already, skip it
+                if (streamStats.recentStats.latestFrameCount <= lastSummaryLogFrame) {
+                    outputString = ""
+                    break
+                }
+                // If there are recent stats with a different frame count, do not output the summary
+                if (streamStats.recentStats.latestFrameCount > 0 &&
+                        streamStats.recentStats.latestFrameCount != maxFrameCount) {
+                    outputString = ""
+                    break
+                }
 
-                val logString = "V${streamNumber + 1}@$fpsTotalDecodeCounter. FPS min: ${minFps} max: ${maxFps} avg: ${averageFpsString}. Choppy frames: ${numChoppyFrames}/${MainActivity.LOG_VIDEO_EVERY_N_FRAMES} (${numChoppyFrames * 100 / MainActivity.LOG_VIDEO_EVERY_N_FRAMES}%)${choppyString}.\n\t" +
-                        bucketsString1
-                viewModel.updateLog(logString)
-
-                fpsLastLoggedTime = currentTime // Update for next fps measurement
-                fpsDecodeCounter = 0
-                resetStatsCounters()
+                // Otherwise, this is new info and at the same frame as the other stats, keep it
+                outputString += streamStats.recentStats.latestStatsString + '\n'
+            }
+            if (!outputString.equals("")) {
+                lastSummaryLogFrame = maxFrameCount
             }
         }
 
-        fpsLastMeasuredTime = currentTime // Update for next fps measurement
+        return outputString
+    }
+
+    fun updateStats(streamNumber: Int) : String {
+        return if (streamNumber in 0 until NUM_STREAMS) {
+            streamFpsStats[streamNumber].updateStats()
+        } else {
+            ""
+        }
+    }
+
+    fun getStatsString(streamNumber: Int) : String {
+        return if (streamNumber in 0 until NUM_STREAMS) {
+            streamFpsStats[streamNumber].getStatsString()
+        } else {
+            ""
+        }
+    }
+
+    fun getStatsString() : String {
+        var statsString = ""
+        for (streamStats in streamFpsStats) {
+            statsString += streamStats.getStatsString()
+        }
+        return statsString
+    }
+
+    private inner class StreamFpsStats(val streamNumber: Int) {
+        // Stats counters
+        private var fpsDecodeCounter = 0
+        private var fpsTotalDecodeCounter = 0
+        private var fpsLastMeasuredTime = 0L
+        private var fpsLastLoggedTime = 0L
+
+        // Set up an int array for fps stats to get an idea of choppiness. Ex. 0-55fps+, 12 buckets
+        // 0-4, 5-9, 10-14, 15-19, 20-24 . . . 50-54, 55+
+        private val fpsBuckets = IntArray(NUM_FPS_BUCKETS) { 0 }
+
+        // Keep track of mix/max fps
+        private var minFps = MAX_FPS_STATS
+        private var maxFps = 0
+        private var averageFps: Double = 0.0
+        private var numChoppyFrames = 0
+
+        // Keep track of latest log string and frame number
+        var recentStats = RecentStats()
+
+        fun resetStatsCounters() {
+            minFps = MAX_FPS_STATS
+            maxFps = 0
+            numChoppyFrames = 0
+            for (i in 0 until NUM_FPS_BUCKETS) {
+                fpsBuckets[i] = 0
+            }
+        }
+
+        // Update stats at current time, returns string if LOG_VIDEO_EVERY_N_FRAMES, otherwise ""
+        fun updateStats() : String {
+            val currentTime = System.currentTimeMillis()
+            var logString = ""
+
+            // If this is the first frame, don't calculate stats
+            if (fpsLastLoggedTime == 0L || fpsLastMeasuredTime == 0L) {
+                fpsLastLoggedTime = currentTime
+                fpsLastMeasuredTime = currentTime
+            } else {
+                fpsDecodeCounter++
+                fpsTotalDecodeCounter++
+
+                // viewModel.updateLog("I have decoded ${decodeCounter} video frames.")
+                if (fpsLastMeasuredTime == currentTime) {
+                    fpsLastMeasuredTime -= 3 // 0ms since last frame, subtract time to avoid divide by 0
+                }
+                val currentFrameFps = 1000 / (currentTime - fpsLastMeasuredTime)
+
+
+                // Calculate stats for this frame
+                minFps = minOf(minFps, currentFrameFps.toInt())
+                maxFps = maxOf(maxFps, currentFrameFps.toInt())
+
+                if (currentFrameFps < CHOPPINESS_CUTOFF) {
+                    numChoppyFrames++
+                }
+
+                // Place this frame's fps in the bucket
+                val currentfpsBucketIndex = minOf(currentFrameFps.toInt(), MAX_FPS_STATS - 1) / FPS_BUCKET_SIZE
+                fpsBuckets[currentfpsBucketIndex]++
+
+
+                // If this is a logging frame, create logString and reset counters
+                if (fpsDecodeCounter % MainActivity.LOG_VIDEO_EVERY_N_FRAMES == 0) {
+                    averageFps = fpsDecodeCounter / ((currentTime - fpsLastLoggedTime) / 1000.0)
+
+                    logString = getStatsString()
+
+                    // Keep track of latest info
+                    recentStats.latestFrameCount = fpsTotalDecodeCounter
+                    recentStats.latestStatsString = logString
+
+                    fpsLastLoggedTime = currentTime // Update for next fps measurement
+                    fpsDecodeCounter = 0
+                    resetStatsCounters()
+                }
+            }
+
+            fpsLastMeasuredTime = currentTime // Update for next fps measurement
+            return  logString
+        }// updateStats
+
+        fun getStatsString() : String {
+            val averageFpsString = String.format("%.2f", averageFps)
+            val choppyString = if (numChoppyFrames >= TOO_MANY_CHOPPY_FRAMES) " ---CHOPPY---" else ""
+
+            // FPS buckets line
+            var bucketsString1 = ""
+            for (i in 0 until NUM_FPS_BUCKETS) {
+                if (i == NUM_FPS_BUCKETS -1) {
+                    // Last bucket
+                    bucketsString1 += "[${i * FPS_BUCKET_SIZE}+: ${fpsBuckets[i]}]"
+                } else {
+                    bucketsString1 += "[${i * FPS_BUCKET_SIZE}-${(i+1) * FPS_BUCKET_SIZE - 1}: ${fpsBuckets[i]}]    "
+                }
+            }
+
+            val logString = "V${streamNumber + 1}@$fpsTotalDecodeCounter. FPS min: ${minFps}" +
+                    " max: ${maxFps} avg: ${averageFpsString}. Choppy frames: " +
+                    "${numChoppyFrames}/${MainActivity.LOG_VIDEO_EVERY_N_FRAMES} " +
+                    "(${numChoppyFrames * 100 / MainActivity.LOG_VIDEO_EVERY_N_FRAMES}%)" +
+                    "${choppyString}.\n\t" +
+                    bucketsString1
+
+            return logString
+        }
+    }// StreamFpsStats
+
+    private inner class RecentStats {
+        var latestFrameCount = 0
+        var latestStatsString = ""
     }
 }
