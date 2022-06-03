@@ -504,6 +504,7 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 markSurfacesForDeletion()
                 initializeSurfaces()
+                updateLog("Decoding of all streams completed.")
             }
             audioMainTrack.reset()
         }
