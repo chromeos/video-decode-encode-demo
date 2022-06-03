@@ -81,6 +81,10 @@ class FpsStats() {
             // Build up output string, only if each stream is at the same frame
             outputString = "\n"
             for (streamStats in streamFpsStats) {
+                // If this stream is not being decode, skip it
+                if (streamStats.fpsTotalDecodeCounter == 0) {
+                    continue
+                }
                 // If this is just starting, record the lastest frame from recents
                 if (maxFrameCount == -1) {
                     maxFrameCount = streamStats.recentStats.latestFrameCount
@@ -135,7 +139,7 @@ class FpsStats() {
     private inner class StreamFpsStats(val streamNumber: Int) {
         // Stats counters
         private var fpsDecodeCounter = 0
-        private var fpsTotalDecodeCounter = 0
+        var fpsTotalDecodeCounter = 0
         private var fpsLastMeasuredTime = 0L
         private var fpsLastLoggedTime = 0L
 
