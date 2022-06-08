@@ -489,6 +489,8 @@ class MainActivity : AppCompatActivity() {
         val videoSource = buildExoMediaSource(this, inputVideoRawId)
         exoPlayers[streamNumber]?.setMediaSource(videoSource)
         exoPlayers[streamNumber]?.prepare()
+        exoPlayers[streamNumber]?.repeatMode =
+            if (switch_loop.isChecked) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
 
         // Clear FPS stats
         FpsStats.get().reset()
