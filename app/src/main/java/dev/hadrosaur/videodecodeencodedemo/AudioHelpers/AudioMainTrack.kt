@@ -19,6 +19,7 @@ package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 import android.media.AudioTrack
 import androidx.collection.CircularArray
 import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.logd
+import dev.hadrosaur.videodecodeencodedemo.Utils.CircularBuffer
 import dev.hadrosaur.videodecodeencodedemo.Utils.minOf
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -46,8 +47,7 @@ class AudioMainTrack {
 
     private var isMuted = false
 
-    // Note: CircularArray implementation will auto-grow, avoid this situation if possible below
-    private val audioBuffer = CircularArray<AudioBuffer>(MAX_BUFFER_LENGTH)
+    private val audioBuffer = CircularBuffer<AudioBuffer>(MAX_BUFFER_LENGTH, createEmptyAudioBuffer())
 
     init {
         // Note: AudioMainTrack assumes audio samples are 16-bit PCM at 48kHz. It does not currently
@@ -68,6 +68,10 @@ class AudioMainTrack {
             buffer.order(ByteOrder.nativeOrder())
             return buffer
         }
+
+        fun createEmptyAudioBuffer() : AudioBuffer {
+            return AudioBuffer(createEmptyAudioSample(), 0, 0L, BUFFER_DURATION, BUFFER_SIZE)
+        }
     }
 
     fun reset() {
@@ -77,7 +81,7 @@ class AudioMainTrack {
     }
 
     fun addAudioChunk(chunkToAdd: AudioBuffer) {
-        audioBuffer.addLast(chunkToAdd)
+        audioBuffer.add(chunkToAdd)
     }
 
     fun addMixTrack(streamNum: Int, trackToAdd: AudioMixTrack) {
@@ -105,14 +109,14 @@ class AudioMainTrack {
             }
             val chunkSize = usToBytes(chunkDurationUs, CHANNEL_COUNT, BYTES_PER_FRAME_PER_CHANNEL, SAMPLE_RATE)
 
-            // Create an empty buffer
-            val newAudioBuffer = AudioBuffer (
-                createEmptyAudioSample(),
-                audioBufferCounter++,
-                bufferingPlayheadUs,
-                chunkDurationUs,
-                chunkSize)
+            // Get the next buffer from the ring buffer. Zero it and set it up for mixing
+            val newAudioBuffer = audioBuffer.peekHead()
+            newAudioBuffer.zeroBuffer()
             newAudioBuffer.buffer.limit(chunkSize) // May not be a full buffer
+            newAudioBuffer.id = audioBufferCounter++
+            newAudioBuffer.presentationTimeUs = bufferingPlayheadUs
+            newAudioBuffer.lengthUs = chunkDurationUs
+            newAudioBuffer.size = chunkSize
 
             // Find groups of AudioBuffers from each mix track with audio within the buffer's range
             // Note: there may be mix tracks without any audio in this time range
@@ -219,8 +223,8 @@ class AudioMainTrack {
             }
 
             // Loops and plays out whatever has already been mixed-down
-            while (!audioBuffer.isEmpty) {
-                val chunk = audioBuffer.popFirst()
+            while (!audioBuffer.isEmpty()) {
+                val chunk: AudioBuffer = audioBuffer.get()
                 val buffer = chunk.buffer
 
                 if (isMuted) {

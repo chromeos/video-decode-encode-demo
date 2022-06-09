@@ -16,7 +16,10 @@
 
 package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 
+import android.provider.MediaStore.Audio
+import dev.hadrosaur.videodecodeencodedemo.Utils.Copyable
 import java.nio.ByteBuffer
+import java.util.*
 
 /**
  * Holds an audio buffer and meta-data for encoding
@@ -28,18 +31,18 @@ import java.nio.ByteBuffer
  * @param size size of sample in bytes
  * @param isLastBuffer flag to indicate this is the last audio sample in a stream
  */
-class AudioBuffer(
+class AudioBuffer (
     val buffer: ByteBuffer,
     var id: Int,
     var presentationTimeUs: Long,
     var lengthUs: Long,
     var size: Int,
-    var isLastBuffer: Boolean = false) {
+    var isLastBuffer: Boolean = false) : Copyable {
 
     /**
      * Duplicate the Audio buffer, making a deep copy of the ByteBuffer
      */
-    fun cloneAudioBuffer() : AudioBuffer {
+    fun copy() : AudioBuffer {
         val clone = AudioBuffer(
                 cloneByteBuffer(buffer),
                 id,
@@ -49,5 +52,17 @@ class AudioBuffer(
                 isLastBuffer
         )
         return clone
+    }
+    override fun createCopy(): Copyable {
+        return copy()
+    }
+
+    /**
+     * Actually zero the buffer. This is so we can re-use it for mixing
+     */
+    fun zeroBuffer() {
+        buffer.clear()
+        Arrays.fill(buffer.array(), 0.toByte())
+        buffer.clear()
     }
 }
