@@ -18,25 +18,26 @@ package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 
 import androidx.collection.CircularArray
 import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.logd
+import dev.hadrosaur.videodecodeencodedemo.Utils.CircularBuffer
 
 class AudioMixTrack(startTimeUs: Long = 0L) {
     val BUFFER_LENGTH = 250 // About 5secs at ~0.02s per buffer
     val mediaClock = AudioMixTrackMediaClock(startTimeUs)
 
-    private val audioBuffer = CircularArray<AudioBuffer>(BUFFER_LENGTH)
+    private val audioBuffer = CircularBuffer<AudioBuffer>(BUFFER_LENGTH, AudioMainTrack.createEmptyAudioBuffer())
 
     /**
      * Indicate if the buffer already has BUFFER_LENGTH - 1 elements so as not to make it auto-grow
      */
     fun isFull() : Boolean {
-        return audioBuffer.size() >= (BUFFER_LENGTH - 1)
+        return audioBuffer.isFull()
     }
     fun getFirstPresentationTimeUs() : Long {
-        return if (audioBuffer.isEmpty) {
+        return if (audioBuffer.isEmpty()) {
             Long.MAX_VALUE
         } else {
             // Buffers are in order so beginning of first buffer is first presentation time
-            audioBuffer.get(0).presentationTimeUs
+            audioBuffer.peek().presentationTimeUs
         }
     }
 
@@ -46,16 +47,16 @@ class AudioMixTrack(startTimeUs: Long = 0L) {
     }
 
     fun addAudioChunk(chunkToAdd: AudioBuffer) {
-        audioBuffer.addLast(chunkToAdd)
+        audioBuffer.add(chunkToAdd)
     }
 
     // Pop audio chunk and update playhead. Note: mediaClock is not updated here. It is expected to
     // be updated manually from the main track
     fun popAudioChunk(): AudioBuffer? {
-        if (!audioBuffer.isEmpty) {
+        if (!audioBuffer.isEmpty()) {
             return null
         }
-        return audioBuffer.popFirst()
+        return audioBuffer.get()
     }
 
     // Pop all chunks that contain some audio >= fromUs and < toUs
@@ -63,18 +64,14 @@ class AudioMixTrack(startTimeUs: Long = 0L) {
     fun popChunksFromTo(fromUs: Long, toUs: Long) : CircularArray<AudioBuffer> {
         val chunksInRange = CircularArray<AudioBuffer>(2)
 
-        while (!audioBuffer.isEmpty) {
-            val chunk = audioBuffer.popFirst()
-            if (chunk == null) {
-                // logd("popChunksFromTo: Chunk is null, exiting")
-                break
-            }
+        while (!audioBuffer.isEmpty()) {
+            val chunk = audioBuffer.get()
             var chunkStartUs = chunk.presentationTimeUs;
             var chunkEndUs = chunk.presentationTimeUs + chunk.lengthUs
 
             // If the next chunk is after the range (starts at or after toUs), put it back and exit
             if (chunkStartUs >= toUs) {
-                audioBuffer.addFirst(chunk) // TODO: avoid popping and replacing
+                audioBuffer.rewindTail() // This "puts back" the chunk, avoiding a copy
                 break
             }
 
@@ -99,7 +96,7 @@ class AudioMixTrack(startTimeUs: Long = 0L) {
             // Note if a chunk is larger the the from<->to window, both the above situation and this
             // can apply: chop of some from beginning and some from the end.
             if (chunkStartUs < toUs && chunkEndUs > toUs) {
-                val clone = chunk.cloneAudioBuffer()
+                val clone = chunk.copy()
                 val timeToKeepUs = toUs - chunkStartUs;
                 val bytesToKeep = usToBytes(timeToKeepUs)
 
@@ -108,7 +105,7 @@ class AudioMixTrack(startTimeUs: Long = 0L) {
                 clone.presentationTimeUs = toUs
                 clone.lengthUs = chunkEndUs - toUs
                 clone.size = clone.size - bytesToKeep
-                audioBuffer.addFirst(clone)
+                audioBuffer.addTail(clone)
 
                 // Reduce the limit of this chunk to "cut off the end"
                 chunk.buffer.limit(chunk.buffer.position() + bytesToKeep)
