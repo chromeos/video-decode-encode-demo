@@ -248,6 +248,9 @@ class AudioMainTrack {
                         playheadUs = chunk.presentationTimeUs + timePlayedUs
                     }
                     updateMixTrackMediaClocks(playheadUs)
+
+                    // Clear buffer for reuse
+                    buffer.clear()
                 }
             }
 

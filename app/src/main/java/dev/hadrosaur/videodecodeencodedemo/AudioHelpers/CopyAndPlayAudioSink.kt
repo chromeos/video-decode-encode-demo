@@ -125,21 +125,16 @@ class CopyAndPlayAudioSink(
             )
         }
 
-        // TODO: add some sort of underrun detection
-
-        // If the play audio toggle is enabled, copy this buffer to the mix track for playback
-        // buffer will be freed after this call so a copy is needed
-//        if (viewModel.getPlayAudioVal()) {
-            audioMixTrack.addAudioChunk(
-                AudioBuffer(
-                    cloneByteBuffer(buffer),
-                    numBuffersHandled + 1,
-                    presentationTimeUs,
-                    bufferLengthUs,
-                    buffer.remaining()
-                )
+        // Add audio chunk to the mix-track
+        audioMixTrack.addAudioChunk(
+            AudioBuffer(
+                buffer,
+                numBuffersHandled + 1,
+                presentationTimeUs,
+                bufferLengthUs,
+                buffer.remaining()
             )
-//        }
+        )
 
         // Update last position
         lastPosition = presentationTimeUs + bufferLengthUs
@@ -153,7 +148,6 @@ class CopyAndPlayAudioSink(
     }
 
     override fun getCurrentPositionUs(sourceEnded: Boolean): Long {
-        // viewModel.updateLog("AudioSink: getCurrentPositionUs is called @ ${lastPosition}")
         return lastPosition
     }
 
