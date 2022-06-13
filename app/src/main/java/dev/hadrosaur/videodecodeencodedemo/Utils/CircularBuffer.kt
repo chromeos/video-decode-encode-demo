@@ -44,13 +44,11 @@ class CircularBuffer<T>(val size: Int, emptyObject: Copyable, val fullBehaviour:
      *
      * This is necessary because Kotlin doesn't allow for a fixed size array of generics
      */
-    fun set(index: Int, item: T) {
-        if (index < array.size) {
-            // Array is big enough, just set
-            array[index] = item as Copyable
+    fun set(index: Int, item: T, copyInPlace: Boolean) {
+        if (copyInPlace) {
+            (item as Copyable).copyInto(array[index])
         } else {
-            // The array doesn't have enough elements
-            array.add(item as Copyable)
+            array[index] = (item as Copyable)
         }
     }
 
@@ -73,12 +71,12 @@ class CircularBuffer<T>(val size: Int, emptyObject: Copyable, val fullBehaviour:
         }
     }
 
-    fun add(item: T) {
+    fun add(item: T, copyInPlace: Boolean = true) {
         if(isFull()) {
             when (fullBehaviour) {
                 FULL_BEHAVIOUR.OVERWRITE -> {
                     // Add item, replace any data currently there
-                    set(head, item)
+                    set(head, item, copyInPlace)
                     // Advance front of buffer
                     incrementHead()
                     // Buffer is full, also advance tail
@@ -90,13 +88,13 @@ class CircularBuffer<T>(val size: Int, emptyObject: Copyable, val fullBehaviour:
                 }
                 FULL_BEHAVIOUR.REPLACE_LAST -> {
                     // Add item, do not advance pointers
-                    set(head, item)
+                    set(head, item, copyInPlace)
                 }
             }
 
         } else {
             // Buffer is not full, just add and advance head
-            set(head, item)
+            set(head, item, copyInPlace)
             incrementHead()
             numItems++;
         }
@@ -105,27 +103,27 @@ class CircularBuffer<T>(val size: Int, emptyObject: Copyable, val fullBehaviour:
     /**
      * Adds an item onto the tail
      */
-    fun addTail(item: T) {
+    fun addTail(item: T, copyInPlace: Boolean = true) {
         if(isFull()) {
             when (fullBehaviour) {
                 FULL_BEHAVIOUR.OVERWRITE -> {
                     // Add item to tail, drop item at head
                     decrementTail()
                     decrementHead()
-                    set(tail, item)
+                    set(tail, item, copyInPlace)
                 }
                 FULL_BEHAVIOUR.DISCARD -> {
                     // No-op, just discard item
                 }
                 FULL_BEHAVIOUR.REPLACE_LAST -> {
                     // Add item, replace current tail
-                    set(tail, item)
+                    set(tail, item, copyInPlace)
                 }
             }
         } else {
             // Decrement tail and add item
             decrementTail()
-            set(tail, item)
+            set(tail, item, copyInPlace)
             numItems++
         }
     }

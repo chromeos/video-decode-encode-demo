@@ -18,5 +18,6 @@ package dev.hadrosaur.videodecodeencodedemo.Utils
 
 interface Copyable {
     fun createCopy(): Copyable
+    fun copyInto(destination: Copyable)
 }
 inline fun <reified T : Copyable> T.copy(): Copyable = createCopy()
