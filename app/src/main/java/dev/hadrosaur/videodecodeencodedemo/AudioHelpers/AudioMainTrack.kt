@@ -206,6 +206,11 @@ class AudioMainTrack {
         for (mixTrack in audioMixTracks) {
             mixTrack.mediaClock.setRunAsFastAsPossible(isMuted)
         }
+
+        // When unmuting, mixtracks should be brought back to the main audio track playhead
+        if(!shouldMute) {
+            updateMixTrackMediaClocks(playheadUs)
+        }
     }
 
     fun playMainAudio() {
@@ -231,13 +236,11 @@ class AudioMainTrack {
                     // If the track is muted, the clock is being driven by video frames being
                     // processed. This can get stuck on first frame so we manually tick if needed.
                     // TODO: can we avoid this check every loop when muted.
-                    playheadUs = getEarliestMediaClockTime()
                     if (playheadUs == firstAudioPresentationTime) {
                         // We are at the start. Bump the clock forward
                         advanceMixTrackMediaClocks()
-                        playheadUs = getEarliestMediaClockTime()
-                        updateMixTrackMediaClocks(playheadUs)
                     }
+                    playheadUs = getEarliestMediaClockTime() // Keep main playhead in sync with mixtrack playback
                 } else {
                     // Play the audio
                     val bytesPlayed = playBytes(buffer)
