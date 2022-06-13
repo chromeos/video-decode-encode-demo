@@ -22,9 +22,14 @@ import dev.hadrosaur.videodecodeencodedemo.Utils.CircularBuffer
 
 class AudioMixTrack(startTimeUs: Long = 0L) {
     val BUFFER_LENGTH = 250 // About 5secs at ~0.02s per buffer
+    val SPLIT_BUFFER_LENGTH = 50 // Allocate some temporary space for split audio buffers
     val mediaClock = AudioMixTrackMediaClock(startTimeUs)
 
     private val audioBuffer = CircularBuffer<AudioBuffer>(BUFFER_LENGTH, AudioMainTrack.createEmptyAudioBuffer())
+    // This is temporary storage space, we will not pull from this buffer so allow overwriting
+    private val splitBuffer = CircularBuffer<AudioBuffer>(SPLIT_BUFFER_LENGTH,
+        AudioMainTrack.createEmptyAudioBuffer(),
+        CircularBuffer.FULL_BEHAVIOUR.OVERWRITE)
 
     /**
      * Indicate if the buffer already has BUFFER_LENGTH - 1 elements so as not to make it auto-grow
@@ -65,9 +70,11 @@ class AudioMixTrack(startTimeUs: Long = 0L) {
         val chunksInRange = CircularArray<AudioBuffer>(2)
 
         while (!audioBuffer.isEmpty()) {
-            val chunk = audioBuffer.get()
+            var chunk = audioBuffer.get()
             var chunkStartUs = chunk.presentationTimeUs;
             var chunkEndUs = chunk.presentationTimeUs + chunk.lengthUs
+            var splitBufferPointer: AudioBuffer? = null
+            var isSplitBuffer = false
 
             // If the next chunk is after the range (starts at or after toUs), put it back and exit
             if (chunkStartUs >= toUs) {
@@ -92,31 +99,40 @@ class AudioMixTrack(startTimeUs: Long = 0L) {
                 chunkStartUs = fromUs // Update new start for next check
             }
 
-            // If only the first part is needed, clone the chunk and adjust the old/new buffer positions
-            // Note if a chunk is larger the the from<->to window, both the above situation and this
-            // can apply: chop of some from beginning and some from the end.
+            // If only the first part is needed, copy the first part of the chunk into the split
+            // buffer queue and adjust the old/new buffer positions. Note if a chunk is larger than
+            // the from<->to window, both the above situation and this can apply: chop of some from
+            // beginning and some from the end.
             if (chunkStartUs < toUs && chunkEndUs > toUs) {
-                val clone = chunk.copy()
                 val timeToKeepUs = toUs - chunkStartUs;
                 val bytesToKeep = usToBytes(timeToKeepUs)
 
-                // Advance start position of clone and put back in the queue for future playback
-                clone.buffer.position(clone.buffer.position() + bytesToKeep)
-                clone.presentationTimeUs = toUs
-                clone.lengthUs = chunkEndUs - toUs
-                clone.size = clone.size - bytesToKeep
-                audioBuffer.addTail(clone)
+                // Copy into split buffer queue and reduce the limit to "cut off the end"
+                splitBufferPointer = splitBuffer.peekHead() // Get pointer to storage location
+                splitBuffer.add(chunk, true) // Copy full chunk into split buffer queue
+                // Adjust the copy to just be the first part
+                splitBufferPointer.buffer.limit(chunk.buffer.position() + bytesToKeep)
+                splitBufferPointer.lengthUs = toUs - chunkStartUs
+                splitBufferPointer.size = bytesToKeep
+                isSplitBuffer = true
 
-                // Reduce the limit of this chunk to "cut off the end"
-                chunk.buffer.limit(chunk.buffer.position() + bytesToKeep)
-                chunkEndUs = toUs
-                chunk.lengthUs = chunkEndUs - chunkStartUs
-                chunk.size = bytesToKeep
+                // Advance start position of original buffer and rewind queue to cut off front and
+                // "put it back" in the queue for future playback
+                chunk.buffer.position(chunk.buffer.position() + bytesToKeep)
+                chunk.presentationTimeUs = toUs
+                chunk.lengthUs = chunkEndUs - toUs
+                chunk.size = chunk.size - bytesToKeep
+                audioBuffer.rewindTail()
             }
 
             // If we reach this point, chunk is now perfectly in range
-            chunksInRange.addLast(chunk)
+            if (isSplitBuffer) {
+                chunksInRange.addLast(splitBufferPointer)
+            } else {
+                chunksInRange.addLast(chunk)
+            }
         }
+
         return chunksInRange
     }
 }

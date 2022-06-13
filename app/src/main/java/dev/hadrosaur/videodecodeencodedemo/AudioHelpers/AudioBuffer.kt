@@ -16,6 +16,8 @@
 
 package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 
+import android.provider.MediaStore.Audio
+import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.logd
 import dev.hadrosaur.videodecodeencodedemo.Utils.Copyable
 import java.nio.ByteBuffer
 import java.util.*
@@ -63,5 +65,18 @@ class AudioBuffer (
         buffer.clear()
         Arrays.fill(buffer.array(), 0.toByte())
         buffer.clear()
+    }
+
+    /**
+     * Copy values from this audio buffer into destination buffer
+     */
+    override fun copyInto(destination: Copyable) {
+        val destBuffer = destination as AudioBuffer
+        destBuffer.id = this.id
+        destBuffer.presentationTimeUs = this.presentationTimeUs
+        destBuffer.lengthUs = this.lengthUs
+        destBuffer.size = this.size
+        destBuffer.isLastBuffer = this.isLastBuffer
+        copyIntoByteBuffer(this.buffer, destBuffer.buffer)
     }
 }

@@ -90,6 +90,14 @@ fun cloneByteBuffer(original: ByteBuffer): ByteBuffer {
     return clone
 }
 
+fun copyIntoByteBuffer(source: ByteBuffer, destination: ByteBuffer) {
+    val readOnlyCopy = source.asReadOnlyBuffer()
+    destination.clear()
+    destination.order(source.order())
+    destination.put(readOnlyCopy)
+    destination.flip()
+}
+
 /**
  * Mixes an array of AudioBuffers into the given mainAudio, applying gain.
  *
