@@ -28,6 +28,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.android.exoplayer2.*
+import com.google.android.exoplayer2.Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioMainTrack
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioMixTrack
@@ -434,7 +435,7 @@ class MainActivity : AppCompatActivity() {
         // Set up audio track for this stream
         val startTimeUS = 0L
         val audioMixTrack = AudioMixTrack(startTimeUS)
-        audioMainTrack.addMixTrack(streamNumber, audioMixTrack)
+        audioMainTrack.addMixTrack(audioMixTrack)
 
         // Setup custom video and audio renderers
         // Here is where you could set a start time relative to master timeline
@@ -482,6 +483,12 @@ class MainActivity : AppCompatActivity() {
                     exoPlayers[streamNumber]?.release()
                     this@MainActivity.decodeFinished()
                 }
+            }
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                if (reason == MEDIA_ITEM_TRANSITION_REASON_REPEAT) {
+                    audioMixTrack.mediaClock.onRepeat()
+                }
+                super.onMediaItemTransition(mediaItem, reason)
             }
         })
 

@@ -24,6 +24,7 @@ import com.google.android.exoplayer2.mediacodec.MediaCodecSelector
 import com.google.android.exoplayer2.util.MediaClock
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
+import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.FpsStats
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.SpeedyMediaClock
 import java.nio.ByteBuffer
 
@@ -39,8 +40,7 @@ class VideoMediaCodecAudioRenderer (
     audioBufferManager: AudioBufferManager?
 ) : MediaCodecAudioRenderer(mainActivity, MediaCodecSelector.DEFAULT, null, null, CopyAndPlayAudioSink(viewModel, streamNumber, audioMixTrack, audioBufferManager)) {
 
-    private var decodeCounter = 0
-    private var startTime = 0L
+    private val audioStats = AudioStats.get()
 
     /**
      * Return null to indicate to ExoPlayer not to use this clock
@@ -81,20 +81,7 @@ class VideoMediaCodecAudioRenderer (
     }
 
     override fun onProcessedOutputBuffer(presentationTimeUs: Long) {
-        if (startTime == 0L) {
-            startTime = System.currentTimeMillis()
-        }
-        decodeCounter++
-
-        // viewModel.updateLog("I have decoded ${decodeCounter} audio frames.")
-
-        if (decodeCounter % MainActivity.LOG_AUDIO_EVERY_N_FRAMES == 0) {
-            val currentBPS =
-                decodeCounter / ((System.currentTimeMillis() - startTime) / 1000.0)
-            val bpsString = String.format("%.2f", currentBPS)
-            viewModel.updateLog("Decoding audio Stream ${streamNumber + 1}: ${bpsString} buf/sec @buffer $decodeCounter.")
-        }
-
+        viewModel.updateLog(audioStats.updateStatsAndGetAll(streamNumber))
         super.onProcessedOutputBuffer(presentationTimeUs)
     }
 
