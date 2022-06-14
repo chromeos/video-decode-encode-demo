@@ -18,16 +18,13 @@ package dev.hadrosaur.videodecodeencodedemo.VideoHelpers
 
 import androidx.annotation.MainThread
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
-import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 import dev.hadrosaur.videodecodeencodedemo.NUMBER_OF_STREAMS
 
 /**
- * Keep track of FPS stats
- *
  * A singleton logging class for FPS stats
  */
 class FpsStats() {
-    // TODO: is there a useful/elegant way of getting rid of this global constant
+    // TODO: is there a useful/elegant way of getting rid of this global constant?
     val NUM_STREAMS = NUMBER_OF_STREAMS
 
     // Set up an int array for fps stats to get an idea of choppiness. Ex. 0-55fps+, 12 buckets
@@ -79,9 +76,9 @@ class FpsStats() {
             streamFpsStats[streamNumber].updateStats()
 
             // Build up output string, only if each stream is at the same frame
-            outputString = "\n"
+            outputString = ""
             for (streamStats in streamFpsStats) {
-                // If this stream is not being decode, skip it
+                // If this stream is not being decoded, skip it
                 if (streamStats.fpsTotalDecodeCounter == 0) {
                     continue
                 }
@@ -102,13 +99,18 @@ class FpsStats() {
                 }
 
                 // Otherwise, this is new info and at the same frame as the other stats, keep it
-                outputString += streamStats.recentStats.latestStatsString + '\n'
+                if (!streamStats.recentStats.latestStatsString.equals("")) {
+                    outputString += streamStats.recentStats.latestStatsString + '\n'
+                } else {
+                    outputString = ""
+                    break
+                }
             }
             if (!outputString.equals("")) {
                 lastSummaryLogFrame = maxFrameCount
+                outputString = "Video stats\n" + outputString
             }
         }
-
         return outputString
     }
 
