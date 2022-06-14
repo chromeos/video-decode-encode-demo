@@ -32,7 +32,6 @@ class AudioMixTrackMediaClock (private var startTimeUs: Long = 0L) : MediaClock 
     // Set a minimum frame rate for when this clock runs as fast as possible
     private val MIN_FPS = 1L
     private val MAX_FRAME_DURATION_US =  1000000L / MIN_FPS
-//    var lastProcessedFrameUs = -1 * MAX_FRAME_DURATION_US // Initialize at -1 frame
 
     private var runAsFastAsPossible = false
     private var internalPlaybackParameters = PlaybackParameters(1.0f)
@@ -43,7 +42,6 @@ class AudioMixTrackMediaClock (private var startTimeUs: Long = 0L) : MediaClock 
     fun setPositionUs(newPosition: Long) { positionUs = newPosition }
 
     fun updateRelativePosition(newRelativeTrackPosition: Long) {
-        // logd("Updated relative position to: ${newRelativeTrackPosition}")
         positionUs = newRelativeTrackPosition - startTimeUs
     }
     fun advancePosition(advanceByUs: Long) { positionUs += advanceByUs}
@@ -54,6 +52,9 @@ class AudioMixTrackMediaClock (private var startTimeUs: Long = 0L) : MediaClock 
 
     fun reset() {
         positionUs = 0L
+    }
+
+    fun onRepeat() {
     }
 
     override fun getPositionUs(): Long {
@@ -73,11 +74,9 @@ class AudioMixTrackMediaClock (private var startTimeUs: Long = 0L) : MediaClock 
     }
 
     fun updateLastProcessedVideoPosition(videoPositionUs: Long) {
-        // logd("updateLastProcessed: ${frameProcessedUs}, current pos: ${positionUs}")
         // If a later frame has been processed, advance
         if (videoPositionUs > positionUs) {
             positionUs = videoPositionUs
-            // logd("Updated frame position to: ${frameProcessedUs}")
         }
     }
 }

@@ -84,11 +84,8 @@ class AudioMainTrack {
         audioBuffer.add(chunkToAdd)
     }
 
-    fun addMixTrack(streamNum: Int, trackToAdd: AudioMixTrack) {
-        audioMixTracks.add(streamNum, trackToAdd)
-    }
-    fun getMixTrack(streamNum: Int): AudioMixTrack {
-        return audioMixTracks[streamNum]
+    fun addMixTrack(trackToAdd: AudioMixTrack) {
+        audioMixTracks.add(trackToAdd)
     }
 
     // Create an empty audio buffer and mix down all mix tracks into it up to bufferToPositionUs.
