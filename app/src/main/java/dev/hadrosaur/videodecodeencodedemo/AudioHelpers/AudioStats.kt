@@ -236,7 +236,7 @@ class AudioStats {
             }
 
             val logString = "A${streamNumber + 1}@$bpsTotalDecodeCounter. BPS min: ${minBps}" +
-                    " max: ${maxBps} avg: ${averageBpsString}. Choppy frames: " +
+                    " max: ${maxBps} avg: ${averageBpsString}. Choppy bufs: " +
                     "${numChoppyBuffers}/${MainActivity.LOG_AUDIO_EVERY_N_FRAMES} " +
                     "(${numChoppyBuffers * 100 / MainActivity.LOG_AUDIO_EVERY_N_FRAMES}%)" +
                     "${choppyString}.\n\t" +
