@@ -226,7 +226,7 @@ class FpsStats() {
             // FPS buckets line
             var bucketsString1 = ""
             for (i in 0 until NUM_FPS_BUCKETS) {
-                if (i == NUM_FPS_BUCKETS -1) {
+                if (i == NUM_FPS_BUCKETS - 1) {
                     // Last bucket
                     bucketsString1 += "[${i * FPS_BUCKET_SIZE}+: ${fpsBuckets[i]}]"
                 } else {
