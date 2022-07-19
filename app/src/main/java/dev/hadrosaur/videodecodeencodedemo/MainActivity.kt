@@ -331,6 +331,9 @@ class MainActivity : AppCompatActivity() {
                 beginVideoDecode(VIDEO_RES_4, videoSurfaceManagers[3], 3)
             }
 
+            // Initialize main audio track as muted or unmuted
+            audioMainTrack.mute(!viewModel.getPlayAudioVal())
+
             GlobalScope.launch(Dispatchers.Default) {
                 audioMainTrack.start()
             }
