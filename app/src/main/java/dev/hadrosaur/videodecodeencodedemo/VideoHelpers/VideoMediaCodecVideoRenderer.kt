@@ -29,6 +29,7 @@ import com.google.android.exoplayer2.video.MediaCodecVideoRenderer
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
 import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.LOG_VIDEO_EVERY_N_FRAMES
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
+import dev.hadrosaur.videodecodeencodedemo.Utils.SoftwareMediaCodecSelector
 import java.nio.ByteBuffer
 
 
@@ -42,7 +43,7 @@ class VideoMediaCodecVideoRenderer(
 ) :
     MediaCodecVideoRenderer(
         mainActivity,
-        MediaCodecSelector.DEFAULT,
+        if (viewModel.getSoftwareVal()) SoftwareMediaCodecSelector() else MediaCodecSelector.DEFAULT,
         0,
         enableDecoderFallback,
         null,

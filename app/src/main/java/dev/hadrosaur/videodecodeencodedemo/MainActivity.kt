@@ -18,7 +18,6 @@ package dev.hadrosaur.videodecodeencodedemo
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaCodecList
 import android.os.Build
@@ -33,7 +32,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.coroutineScope
 import com.google.android.exoplayer2.*
-import com.google.android.exoplayer2.mediacodec.MediaCodecRenderer
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioBufferManager
 import dev.hadrosaur.videodecodeencodedemo.Utils.*
 import dev.hadrosaur.videodecodeencodedemo.VideoHelpers.VideoSurfaceManager
@@ -308,10 +306,10 @@ class MainActivity : AppCompatActivity() {
                 _, isChecked -> viewModel.setSoftware(isChecked) }
         viewModel.getSoftware().observe(this, {
                 software -> switch_software.isSelected = software })
-        switch_seek.setOnCheckedChangeListener {
-                _, isChecked -> viewModel.setDoSeeks(isChecked) }
-        viewModel.getDoSeeks().observe(this, {
-                doSeeks -> switch_seek.isSelected = doSeeks })
+        switch_pauses.setOnCheckedChangeListener {
+                _, isChecked -> viewModel.setDoPauses(isChecked) }
+        viewModel.getDoPauses().observe(this, {
+                doPauses -> switch_pauses.isSelected = doPauses })
 
         // Set up decode button
         button_start_decode.setOnClickListener {
@@ -433,8 +431,8 @@ class MainActivity : AppCompatActivity() {
             KEYCODE_E -> { switch_encode.isChecked = ! switch_encode.isChecked; switch_encode.clearFocus(); return true }
             KEYCODE_F -> { switch_filter.isChecked = ! switch_filter.isChecked; switch_filter.clearFocus(); return true }
             KEYCODE_A -> { switch_audio.isChecked = ! switch_audio.isChecked; switch_audio.clearFocus(); return true }
-            KEYCODE_S -> { switch_software.isChecked = ! switch_software.isChecked; switch_software.clearFocus(); return true }
-            KEYCODE_K -> { switch_seek.isChecked = ! switch_seek.isChecked; switch_seek.clearFocus(); return true }
+            // KEYCODE_S -> { switch_software.isChecked = ! switch_software.isChecked; switch_software.clearFocus(); return true }
+            KEYCODE_P -> { switch_pauses.isChecked = ! switch_pauses.isChecked; switch_pauses.clearFocus(); return true }
 
             // D : Start decode
             KEYCODE_D -> {
@@ -524,24 +522,19 @@ class MainActivity : AppCompatActivity() {
         player.prepare()
         player.playWhenReady = true
 
-        if (viewModel.getDoSeeksVal()) {
-            // Do a few seeks while decoding process. Jump forward seekJump ms and then back
-            val numSeeks = 3
-            val delayTimeMs = 1000L
-            val seekJumpMs = 1000L
+        if (viewModel.getDoPausesVal()) {
+            // Do a few pauses during the decoding process.
+            val numPauses = 3
+            val delayTimeMs = 3000L
             lifecycle.coroutineScope.launch {
                 delay(delayTimeMs)
-                for (i in 1..numSeeks) {
+                for (i in 1..numPauses) {
                     player.pause()
-                    val oldPos = player.currentPosition
-                    val pos = oldPos + seekJumpMs
-                    updateLog("Stream #${streamNumber+1}: Jumping to pos: ${pos}")
-                    player.seekTo(pos)
-                    player.prepare()
-                    updateLog("Stream #${streamNumber+1}: Jumping back to pos: ${oldPos+1}")
-                    player.seekTo(oldPos+1)
-                    player.prepare()
-                    player.playWhenReady = true
+                    updateLog("Stream #${streamNumber+1}: Player paused for ${i * delayTimeMs}ms")
+                    delay(delayTimeMs * i)
+                    player.play()
+                    //player.playWhenReady = true
+                    updateLog("Stream #${streamNumber+1}: Player unpaused")
                     delay(delayTimeMs)
                 }
             }

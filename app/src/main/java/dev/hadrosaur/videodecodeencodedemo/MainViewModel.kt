@@ -16,15 +16,12 @@
 
 package dev.hadrosaur.videodecodeencodedemo
 
-import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import dev.hadrosaur.videodecodeencodedemo.Utils.SmartMutableLiveData
-import dev.hadrosaur.videodecodeencodedemo.Utils.getVideoMediaFormat
 import java.io.File
-import kotlin.concurrent.thread
 
 class MainViewModel : ViewModel() {
     // App options
@@ -32,20 +29,20 @@ class MainViewModel : ViewModel() {
     private val applyGlFilter = SmartMutableLiveData<Boolean>(false)
     private val encodeStream1 = SmartMutableLiveData<Boolean>(false)
     private val playAudio = SmartMutableLiveData<Boolean>(false)
-    private val doSeeks = SmartMutableLiveData<Boolean>(false)
-    private val software = SmartMutableLiveData<Boolean>(false)
+    private val doPauses = SmartMutableLiveData<Boolean>(true)
+    private val software = SmartMutableLiveData<Boolean>(true)
 
     // Stream decode switches
     private val decodeStream1 = SmartMutableLiveData<Boolean>(true)
     private val decodeStream2 = SmartMutableLiveData<Boolean>(true)
-    private val decodeStream3 = SmartMutableLiveData<Boolean>(true)
-    private val decodeStream4 = SmartMutableLiveData<Boolean>(true)
-    private val decodeStream5 = SmartMutableLiveData<Boolean>(true)
-    private val decodeStream6 = SmartMutableLiveData<Boolean>(true)
-    private val decodeStream7 = SmartMutableLiveData<Boolean>(true)
-    private val decodeStream8 = SmartMutableLiveData<Boolean>(true)
-    private val decodeStream9 = SmartMutableLiveData<Boolean>(true)
-    private val decodeStream10 = SmartMutableLiveData<Boolean>(true)
+    private val decodeStream3 = SmartMutableLiveData<Boolean>(false)
+    private val decodeStream4 = SmartMutableLiveData<Boolean>(false)
+    private val decodeStream5 = SmartMutableLiveData<Boolean>(false)
+    private val decodeStream6 = SmartMutableLiveData<Boolean>(false)
+    private val decodeStream7 = SmartMutableLiveData<Boolean>(false)
+    private val decodeStream8 = SmartMutableLiveData<Boolean>(false)
+    private val decodeStream9 = SmartMutableLiveData<Boolean>(false)
+    private val decodeStream10 = SmartMutableLiveData<Boolean>(false)
 
     // Log text window
     private val logText = SmartMutableLiveData<String>("")
@@ -66,7 +63,7 @@ class MainViewModel : ViewModel() {
     fun getApplyGlFilter(): MutableLiveData<Boolean> = applyGlFilter
     fun getEncodeStream1(): MutableLiveData<Boolean> = encodeStream1
     fun getPlayAudio(): MutableLiveData<Boolean> = playAudio
-    fun getDoSeeks(): MutableLiveData<Boolean> = doSeeks
+    fun getDoPauses(): MutableLiveData<Boolean> = doPauses
     fun getSoftware(): MutableLiveData<Boolean> = software
     fun getDecodeStream1(): MutableLiveData<Boolean> = decodeStream1
     fun getDecodeStream2(): MutableLiveData<Boolean> = decodeStream2
@@ -86,7 +83,7 @@ class MainViewModel : ViewModel() {
     fun getApplyGlFilterVal(): Boolean = applyGlFilter.value ?: false
     fun getEncodeStream1Val(): Boolean = encodeStream1.value ?: false
     fun getPlayAudioVal(): Boolean = playAudio.value ?: false
-    fun getDoSeeksVal(): Boolean = doSeeks.value ?: false
+    fun getDoPausesVal(): Boolean = doPauses.value ?: false
     fun getSoftwareVal(): Boolean = software.value ?: false
     fun getDecodeStream1Val(): Boolean = decodeStream1.value ?: true
     fun getDecodeStream2Val(): Boolean = decodeStream2.value ?: false
@@ -114,8 +111,8 @@ class MainViewModel : ViewModel() {
     fun setPlayAudio(value: Boolean) {
         playAudio.setValue(value)
     }
-    fun setDoSeeks(value: Boolean) {
-        doSeeks.setValue(value)
+    fun setDoPauses(value: Boolean) {
+        doPauses.setValue(value)
     }
     fun setSoftware(value: Boolean) {
         software.setValue(value)
