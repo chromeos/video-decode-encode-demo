@@ -65,52 +65,41 @@ class FpsStats() {
         }
     }
 
-    // Convenience function to update stats for a single string and return summary of all strings
+    // Convenience function to update stats for a single stream and return summary of all strings
     // only if all streams have the newests fps info
     fun updateStatsAndGetAll(streamNumber: Int) : String {
         var outputString = ""
-        var maxFrameCount = -1
 
+        // Update stats
         if (streamNumber in 0 until NUM_STREAMS) {
-            // Update stats
             streamFpsStats[streamNumber].updateStats()
+        } else {
+            return ""
+        }
 
-            // Build up output string, only if each stream is at the same frame
-            outputString = ""
+        // Get output string if relevant
+        var shouldOutputStats = true
+        // Check all streams for new info
+        for (streamStats in streamFpsStats) {
+            if (streamStats.recentStats.isDecoding && !streamStats.recentStats.hasNewStatsToShow) {
+                shouldOutputStats = false
+                break
+            }
+        }
+        if (shouldOutputStats) {
+            // Build up output string
             for (streamStats in streamFpsStats) {
-                // If this stream is not being decoded, skip it
-                if (streamStats.fpsTotalDecodeCounter == 0) {
-                    continue
-                }
-                // If this is just starting, record the lastest frame from recents
-                if (maxFrameCount == -1) {
-                    maxFrameCount = streamStats.recentStats.latestFrameCount
-                }
-                // If this frame count has been logged already, skip it
-                if (streamStats.recentStats.latestFrameCount <= lastSummaryLogFrame) {
-                    outputString = ""
-                    break
-                }
-                // If there are recent stats with a different frame count, do not output the summary
-                if (streamStats.recentStats.latestFrameCount > 0 &&
-                        streamStats.recentStats.latestFrameCount != maxFrameCount) {
-                    outputString = ""
-                    break
-                }
-
-                // Otherwise, this is new info and at the same frame as the other stats, keep it
                 if (!streamStats.recentStats.latestStatsString.equals("")) {
                     outputString += streamStats.recentStats.latestStatsString + '\n'
-                } else {
-                    outputString = ""
-                    break
                 }
-            }
+                streamStats.recentStats.hasNewStatsToShow = false
+            } // For all streams
+
             if (!outputString.equals("")) {
-                lastSummaryLogFrame = maxFrameCount
                 outputString = "Video stats\n" + outputString
             }
         }
+
         return outputString
     }
 
@@ -177,6 +166,8 @@ class FpsStats() {
                 fpsLastLoggedTime = currentTime
                 fpsLastMeasuredTime = currentTime
             } else {
+                recentStats.isDecoding = true
+
                 fpsDecodeCounter++
                 fpsTotalDecodeCounter++
 
@@ -206,8 +197,8 @@ class FpsStats() {
                     logString = getStatsString()
 
                     // Keep track of latest info
-                    recentStats.latestFrameCount = fpsTotalDecodeCounter
                     recentStats.latestStatsString = logString
+                    recentStats.hasNewStatsToShow = true
 
                     fpsLastLoggedTime = currentTime // Update for next fps measurement
                     fpsDecodeCounter = 0
@@ -246,7 +237,8 @@ class FpsStats() {
     }// StreamFpsStats
 
     private inner class RecentStats {
-        var latestFrameCount = 0
         var latestStatsString = ""
+        var isDecoding = false
+        var hasNewStatsToShow = false
     }
 }
