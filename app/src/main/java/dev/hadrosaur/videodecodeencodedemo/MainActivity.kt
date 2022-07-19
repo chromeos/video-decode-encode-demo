@@ -43,11 +43,10 @@ import kotlinx.coroutines.launch
 const val NUMBER_OF_STREAMS = 4
 
 // TODO: replace this with proper file loading
-//const val VIDEO_RES_1 = R.raw.short_4k_30fps_01
-const val VIDEO_RES_1 = R.raw.video_3840x2160_30fps
-const val VIDEO_RES_2 = R.raw.short_4k_30fps_02
-const val VIDEO_RES_3 = R.raw.video_3840x2160_60fps
-const val VIDEO_RES_4 = R.raw.short_4k_30fps_04
+const val VIDEO_RES_1 = R.raw.test_4k_01_30fps
+const val VIDEO_RES_2 = R.raw.test_4k_04_30fps
+const val VIDEO_RES_3 = R.raw.test_4k_05_30fps
+const val VIDEO_RES_4 = R.raw.test_4k_06_30fps
 
 class MainActivity : AppCompatActivity() {
     // Preview surfaces
@@ -354,6 +353,9 @@ class MainActivity : AppCompatActivity() {
             if (viewModel.getDecodeStream4Val()) {
                 beginVideoDecode(VIDEO_RES_4, videoSurfaceManagers[3], 3)
             }
+
+            // Set audio track to be muted or unmuted
+            audioMainTrack.mute(!viewModel.getPlayAudioVal())
 
             GlobalScope.launch(Dispatchers.Default) {
                 audioMainTrack.start()

@@ -156,7 +156,7 @@ class AudioMainTrack {
     fun getEarliestMediaClockTime() : Long {
         var earliestUs = Long.MAX_VALUE
         for (mixTrack in audioMixTracks) {
-            earliestUs = minOf(earliestUs, mixTrack.mediaClock.positionUs)
+            earliestUs = minOf(earliestUs, mixTrack.mediaClock.getPositionUs())
         }
         return earliestUs
     }

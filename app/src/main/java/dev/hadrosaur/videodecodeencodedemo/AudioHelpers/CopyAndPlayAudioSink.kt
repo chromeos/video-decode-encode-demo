@@ -125,6 +125,8 @@ class CopyAndPlayAudioSink(
             )
         }
 
+        //logd("In audio sink, about to add audio chunk: ${presentationTimeUs}")
+
         // Add audio chunk to the mix-track
         audioMixTrack.addAudioChunk(
             AudioBuffer(
@@ -135,6 +137,8 @@ class CopyAndPlayAudioSink(
                 buffer.remaining()
             )
         )
+
+        //logd("In audio sink, finished adding audio chunk: ${presentationTimeUs}")
 
         // Update last position
         lastPosition = presentationTimeUs + bufferLengthUs

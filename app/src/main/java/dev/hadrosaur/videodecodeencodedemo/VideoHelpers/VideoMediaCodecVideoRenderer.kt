@@ -25,6 +25,7 @@ import com.google.android.exoplayer2.util.MediaClock
 import com.google.android.exoplayer2.video.MediaCodecVideoRenderer
 import dev.hadrosaur.videodecodeencodedemo.AudioHelpers.AudioMixTrackMediaClock
 import dev.hadrosaur.videodecodeencodedemo.MainActivity
+import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.logd
 import dev.hadrosaur.videodecodeencodedemo.MainViewModel
 import java.nio.ByteBuffer
 
@@ -125,16 +126,18 @@ class VideoMediaCodecVideoRenderer(
         format: Format
     ): Boolean {
 
+
         // Check the atomic lock to see if a frame can be rendered. If not, return false and wait
         if (videoSurfaceManager.renderer.frameLedger.isRenderLocked()) {
-            // viewModel.updateLog("I am in processOutputBuffer: The renderer is blocked.")
+            //viewModel.updateLog("I am in processOutputBuffer: The renderer is blocked.")
             return false
         }
+        //logd("I am in processOutputBuffer, renderer not blocked")
 
         if (isLastBuffer) {
             videoSurfaceManager.renderer.frameLedger.lastVideoBufferPresentationTimeUs = bufferPresentationTimeUs
         }
-//        viewModel.updateLog("I am in processOutputBuffer. Renderer not blocked.")
+
         val processSuccess = super.processOutputBuffer(
             positionUs,
             elapsedRealtimeUs,

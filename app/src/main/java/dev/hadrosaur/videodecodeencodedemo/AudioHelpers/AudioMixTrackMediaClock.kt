@@ -18,6 +18,7 @@ package dev.hadrosaur.videodecodeencodedemo.AudioHelpers
 
 import com.google.android.exoplayer2.PlaybackParameters
 import com.google.android.exoplayer2.util.MediaClock
+import dev.hadrosaur.videodecodeencodedemo.MainActivity.Companion.logd
 
 /**
  * A MediaClock that needs to be advanced manually. The intended use is to keep an individual
