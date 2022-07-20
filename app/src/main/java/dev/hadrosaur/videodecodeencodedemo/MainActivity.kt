@@ -22,7 +22,11 @@ import android.os.Bundle
 import android.util.Log
 import android.view.*
 import android.view.KeyEvent.*
+import android.view.View.INVISIBLE
+import android.view.View.VISIBLE
+import android.widget.ImageView
 import android.widget.SeekBar
+import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -39,6 +43,7 @@ import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import java.text.DecimalFormat
 
 const val NUMBER_OF_STREAMS = 4
 
@@ -272,6 +277,55 @@ class MainActivity : AppCompatActivity() {
             switch_audio.isSelected = playAudio
             audioMainTrack.mute(!playAudio)
         }
+        switch_loop.setOnCheckedChangeListener {
+                _, isChecked -> viewModel.setLoop(isChecked) }
+        viewModel.getLoop().observe(this, {
+                loop -> switch_loop.isSelected = loop
+            for (n in 0..NUMBER_OF_STREAMS-1) {
+                if (exoPlayers[n] != null) {
+                    exoPlayers[n]?.repeatMode =
+                        if (loop) ExoPlayer.REPEAT_MODE_ONE else ExoPlayer.REPEAT_MODE_OFF
+                }
+            }
+        })
+
+        // Setup FPS indicators
+        viewModel.getFps1().observe(this, { fps ->
+            updateFpsIndicator(text_fps_1, image_fps_indicator_1, fps)
+        })
+        viewModel.getIsChoppy1().observe(this, { isChoppy ->
+            text_fps_choppy_1.visibility = if (isChoppy) VISIBLE else INVISIBLE
+        })
+        viewModel.getFps2().observe(this, { fps ->
+            updateFpsIndicator(text_fps_2, image_fps_indicator_2, fps)
+        })
+        viewModel.getIsChoppy2().observe(this, { isChoppy ->
+            text_fps_choppy_2.visibility = if (isChoppy) VISIBLE else INVISIBLE
+        })
+        viewModel.getFps3().observe(this, { fps ->
+            updateFpsIndicator(text_fps_3, image_fps_indicator_3, fps)
+        })
+        viewModel.getIsChoppy3().observe(this, { isChoppy ->
+            text_fps_choppy_3.visibility = if (isChoppy) VISIBLE else INVISIBLE
+        })
+        viewModel.getFps4().observe(this, { fps ->
+            updateFpsIndicator(text_fps_4, image_fps_indicator_4, fps)
+        })
+        viewModel.getIsChoppy4().observe(this, { isChoppy ->
+            text_fps_choppy_4.visibility = if (isChoppy) VISIBLE else INVISIBLE
+        })
+
+        // Set up cancel button
+        button_cancel.isEnabled = false // Will be the opposite of Decode button
+        button_cancel.setOnClickListener {
+            for (n in 0..NUMBER_OF_STREAMS-1) {
+                if (exoPlayers[n] != null) {
+                    exoPlayers[n]?.release()
+                    exoPlayers[n] = null
+                    decodeFinished()
+                }
+            }
+        }
 
         // Set up cancel button
         button_cancel.isEnabled = false // Will be the opposite of Decode button
@@ -368,6 +422,7 @@ class MainActivity : AppCompatActivity() {
             KEYCODE_E -> { switch_encode.isChecked = ! switch_encode.isChecked; switch_encode.clearFocus(); return true }
             KEYCODE_F -> { switch_filter.isChecked = ! switch_filter.isChecked; switch_filter.clearFocus(); return true }
             KEYCODE_A -> { switch_audio.isChecked = ! switch_audio.isChecked; switch_audio.clearFocus(); return true }
+            KEYCODE_L -> { switch_loop.isChecked = ! switch_loop.isChecked; switch_loop.clearFocus(); return true }
 
             // D : Start decode
             KEYCODE_D -> {
@@ -474,6 +529,8 @@ class MainActivity : AppCompatActivity() {
         val videoSource = buildExoMediaSource(this, inputVideoRawId)
         exoPlayers[streamNumber]?.setMediaSource(videoSource)
         exoPlayers[streamNumber]?.prepare()
+        exoPlayers[streamNumber]?.repeatMode =
+            if (switch_loop.isChecked) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
 
         // Clear FPS stats
         FpsStats.get().reset()
@@ -610,6 +667,18 @@ class MainActivity : AppCompatActivity() {
             //    true
             //}
             else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    fun updateFpsIndicator(tv: TextView, iv: ImageView, fps: Float) {
+        val df = DecimalFormat("00.0")
+        tv.text = df.format(fps)
+        if (fps < 25) {
+            iv.setImageResource(R.drawable.red_circle)
+        } else if (fps < 30) {
+            iv.setImageResource(R.drawable.orange_circle)
+        } else {
+            iv.setImageResource(R.drawable.green_circle)
         }
     }
 }

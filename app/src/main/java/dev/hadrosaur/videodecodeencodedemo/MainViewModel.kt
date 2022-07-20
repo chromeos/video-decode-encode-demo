@@ -25,16 +25,21 @@ import java.io.File
 
 class MainViewModel : ViewModel() {
     // App options
-    private val previewFrameFrequency = SmartMutableLiveData<Int>(1)
+    private val previewFrameFrequency = SmartMutableLiveData<Int>(10)
     private val applyGlFilter = SmartMutableLiveData<Boolean>(false)
     private val encodeStream1 = SmartMutableLiveData<Boolean>(false)
     private val playAudio = SmartMutableLiveData<Boolean>(false)
+    private val loop = SmartMutableLiveData<Boolean>(true)
 
     // Stream decode switches
     private val decodeStream1 = SmartMutableLiveData<Boolean>(true)
     private val decodeStream2 = SmartMutableLiveData<Boolean>(false)
     private val decodeStream3 = SmartMutableLiveData<Boolean>(false)
     private val decodeStream4 = SmartMutableLiveData<Boolean>(false)
+
+    // FPS indicators
+    private val fps = arrayOf(SmartMutableLiveData<Float>(30.0f), SmartMutableLiveData<Float>(30.0f), SmartMutableLiveData<Float>(30.0f), SmartMutableLiveData<Float>(30.0f))
+    private val isChoppy = arrayOf(SmartMutableLiveData<Boolean>(false), SmartMutableLiveData<Boolean>(false), SmartMutableLiveData<Boolean>(false), SmartMutableLiveData<Boolean>(false))
 
     // Log text window
     private val logText = SmartMutableLiveData<String>("")
@@ -55,10 +60,19 @@ class MainViewModel : ViewModel() {
     fun getApplyGlFilter(): MutableLiveData<Boolean> = applyGlFilter
     fun getEncodeStream1(): MutableLiveData<Boolean> = encodeStream1
     fun getPlayAudio(): MutableLiveData<Boolean> = playAudio
+    fun getLoop(): MutableLiveData<Boolean> = loop
     fun getDecodeStream1(): MutableLiveData<Boolean> = decodeStream1
     fun getDecodeStream2(): MutableLiveData<Boolean> = decodeStream2
     fun getDecodeStream3(): MutableLiveData<Boolean> = decodeStream3
     fun getDecodeStream4(): MutableLiveData<Boolean> = decodeStream4
+    fun getFps1(): MutableLiveData<Float> = fps[0]
+    fun getIsChoppy1(): MutableLiveData<Boolean> = isChoppy[0]
+    fun getFps2(): MutableLiveData<Float> = fps[1]
+    fun getIsChoppy2(): MutableLiveData<Boolean> = isChoppy[1]
+    fun getFps3(): MutableLiveData<Float> = fps[2]
+    fun getIsChoppy3(): MutableLiveData<Boolean> = isChoppy[2]
+    fun getFps4(): MutableLiveData<Float> = fps[3]
+    fun getIsChoppy4(): MutableLiveData<Boolean> = isChoppy[3]
     fun getLogText(): MutableLiveData<String> = logText
     fun getEncodingInProgress(): MutableLiveData<Boolean> = encodingInProgress
 
@@ -67,10 +81,20 @@ class MainViewModel : ViewModel() {
     fun getApplyGlFilterVal(): Boolean = applyGlFilter.value ?: false
     fun getEncodeStream1Val(): Boolean = encodeStream1.value ?: false
     fun getPlayAudioVal(): Boolean = playAudio.value ?: false
+    fun getLoopVal(): Boolean = loop.value ?: false
     fun getDecodeStream1Val(): Boolean = decodeStream1.value ?: true
     fun getDecodeStream2Val(): Boolean = decodeStream2.value ?: false
     fun getDecodeStream3Val(): Boolean = decodeStream3.value ?: false
     fun getDecodeStream4Val(): Boolean = decodeStream4.value ?: false
+    fun getFps1Val(): Float = fps[0].value ?: 30.0f
+    fun getIsChoppy1Val(): Boolean = isChoppy[0].value ?: true
+    fun getFps2Val(): Float = fps[1].value ?: 30.0f
+    fun getIsChoppy2Val(): Boolean = isChoppy[1].value ?: true
+    fun getFps3Val(): Float = fps[2].value ?: 30.0f
+    fun getIsChoppy3Val(): Boolean = isChoppy[2].value ?: true
+    fun getFps4Val(): Float = fps[3].value ?: 30.0f
+    fun getIsChoppy4Val(): Boolean = isChoppy[3].value ?: true
+
     fun getLogTextVal(): String = logText.value ?: ""
     fun getEncodingInProgressVal(): Boolean = encodingInProgress.value ?: false
 
@@ -86,6 +110,9 @@ class MainViewModel : ViewModel() {
     }
     fun setPlayAudio(value: Boolean) {
         playAudio.setValue(value)
+    }
+    fun setLoop(value: Boolean) {
+        loop.setValue(value)
     }
     fun setDecodeStream1(value: Boolean) {
         decodeStream1.setValue(value)
@@ -107,5 +134,10 @@ class MainViewModel : ViewModel() {
     }
     fun setEncodingInProgress(value: Boolean) {
         encodingInProgress.postValue(value)
+    }
+
+    fun updateFpsIndicators(streamNumber: Int, fps: Float, isChoppy: Boolean) {
+        this.fps[streamNumber].setValue(fps)
+        this.isChoppy[streamNumber].setValue(isChoppy)
     }
 }
