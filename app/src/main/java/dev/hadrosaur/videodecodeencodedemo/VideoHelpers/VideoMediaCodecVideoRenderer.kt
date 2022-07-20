@@ -132,7 +132,6 @@ class VideoMediaCodecVideoRenderer(
             //viewModel.updateLog("I am in processOutputBuffer: The renderer is blocked.")
             return false
         }
-        //logd("I am in processOutputBuffer, renderer not blocked")
 
         if (isLastBuffer) {
             videoSurfaceManager.renderer.frameLedger.lastVideoBufferPresentationTimeUs = bufferPresentationTimeUs

@@ -81,7 +81,8 @@ class VideoMediaCodecAudioRenderer (
     }
 
     override fun onProcessedOutputBuffer(presentationTimeUs: Long) {
-        viewModel.updateLog(audioStats.updateStatsAndGetAll(streamNumber))
+        // Show audio stats
+        // viewModel.updateLog(audioStats.updateStatsAndGetAll(streamNumber))
         super.onProcessedOutputBuffer(presentationTimeUs)
     }
 

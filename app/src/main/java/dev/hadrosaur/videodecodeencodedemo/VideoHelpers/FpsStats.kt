@@ -34,9 +34,9 @@ class FpsStats() {
     private val FPS_BUCKET_SIZE = MAX_FPS_STATS / NUM_FPS_BUCKETS // 10fps
     private val LAST_FPS_BUCKET_START = MAX_FPS_STATS - FPS_BUCKET_SIZE // 50+
 
-    // Choppiness = num frames < 30fps
-    private val CHOPPINESS_CUTOFF = 30
-    private val TOO_MANY_CHOPPY_FRAMES = 10
+    // Choppiness = num frames < 25fps
+    private val CHOPPINESS_CUTOFF = 25
+    private val TOO_MANY_CHOPPY_FRAMES_PERCENTAGE = 0.1f // 10% of frames
 
     private val streamFpsStats = ArrayList<StreamFpsStats>(NUM_STREAMS)
 
@@ -63,6 +63,14 @@ class FpsStats() {
         for (i in 0 until NUM_STREAMS) {
             streamFpsStats.add(StreamFpsStats(i))
         }
+    }
+
+    fun getFps(streamNumber: Int): Float {
+        return streamFpsStats[streamNumber].getAverageFps()
+    }
+
+    fun isChoppy(streamNumber: Int): Boolean {
+        return streamFpsStats[streamNumber].isChoppy()
     }
 
     // Convenience function to update stats for a single stream and return summary of all strings
@@ -134,6 +142,9 @@ class FpsStats() {
         private var fpsLastMeasuredTime = 0L
         private var fpsLastLoggedTime = 0L
 
+        private val RUNNING_FPS_LAST_N_FRAMES = 24
+        private var runningFpsLastRecordedTime = 0L
+
         // Set up an int array for fps stats to get an idea of choppiness. Ex. 0-55fps+, 12 buckets
         // 0-4, 5-9, 10-14, 15-19, 20-24 . . . 50-54, 55+
         private val fpsBuckets = IntArray(NUM_FPS_BUCKETS) { 0 }
@@ -141,8 +152,9 @@ class FpsStats() {
         // Keep track of mix/max fps
         private var minFps = MAX_FPS_STATS
         private var maxFps = 0
-        private var averageFps: Double = 0.0
+        private var averageFps: Float = 0.0f
         private var numChoppyFrames = 0
+        private var isChoppy = false
 
         // Keep track of latest log string and frame number
         var recentStats = RecentStats()
@@ -156,6 +168,14 @@ class FpsStats() {
             }
         }
 
+        fun getAverageFps() : Float {
+            return averageFps
+        }
+
+        fun isChoppy() : Boolean {
+            return isChoppy
+        }
+
         // Update stats at current time, returns string if LOG_VIDEO_EVERY_N_FRAMES, otherwise ""
         fun updateStats() : String {
             val currentTime = System.currentTimeMillis()
@@ -165,6 +185,7 @@ class FpsStats() {
             if (fpsLastLoggedTime == 0L || fpsLastMeasuredTime == 0L) {
                 fpsLastLoggedTime = currentTime
                 fpsLastMeasuredTime = currentTime
+                runningFpsLastRecordedTime = currentTime
             } else {
                 recentStats.isDecoding = true
 
@@ -181,18 +202,26 @@ class FpsStats() {
                 minFps = minOf(minFps, currentFrameFps.toInt())
                 maxFps = maxOf(maxFps, currentFrameFps.toInt())
 
+                // Keep track of a running FPS
+                if (fpsTotalDecodeCounter % RUNNING_FPS_LAST_N_FRAMES == 0) {
+                    averageFps =
+                        (RUNNING_FPS_LAST_N_FRAMES / ((currentTime - runningFpsLastRecordedTime) / 1000.0)).toFloat()
+                    runningFpsLastRecordedTime = currentTime
+                }
+
                 if (currentFrameFps < CHOPPINESS_CUTOFF) {
                     numChoppyFrames++
                 }
+
+                isChoppy = numChoppyFrames.toFloat() / fpsDecodeCounter >= TOO_MANY_CHOPPY_FRAMES_PERCENTAGE
 
                 // Place this frame's fps in the bucket
                 val currentfpsBucketIndex = minOf(currentFrameFps.toInt(), MAX_FPS_STATS - 1) / FPS_BUCKET_SIZE
                 fpsBuckets[currentfpsBucketIndex]++
 
-
                 // If this is a logging frame, create logString and reset counters
                 if (fpsDecodeCounter % MainActivity.LOG_VIDEO_EVERY_N_FRAMES == 0) {
-                    averageFps = fpsDecodeCounter / ((currentTime - fpsLastLoggedTime) / 1000.0)
+                    averageFps = (fpsDecodeCounter / ((currentTime - fpsLastLoggedTime) / 1000.0)).toFloat()
 
                     logString = getStatsString()
 
@@ -212,7 +241,7 @@ class FpsStats() {
 
         fun getStatsString() : String {
             val averageFpsString = String.format("%.2f", averageFps)
-            val choppyString = if (numChoppyFrames >= TOO_MANY_CHOPPY_FRAMES) " ---CHOPPY---" else ""
+            val choppyString = if (isChoppy) " ---CHOPPY---" else ""
 
             // FPS buckets line
             var bucketsString1 = ""
