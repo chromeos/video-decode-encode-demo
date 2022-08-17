@@ -40,10 +40,52 @@
         android:layout_marginStart="16dp"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
-        app:layout_constraintBottom_toTopOf="@+id/checkbox_decode_stream1"
+        app:layout_constraintBottom_toTopOf="@id/linear_fps_one"
         app:layout_constraintEnd_toStartOf="@id/frame_two"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <LinearLayout
+        android:id="@+id/linear_fps_one"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toTopOf="@+id/checkbox_decode_stream1"
+        app:layout_constraintStart_toStartOf="@+id/frame_one"
+        app:layout_constraintTop_toBottomOf="@+id/frame_one">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="FPS: " />
+
+        <TextView
+            android:id="@+id/text_fps_1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="30.0" />
+
+        <ImageView
+            android:id="@+id/image_fps_indicator_1"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginStart="5dp"
+            android:layout_marginEnd="5dp"
+            android:adjustViewBounds="true"
+            android:padding="2dp"
+            android:src="@drawable/green_circle" />
+
+        <TextView
+            android:id="@+id/text_fps_choppy_1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="3dp"
+            android:text="CHOPPY"
+            android:textColor="#FF0000"
+            android:textStyle="bold"
+            android:visibility="invisible" />
+    </LinearLayout>
 
     <CheckBox
         android:id="@+id/checkbox_decode_stream1"
@@ -56,7 +98,7 @@
         android:text="Decode Stream 1?"
         app:layout_constraintBottom_toTopOf="@+id/frame_three"
         app:layout_constraintEnd_toEndOf="@+id/frame_one"
-        app:layout_constraintTop_toBottomOf="@+id/frame_one" />
+        app:layout_constraintTop_toBottomOf="@+id/linear_fps_one" />
 
     <FrameLayout
         android:id="@+id/frame_two"
@@ -65,20 +107,62 @@
         android:layout_marginStart="16dp"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
-        app:layout_constraintBottom_toTopOf="@+id/checkbox_decode_stream2"
+        app:layout_constraintBottom_toTopOf="@id/linear_fps_two"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/frame_one"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <LinearLayout
+        android:id="@+id/linear_fps_two"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal"
+        app:layout_constraintTop_toBottomOf="@+id/frame_two"
+        app:layout_constraintBottom_toTopOf="@+id/checkbox_decode_stream2"
+        app:layout_constraintStart_toStartOf="@+id/frame_two">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="FPS: " />
+
+        <TextView
+            android:id="@+id/text_fps_2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="30.0" />
+
+        <ImageView
+            android:id="@+id/image_fps_indicator_2"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:adjustViewBounds="true"
+            android:padding="2dp"
+            android:layout_marginStart="5dp"
+            android:layout_marginEnd="5dp"
+            android:src="@drawable/green_circle" />
+
+        <TextView
+            android:id="@+id/text_fps_choppy_2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="3dp"
+            android:text="CHOPPY"
+            android:textColor="#FF0000"
+            android:textStyle="bold"
+            android:visibility="invisible" />
+    </LinearLayout>
 
     <CheckBox
         android:id="@+id/checkbox_decode_stream2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:checked="false"
+        android:checked="true"
         android:text="Decode Stream 2?"
         app:layout_constraintBottom_toTopOf="@+id/frame_four"
         app:layout_constraintEnd_toEndOf="@+id/frame_two"
-        app:layout_constraintTop_toBottomOf="@+id/frame_two" />
+        app:layout_constraintTop_toBottomOf="@+id/linear_fps_two" />
 
     <FrameLayout
         android:id="@+id/frame_three"
@@ -87,20 +171,62 @@
         android:layout_marginStart="16dp"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
-        app:layout_constraintBottom_toTopOf="@+id/checkbox_decode_stream3"
+        app:layout_constraintBottom_toTopOf="@id/linear_fps_three"
         app:layout_constraintEnd_toStartOf="@id/frame_four"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/checkbox_decode_stream1" />
+
+    <LinearLayout
+        android:id="@+id/linear_fps_three"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal"
+        app:layout_constraintTop_toBottomOf="@+id/frame_three"
+        app:layout_constraintBottom_toTopOf="@+id/checkbox_decode_stream3"
+        app:layout_constraintStart_toStartOf="@+id/frame_three">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="FPS: " />
+
+        <TextView
+            android:id="@+id/text_fps_3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="30.0" />
+
+        <ImageView
+            android:id="@+id/image_fps_indicator_3"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:adjustViewBounds="true"
+            android:padding="2dp"
+            android:layout_marginStart="5dp"
+            android:layout_marginEnd="5dp"
+            android:src="@drawable/green_circle" />
+
+        <TextView
+            android:id="@+id/text_fps_choppy_3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="3dp"
+            android:text="CHOPPY"
+            android:textColor="#FF0000"
+            android:textStyle="bold"
+            android:visibility="invisible" />
+    </LinearLayout>
 
     <CheckBox
         android:id="@+id/checkbox_decode_stream3"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:checked="false"
+        android:checked="true"
         android:text="Decode Stream 3?"
         app:layout_constraintBottom_toTopOf="@+id/guideline"
         app:layout_constraintEnd_toEndOf="@+id/frame_three"
-        app:layout_constraintTop_toBottomOf="@+id/frame_three" />
+        app:layout_constraintTop_toBottomOf="@+id/linear_fps_three" />
 
     <FrameLayout
         android:id="@+id/frame_four"
@@ -109,20 +235,62 @@
         android:layout_marginStart="16dp"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
-        app:layout_constraintBottom_toTopOf="@+id/checkbox_decode_stream4"
+        app:layout_constraintBottom_toTopOf="@id/linear_fps_four"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/frame_three"
         app:layout_constraintTop_toBottomOf="@id/checkbox_decode_stream2" />
+
+    <LinearLayout
+        android:id="@+id/linear_fps_four"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal"
+        app:layout_constraintTop_toBottomOf="@id/frame_four"
+        app:layout_constraintBottom_toTopOf="@+id/checkbox_decode_stream4"
+        app:layout_constraintStart_toStartOf="@+id/frame_four">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="FPS: " />
+
+        <TextView
+            android:id="@+id/text_fps_4"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="30.0" />
+
+        <ImageView
+            android:id="@+id/image_fps_indicator_4"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:adjustViewBounds="true"
+            android:padding="2dp"
+            android:layout_marginStart="5dp"
+            android:layout_marginEnd="5dp"
+            android:src="@drawable/green_circle" />
+
+        <TextView
+            android:id="@+id/text_fps_choppy_4"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="3dp"
+            android:text="CHOPPY"
+            android:textColor="#FF0000"
+            android:textStyle="bold"
+            android:visibility="invisible" />
+    </LinearLayout>
 
     <CheckBox
         android:id="@+id/checkbox_decode_stream4"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:checked="false"
+        android:checked="true"
         android:text="Decode Stream 4?"
         app:layout_constraintBottom_toTopOf="@+id/guideline"
         app:layout_constraintEnd_toEndOf="@+id/frame_four"
-        app:layout_constraintTop_toBottomOf="@+id/frame_four" />
+        app:layout_constraintTop_toBottomOf="@+id/linear_fps_four" />
 
 
     <androidx.constraintlayout.widget.Guideline
@@ -152,7 +320,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/switch_filter" />
 
-
     <Button
         android:id="@+id/button_cancel"
         android:layout_width="wrap_content"
@@ -160,9 +327,9 @@
         android:layout_marginEnd="16dp"
         android:enabled="true"
         android:text="Cancel"
-        app:layout_constraintBottom_toBottomOf="@id/switch_encode"
+        app:layout_constraintTop_toBottomOf="@id/switch_encode"
         app:layout_constraintEnd_toStartOf="@id/button_start_decode"
-        app:layout_constraintTop_toTopOf="@+id/switch_filter" />
+        />
 
     <Button
         android:id="@+id/button_start_decode"
@@ -172,9 +339,9 @@
         android:enabled="false"
         android:focusedByDefault="true"
         android:text="Decode"
-        app:layout_constraintBottom_toBottomOf="@+id/switch_encode"
+        app:layout_constraintTop_toBottomOf="@+id/switch_encode"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/switch_filter" />
+        />
 
     <SeekBar
         android:id="@+id/seek_framedelay"
@@ -191,7 +358,7 @@
         app:layout_constraintBottom_toTopOf="@+id/scroll_log"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/switch_encode" />
+        app:layout_constraintTop_toBottomOf="@+id/button_start_decode" />
 
     <ScrollView
         android:id="@+id/scroll_log"
@@ -235,7 +402,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="16dp"
-        android:text="Preview every 10 frames"
+        android:text="Preview every 1 frames"
         app:layout_constraintBottom_toTopOf="@+id/scroll_log"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/seek_framedelay" />

@@ -78,6 +78,7 @@ class InternalSurfaceTextureRenderer(val viewModel: MainViewModel, glManager: Gl
                 val framesRendered = frameLedger.framesRendered.incrementAndGet()
 
                 viewModel.updateLog(stats.updateStatsAndGetAll(streamNumber))
+                viewModel.updateFpsIndicators(streamNumber, stats.getFps(streamNumber), stats.isChoppy(streamNumber))
 
                 // If this frame matches the requested draw frequency, or the frequency is set to
                 // draw every frame, draw the frame to the preview surface
