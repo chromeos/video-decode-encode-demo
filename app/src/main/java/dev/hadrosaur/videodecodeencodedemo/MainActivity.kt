@@ -327,6 +327,32 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // Setup FPS indicators
+        viewModel.getFps1().observe(this, { fps ->
+            updateFpsIndicator(text_fps_1, image_fps_indicator_1, fps)
+        })
+        viewModel.getIsChoppy1().observe(this, { isChoppy ->
+            text_fps_choppy_1.visibility = if (isChoppy) VISIBLE else INVISIBLE
+        })
+        viewModel.getFps2().observe(this, { fps ->
+            updateFpsIndicator(text_fps_2, image_fps_indicator_2, fps)
+        })
+        viewModel.getIsChoppy2().observe(this, { isChoppy ->
+            text_fps_choppy_2.visibility = if (isChoppy) VISIBLE else INVISIBLE
+        })
+        viewModel.getFps3().observe(this, { fps ->
+            updateFpsIndicator(text_fps_3, image_fps_indicator_3, fps)
+        })
+        viewModel.getIsChoppy3().observe(this, { isChoppy ->
+            text_fps_choppy_3.visibility = if (isChoppy) VISIBLE else INVISIBLE
+        })
+        viewModel.getFps4().observe(this, { fps ->
+            updateFpsIndicator(text_fps_4, image_fps_indicator_4, fps)
+        })
+        viewModel.getIsChoppy4().observe(this, { isChoppy ->
+            text_fps_choppy_4.visibility = if (isChoppy) VISIBLE else INVISIBLE
+        })
+
         // Set up cancel button
         button_cancel.isEnabled = false // Will be the opposite of Decode button
         button_cancel.setOnClickListener {

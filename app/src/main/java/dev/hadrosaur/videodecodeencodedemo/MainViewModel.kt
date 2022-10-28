@@ -33,9 +33,9 @@ class MainViewModel : ViewModel() {
 
     // Stream decode switches
     private val decodeStream1 = SmartMutableLiveData<Boolean>(true)
-    private val decodeStream2 = SmartMutableLiveData<Boolean>(false)
-    private val decodeStream3 = SmartMutableLiveData<Boolean>(false)
-    private val decodeStream4 = SmartMutableLiveData<Boolean>(false)
+    private val decodeStream2 = SmartMutableLiveData<Boolean>(true)
+    private val decodeStream3 = SmartMutableLiveData<Boolean>(true)
+    private val decodeStream4 = SmartMutableLiveData<Boolean>(true)
 
     // FPS indicators
     private val fps = arrayOf(SmartMutableLiveData<Float>(30.0f), SmartMutableLiveData<Float>(30.0f), SmartMutableLiveData<Float>(30.0f), SmartMutableLiveData<Float>(30.0f))
@@ -94,8 +94,7 @@ class MainViewModel : ViewModel() {
     fun getIsChoppy3Val(): Boolean = isChoppy[2].value ?: true
     fun getFps4Val(): Float = fps[3].value ?: 30.0f
     fun getIsChoppy4Val(): Boolean = isChoppy[3].value ?: true
-
-    fun getLogTextVal(): String = logText.value ?: ""
+        fun getLogTextVal(): String = logText.value ?: ""
     fun getEncodingInProgressVal(): Boolean = encodingInProgress.value ?: false
 
     // Setters
@@ -135,7 +134,6 @@ class MainViewModel : ViewModel() {
     fun setEncodingInProgress(value: Boolean) {
         encodingInProgress.postValue(value)
     }
-
     fun updateFpsIndicators(streamNumber: Int, fps: Float, isChoppy: Boolean) {
         this.fps[streamNumber].setValue(fps)
         this.isChoppy[streamNumber].setValue(isChoppy)
